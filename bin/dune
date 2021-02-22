@@ -1,0 +1,4 @@
+(executable
+ (public_name otfed)
+ (name main)
+ (libraries otfed))

@@ -1,0 +1,3 @@
+(library
+ (name otfed)
+ (public_name otfed))

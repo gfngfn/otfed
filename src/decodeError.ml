@@ -3,5 +3,6 @@ open Basic
 
 
 type t =
-  | InvalidOffset of offset
+  | UnknownFormatVersion of Value.Tag.t
+  | InvalidOffset        of offset
   | UnexpectedEnd

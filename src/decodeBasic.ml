@@ -9,9 +9,18 @@ module Error = DecodeError
 
 type 'a ok = ('a, Error.t) result
 
+type common_source_core = {
+  data  : string;
+  max   : offset;
+}
+
+module TableDirectory = Map.Make(Value.Tag)
+
+type table_directory = (offset * int) TableDirectory.t
+
 type common_source = {
-  data : string;
-  max  : offset;
+  core            : common_source_core;
+  table_directory : table_directory;
 }
 
 type ttf_source = {

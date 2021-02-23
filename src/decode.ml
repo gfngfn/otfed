@@ -1,10 +1,37 @@
 
+open Basic
+open DecodeOperation
+
+
 include DecodeBasic
 
 
-let source_of_string (s : string) : single_or_collection ok =
-  let open DecodeOperation in
+let d_init_ttf core =
+  d_structure >>= fun table_directory ->
   let common =
+    {
+      core            = core;
+      table_directory = table_directory;
+    }
+  in
+  let ttf = {ttf_common = common} in
+  return @@ (common, Ttf(ttf))
+
+
+let d_init_cff (core : common_source_core) : source decoder =
+  d_structure >>= fun table_directory ->
+  let common =
+    {
+      core            = core;
+      table_directory = table_directory;
+    }
+  in
+  let cff = {cff_common = common} in
+  return @@ (common, Cff(cff))
+
+
+let source_of_string (s : string) : single_or_collection ok =
+  let core =
     {
       data = s;
       max  = String.length s - 1;
@@ -14,12 +41,12 @@ let source_of_string (s : string) : single_or_collection ok =
     d_format_version >>= fun format ->
     match format with
     | InitTtf ->
-        let ttf = {ttf_common = common} in
-        return @@ Single(common, Ttf(ttf))
+        d_init_ttf core >>= fun src ->
+        return @@ Single(src)
 
     | InitCff ->
-        let cff = {cff_common = common} in
-        return @@ Single(common, Cff(cff))
+        d_init_cff core >>= fun src ->
+        return @@ Single(src)
 
     | InitCollection ->
         d_ttc_header_offset_list >>= fun offsets ->
@@ -28,23 +55,30 @@ let source_of_string (s : string) : single_or_collection ok =
           d_format_version >>= fun format ->
           match format with
           | InitTtf ->
-              let ttf = {ttf_common = common} in
-              return @@ (common, Ttf(ttf))
+              d_init_ttf core
 
           | InitCff ->
-              let cff = {cff_common = common} in
-              return @@ (common, Cff(cff))
+              d_init_cff core
 
           | InitCollection ->
               err LayeredTtc
         ) >>= fun srcs ->
         return @@ Collection(srcs)
   in
-  run common 0 dec
+  run core 0 dec
 
 
 module Intermediate = DecodeIntermediate
 
 
-let cmap (_ : common_source) : Intermediate.Cmap.t ok =
-  failwith "TODO"
+let seek_required_table common tag =
+  let open ResultMonad in
+  match common.table_directory |> TableDirectory.find_opt tag with
+  | None    -> err @@ Error.MissingRequiredTable(tag)
+  | Some(v) -> return @@ v
+
+
+let cmap (common : common_source) : Intermediate.Cmap.t ok =
+  let open ResultMonad in
+  seek_required_table common Value.Tag.table_cmap >>= fun (offset, length) ->
+  return @@ Intermediate.Cmap.make common.core offset length

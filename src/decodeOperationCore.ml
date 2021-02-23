@@ -5,7 +5,7 @@ open DecodeBasic
 
 
 type state = {
-  source   : common_source;
+  source   : common_source_core;
   position : offset;
 }
 
@@ -71,6 +71,15 @@ let raw_byte (s : string) (offset : offset) : char =
   String.get s offset
 
 
+let d_skip (n : int) : unit decoder =
+  let open ResultMonad in
+  fun state ->
+    if miss state n then
+      err Error.UnexpectedEnd
+    else
+      return (advance state n, ())
+
+
 let d_uint8 : int decoder =
   let open ResultMonad in
   fun state ->
@@ -79,6 +88,24 @@ let d_uint8 : int decoder =
     else
       let n = Char.code (raw_byte state.source.data state.position) in
       return (advance state 1, n)
+
+
+let d_uint16 : int decoder =
+  let open ResultMonad in
+  fun state ->
+    if miss state 2 then
+      err Error.UnexpectedEnd
+    else
+      let s = state.source.data in
+      let pos = state.position in
+      let by0 = raw_byte s pos in
+      let by1 = raw_byte s (pos + 1) in
+      let n =
+        let w0 = Char.code by0 lsl 8 in
+        let w1 = Char.code by1 in
+        w0 lor w1
+      in
+      return (advance state 2, n)
 
 
 let d_uint32 : wint decoder =

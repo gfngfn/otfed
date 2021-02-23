@@ -1,5 +1,6 @@
 
 open Basic
+open DecodeBasic
 
 
 include DecodeOperationCore
@@ -20,6 +21,11 @@ fun count d ->
       aux (Alist.extend acc v) (i - 1)
   in
   aux Alist.empty count
+
+
+let d_list d =
+  d_uint16 >>= fun count ->
+  d_repeat count d
 
 
 let d_tag : Value.Tag.t decoder =
@@ -57,3 +63,26 @@ let d_ttc_header_offset_list : (offset list) decoder =
     d_long_offset_list
   else
     err @@ UnknownTtcVersion(ttc_version)
+
+
+type table_record = Value.Tag.t * offset * int
+
+
+let d_table_record : table_record decoder =
+  d_tag >>= fun tag ->
+  d_skip 4 >>= fun () ->
+  d_uint32_int >>= fun offset ->
+  d_uint32_int >>= fun length ->
+  return (tag, offset, length)
+
+
+let d_structure : table_directory decoder =
+  d_uint16 >>= fun numTables ->
+  d_skip (3 * 2) >>= fun () ->
+  d_repeat numTables d_table_record >>= fun records ->
+  let map =
+    records |> List.fold_left (fun map (tag, offset, length) ->
+      map |> TableDirectory.add tag (offset, length)
+    ) TableDirectory.empty
+  in
+  return map

@@ -8,3 +8,5 @@ type t =
   | LayeredTtc
   | InvalidOffset        of offset
   | UnexpectedEnd
+  | MissingRequiredTable of Value.Tag.t
+  | UnknownTableVersion  of wint

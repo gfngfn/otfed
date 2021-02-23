@@ -40,3 +40,7 @@ type source = common_source * specific_source
 type single_or_collection =
   | Single     of source
   | Collection of source list
+
+type cmap_segment =
+  | Incremental of Uchar.t * Uchar.t * Value.glyph_id
+  | Constant    of Uchar.t * Uchar.t * Value.glyph_id

@@ -9,7 +9,10 @@ module ResultMonad : sig
   val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
 end
 
+(** Handles unmarshaled in-memory representation of tables. *)
 module Value : sig
+
+  (** Handles 4cc tags. *)
   module Tag : sig
     type t
     val to_string : t -> string
@@ -53,10 +56,22 @@ module Decode : sig
     | Single     of source
     | Collection of source list
 
+  (** [source_of_string s] parses [s] as a complete font file. *)
   val source_of_string : string -> single_or_collection ok
 
+  (** Returns the list of tags for the tables contained in the source. *)
   val tables : common_source -> Value.Tag.t set
 
+  (** Used in [Intermediate.Cmap.fold_subtable]. *)
+  type cmap_segment =
+    | Incremental of Uchar.t * Uchar.t * Value.glyph_id
+    | Constant    of Uchar.t * Uchar.t * Value.glyph_id
+
+  (** Handles intermediate representation of tables for decoding.
+      Since the operations provided by this module
+      use only sequential sources and
+      do NOT allocate so much additional memory for the representation,
+      it is likely to be efficient in space and NOT to be in time. *)
   module Intermediate : sig
     module Cmap : sig
       type t
@@ -64,6 +79,8 @@ module Decode : sig
       type subtable
 
       val get_subtables : t -> (subtable set) ok
+
+      val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
     end
   end
 

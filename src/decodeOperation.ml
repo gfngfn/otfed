@@ -11,6 +11,14 @@ let d_uint32_int : int decoder =
   return @@ WideInt.to_int n
 
 
+let d_code_point : Uchar.t decoder =
+  d_uint32_int >>= fun n ->
+  if Uchar.is_valid n then
+    return @@ Uchar.of_int n
+  else
+    err @@ InvalidCodePoint(n)
+
+
 let d_repeat : 'a. int -> 'a decoder -> ('a list) decoder =
 fun count d ->
   let rec aux acc i =
@@ -86,3 +94,10 @@ let d_structure : table_directory decoder =
     ) TableDirectory.empty
   in
   return map
+
+
+let seek_required_table common tag =
+  let open ResultMonad in
+  match common.table_directory |> TableDirectory.find_opt tag with
+  | None    -> err @@ Error.MissingRequiredTable(tag)
+  | Some(v) -> return @@ v

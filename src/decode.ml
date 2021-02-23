@@ -80,13 +80,6 @@ let tables (common : common_source) : Value.Tag.t set =
 module Intermediate = DecodeIntermediate
 
 
-let seek_required_table common tag =
-  let open ResultMonad in
-  match common.table_directory |> TableDirectory.find_opt tag with
-  | None    -> err @@ Error.MissingRequiredTable(tag)
-  | Some(v) -> return @@ v
-
-
 let cmap (common : common_source) : Intermediate.Cmap.t ok =
   let open ResultMonad in
   seek_required_table common Value.Tag.table_cmap >>= fun (offset, length) ->

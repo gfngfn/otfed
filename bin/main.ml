@@ -9,12 +9,37 @@ let print (common, _) =
   ()
 
 
+let print_cmap (common, _) =
+  let open Otfed.Decode in
+  let open Otfed.ResultMonad in
+  let _ =
+    cmap common >>= fun icmap ->
+    Intermediate.Cmap.get_subtables icmap >>= fun subtables ->
+    subtables |> List.iter (fun subtable ->
+      Intermediate.Cmap.fold_subtable subtable (fun () seg ->
+        match seg with
+        | Incremental(uch1, uch2, gid) ->
+            if Uchar.equal uch1 uch2 then
+              Printf.printf "I U+%04X --> %d\n" (Uchar.to_int uch1) gid
+            else
+              Printf.printf "I U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+
+        | Constant(uch1, uch2, gid) ->
+            Printf.printf "C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+      ) () |> ignore;
+    );
+    return ()
+  in
+  ()
+
+
 let _ =
   let s = Core_kernel.In_channel.read_all Sys.argv.(1) in
   let open Otfed.ResultMonad in
   Otfed.Decode.source_of_string s >>= function
   | Single(source) ->
       print source;
+      print_cmap source;
       return ()
 
   | Collection(sources) ->

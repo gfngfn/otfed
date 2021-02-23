@@ -90,12 +90,12 @@ module Cmap = struct
     run cmap.core cmap.offset dec
 
 
-  let d_cmap_4 _f _acc =
+  let d_cmap_4 _f acc =
     (* Position: immediately after the format number entry of a cmpa subtable *)
     d_skip (2 * 2) >>= fun () ->
     d_uint16 >>= fun count2 ->
     let _count = count2 / 2 in
-    failwith "TODO: d_cmap_4"
+    return acc (* TODO: d_cmap_4 *)
 
 
   let rec d_cmap_groups k count f acc =

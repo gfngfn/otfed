@@ -1,24 +1,8 @@
 
-module Error = DecodeError
+include DecodeBasic
 
 module Intermediate = DecodeIntermediate
 
-type 'a ok = ('a, Error.t) result
-
-type common_source = unit (* TODO *)
-
-type ttf_source = unit (* TODO *)
-
-type cff_source = unit (* TODO *)
-
-type specific_source =
-  | Ttf of ttf_source
-  | Cff of cff_source
-
-type source = common_source * specific_source
-
-let source_of_string (_ : string) : source ok =
-  failwith "TODO"
 
 let cmap (_ : common_source) : Intermediate.Cmap.t ok =
   failwith "TODO"

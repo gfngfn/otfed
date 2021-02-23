@@ -1,5 +1,7 @@
 val message : string
 
+type 'a set = 'a list
+
 module Value : sig
   module Tag : sig
     type t
@@ -44,6 +46,8 @@ module Decode : sig
       type t
 
       type subtable
+
+      val get_subtables : t -> (subtable set) ok
     end
   end
 

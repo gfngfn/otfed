@@ -1,2 +1,7 @@
 
-type t = unit (* temporary *)
+open Basic
+
+
+type t =
+  | InvalidOffset of offset
+  | UnexpectedEnd

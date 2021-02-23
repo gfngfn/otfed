@@ -1,10 +1,18 @@
 
 type 'a set = 'a list
 
+module Alist : sig
+  type 'a t
+  val empty : 'a t
+  val extend : 'a t -> 'a -> 'a t
+  val to_list : 'a t -> 'a list
+end
+
 module ResultMonad : sig
   val ( >>= ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
   val return : 'a -> ('a, 'e) result
   val err : 'e -> ('a, 'e) result
+  val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
 end
 
 type offset = int

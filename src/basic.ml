@@ -1,6 +1,21 @@
 
 type 'a set = 'a list
 
+module Alist : sig
+  type 'a t
+  val empty : 'a t
+  val extend : 'a t -> 'a -> 'a t
+  val to_list : 'a t -> 'a list
+end = struct
+  type 'a t = 'a list
+
+  let empty = []
+
+  let extend acc x = x :: acc
+
+  let to_list = List.rev
+end
+
 module ResultMonad = struct
   let ( >>= ) x f =
     match x with
@@ -12,6 +27,17 @@ module ResultMonad = struct
 
   let err e =
     Error(e)
+
+  let mapM f xs =
+    let res =
+      xs |> List.fold_left (fun res x ->
+        res >>= fun acc ->
+        f x >>= fun y ->
+        return @@ Alist.extend acc y
+      ) (Ok(Alist.empty))
+    in
+    res >>= fun acc ->
+    return @@ Alist.to_list acc
 end
 
 type offset = int

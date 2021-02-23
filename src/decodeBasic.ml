@@ -35,6 +35,14 @@ type decoder = {
 }
 
 
+let make_decoder (common : common_source) (offset : offset) : decoder ok =
+  let open ResultMonad in
+  return @@ {
+    source   = common;
+    position = offset;
+  }
+
+
 let current (d : decoder) : offset =
   d.position
 
@@ -92,34 +100,105 @@ let d_uint32 (dec : decoder) : (decoder * wint) ok =
     return (dec, n)
 
 
+let d_uint32_int (dec : decoder) : (decoder * int) ok =
+  let open ResultMonad in
+  d_uint32 dec >>= fun (dec, n) ->
+  return (dec, WideInt.to_int n)
+
+
+let d_repeat : 'a. int -> (decoder -> (decoder * 'a) ok) -> decoder -> (decoder * 'a list) ok =
+fun count df dec ->
+  let open ResultMonad in
+  let rec aux dec acc i =
+    if i <= 0 then
+      return (dec, List.rev acc)
+    else
+      df dec >>= fun (dec, v) ->
+      aux dec (v :: acc) (i - 1)
+  in
+  aux dec [] count
+
+
 let d_tag (dec : decoder) : (decoder * Value.Tag.t) ok =
   let open ResultMonad in
   d_uint32 dec >>= fun (dec, n) ->
   return (dec, Value.Tag.of_wide_int n)
 
 
-let d_format_version (dec : decoder) =
+type format_version_result =
+  | InitTtf
+  | InitCff
+  | InitCollection
+
+
+let d_format_version (dec : decoder) : (decoder * format_version_result) ok =
   let open ResultMonad in
-  d_tag dec >>= fun (_dec, tag) ->
+  d_tag dec >>= fun (dec, tag) ->
   let open Value.Tag in
   if equal tag format_version_OTTO then
-    failwith "TODO: initialize CFF"
+    return (dec, InitCff)
   else if equal tag format_version_true || equal tag format_version_1_0 then
-    failwith "TODO: initialize TTF"
+    return (dec, InitTtf)
   else if equal tag format_version_ttcf then
-    failwith "TODO: initialize TTC"
+    return (dec, InitCollection)
   else
     err @@ UnknownFormatVersion(tag)
 
 
-
-let source_of_string (s : string) : source ok =
+let d_long_offset_list (dec : decoder) : (decoder * offset list) ok =
   let open ResultMonad in
-  let cmsrc =
+  d_uint32_int dec >>= fun (dec, count) ->
+  d_repeat count d_uint32_int dec
+
+
+let d_ttc_header_offset_list (dec : decoder) : (decoder * offset list) ok =
+  let open ResultMonad in
+  d_uint32 dec >>= fun (dec, ttc_version) ->
+  if WideInt.equal ttc_version (!%% 0x00010000L) || WideInt.equal ttc_version (!%% 0x00020000L) then
+    d_long_offset_list dec
+  else
+    err @@ UnknownTtcVersion(ttc_version)
+
+
+type single_or_collection =
+  | Single     of source
+  | Collection of source list
+
+
+let source_of_string (s : string) : single_or_collection ok =
+  let open ResultMonad in
+  let common =
     {
       data = s;
       max  = String.length s - 1;
     }
   in
-  let spsrc = failwith "TODO" in
-  return (cmsrc, spsrc)
+  make_decoder common 0 >>= fun dec ->
+  d_format_version dec >>= fun (dec, format) ->
+  match format with
+  | InitTtf ->
+      let ttf = {ttf_common = common} in
+      return @@ Single(common, Ttf(ttf))
+
+  | InitCff ->
+      let cff = {cff_common = common} in
+      return @@ Single(common, Cff(cff))
+
+  | InitCollection ->
+      d_ttc_header_offset_list dec >>= fun (_dec, offsets) ->
+      offsets |> mapM (fun offset ->
+        make_decoder common offset >>= fun dec ->
+        d_format_version dec >>= fun (_dec, format) ->
+        match format with
+        | InitTtf ->
+            let ttf = {ttf_common = common} in
+            return @@ (common, Ttf(ttf))
+
+        | InitCff ->
+            let cff = {cff_common = common} in
+            return @@ (common, Cff(cff))
+
+        | InitCollection ->
+            err LayeredTtc
+      ) >>= fun srcs ->
+      return @@ Collection(srcs)

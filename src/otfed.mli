@@ -41,6 +41,12 @@ module Decode : sig
 
   type source = common_source * specific_source
 
+  type single_or_collection =
+    | Single     of source
+    | Collection of source list
+
+  val source_of_string : string -> single_or_collection ok
+
   module Intermediate : sig
     module Cmap : sig
       type t
@@ -50,8 +56,6 @@ module Decode : sig
       val get_subtables : t -> (subtable set) ok
     end
   end
-
-  val source_of_string : string -> source ok
 
   val cmap : common_source -> Intermediate.Cmap.t ok
 end

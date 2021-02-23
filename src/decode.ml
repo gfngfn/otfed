@@ -16,3 +16,9 @@ type specific_source =
   | Cff of cff_source
 
 type source = common_source * specific_source
+
+let source_of_string (_ : string) : source ok =
+  failwith "TODO"
+
+let cmap (_ : common_source) : Intermediate.Cmap.t ok =
+  failwith "TODO"

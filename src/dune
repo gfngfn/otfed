@@ -1,3 +1,5 @@
 (library
  (name otfed)
- (public_name otfed))
+ (public_name otfed)
+ (libraries
+   core_kernel))

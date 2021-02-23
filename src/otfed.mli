@@ -2,9 +2,17 @@ val message : string
 
 type 'a set = 'a list
 
+module ResultMonad : sig
+  val ( >>= ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
+  val return : 'a -> ('a, 'e) result
+  val err : 'e -> ('a, 'e) result
+  val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
+end
+
 module Value : sig
   module Tag : sig
     type t
+    val to_string : t -> string
   end
 
   type glyph_id = int
@@ -46,6 +54,8 @@ module Decode : sig
     | Collection of source list
 
   val source_of_string : string -> single_or_collection ok
+
+  val tables : common_source -> Value.Tag.t set
 
   module Intermediate : sig
     module Cmap : sig

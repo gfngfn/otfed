@@ -8,4 +8,5 @@
  (synopsis "Short description")
  (description "Long description")
  (depends
-  (dune (> 2.0))))
+  (dune (>= 2.0))
+  (core_kernel (>= 0.13.0))))

@@ -68,6 +68,15 @@ let source_of_string (s : string) : single_or_collection ok =
   run core 0 dec
 
 
+let tables (common : common_source) : Value.Tag.t set =
+  let acc =
+    TableDirectory.fold (fun tag _ acc ->
+      Alist.extend acc tag
+    ) common.table_directory Alist.empty
+  in
+  acc |> Alist.to_list
+
+
 module Intermediate = DecodeIntermediate
 
 

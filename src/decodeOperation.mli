@@ -6,6 +6,7 @@ type 'a decoder
 val return : 'a -> 'a decoder
 val err : Error.t -> 'a decoder
 val ( >>= ) : 'a decoder -> ('a -> 'b decoder) -> 'b decoder
+val transform_result : 'a ok -> 'a decoder
 val mapM : ('a -> 'b decoder) -> 'a list -> ('b list) decoder
 
 (** [run core offset dec] starts to decode the source [core] at the position [offset]
@@ -24,8 +25,14 @@ val d_skip : int -> unit decoder
 (** Reads a byte as an unsigned integer. *)
 val d_uint8 : int decoder
 
+(** Reads a byte as a signed integer. *)
+val d_int8 : int decoder
+
 (** Reads 2 bytes as an unsigned integer. *)
 val d_uint16 : int decoder
+
+(** Reads 2 bytes as a signed integer. *)
+val d_int16 : int decoder
 
 (** Reads 4 bytes as an unsigned integer.
     Due to the limitation of the range representable by the type [int] under 32-bit environments,
@@ -38,6 +45,9 @@ val d_uint32_int : int decoder
 
 (** Reads 4 bytes as a Unicode code point. *)
 val d_code_point : Uchar.t decoder
+
+(** [pick offset dec] reads data at [offset] by using [dec], and does NOT move the position. *)
+val pick : offset -> 'a decoder -> 'a decoder
 
 (** [d_fetch_long origin dec] reads a 4-byte relative offset [rel],
     fetches the value at the position [(origin + rel)] by using [dec],

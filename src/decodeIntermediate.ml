@@ -80,12 +80,94 @@ module Cmap = struct
     run cmap.core cmap.offset dec
 
 
-  let d_cmap_4 _f acc =
-    (* Position: immediately AFTER the format number entry of a cmap subtable *)
-    d_skip (2 * 2) >>= fun () ->
-    d_uint16 >>= fun count2 ->
-    let _count = count2 / 2 in
-    return acc (* TODO: d_cmap_4 *)
+  let get_subtable_ids ((_, _, ids) : subtable) =
+    ids
+
+
+  let uchar_of_int n =
+    let open ResultMonad in
+    try return @@ Uchar.of_int n with
+    | _ -> err @@ Error.InvalidCodePoint(n)
+
+
+  let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) =
+    let rec aux i acc = function
+      | ([], [], [], []) ->
+          assert (i = segCount);
+          return acc
+
+      | (
+          endCode :: endCodes,
+          startCode :: startCodes,
+          idDelta :: idDeltas,
+          idRangeOffset :: idRangeOffsets
+        ) ->
+          begin
+            if idRangeOffset = 0 then
+              let gidEnd = endCode + idDelta in
+              let gidStart = startCode + idDelta in
+              if gidStart < 0 && 0 <= gidEnd then
+                transform_result (uchar_of_int startCode) >>= fun uchFirst1 ->
+                transform_result (uchar_of_int (- idDelta - 1)) >>= fun uchLast1 ->
+                transform_result (uchar_of_int (- idDelta)) >>= fun uchFirst2 ->
+                transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
+                let gidFirst1 = gidStart land 65535 in
+                let acc = f acc (Incremental(uchFirst1, uchLast1, gidFirst1)) in
+                let acc = f acc (Incremental(uchFirst2, uchLast2, 0)) in
+                return acc
+              else if gidStart <= 65535 && 65535 < gidEnd then
+                transform_result (uchar_of_int startCode) >>= fun uchFirst1 ->
+                transform_result (uchar_of_int (65535 - idDelta)) >>= fun uchLast1 ->
+                transform_result (uchar_of_int (65536 - idDelta)) >>= fun uchFirst2 ->
+                transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
+                let gidFirst1 = gidStart in
+                let acc = f acc (Incremental(uchFirst1, uchLast1, gidFirst1)) in
+                let acc = f acc (Incremental(uchFirst2, uchLast2, 0)) in
+                return acc
+              else
+                transform_result (uchar_of_int startCode) >>= fun uchStart ->
+                transform_result (uchar_of_int endCode) >>= fun uchEnd ->
+                let acc = f acc (Incremental(uchStart, uchEnd, gidStart land 65535)) in
+                return acc
+            else
+              let rec iter cp acc =
+                if endCode < cp then
+                  return acc
+                else
+                  (* Doubtful: how to calculate `index` *)
+                  let index = cp - startCode + idRangeOffset / 2 + i - segCount in
+                  pick (offset_glyphIdArray + 2 * index) d_uint16 >>= fun g ->
+                  if g = 0 then
+                    iter (cp + 1) acc
+                  else
+                    let gid = (g + idDelta) land 65535 in
+                    transform_result (uchar_of_int cp) >>= fun uch ->
+                    let acc = f acc (Constant(uch, uch, gid)) in
+                    iter (cp + 1) acc
+              in
+              iter startCode acc
+          end >>= fun acc ->
+          aux (i + 1) acc (endCodes, startCodes, idDeltas, idRangeOffsets)
+
+      | _ ->
+          assert false
+    in
+    aux 0
+
+
+  let d_cmap_4 f acc =
+    (* Position: immediately AFTER the format number entry of a cmap subtable. *)
+    d_skip (2 * 2) >>= fun () -> (* Skips `length` and `language`. *)
+    d_uint16 >>= fun segCountX2 ->
+    let segCount = segCountX2 / 2 in
+    d_skip (2 * 3) >>= fun () -> (* Skips `searchRange`, `entrySelector`, and `rangeShift`. *)
+    d_repeat segCount d_uint16 >>= fun endCodes ->
+    d_skip 1 >>= fun () -> (* Skips a reserved pad. *)
+    d_repeat segCount d_uint16 >>= fun startCodes ->
+    d_repeat segCount d_int16 >>= fun idDeltas ->
+    d_repeat segCount d_uint16 >>= fun idRangeOffsets ->
+    current >>= fun offset_glyphIdArray ->
+    d_cmap_4_loop offset_glyphIdArray segCount f acc (endCodes, startCodes, idDeltas, idRangeOffsets)
 
 
   let rec d_cmap_groups k count f acc =

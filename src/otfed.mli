@@ -80,6 +80,8 @@ module Decode : sig
 
       val get_subtables : t -> (subtable set) ok
 
+      val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
+
       val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
     end
   end

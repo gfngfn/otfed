@@ -16,7 +16,15 @@ let d_code_point : Uchar.t decoder =
   if Uchar.is_valid n then
     return @@ Uchar.of_int n
   else
-    err @@ InvalidCodePoint(n)
+    err @@ Error.InvalidCodePoint(n)
+
+
+let pick (offset : offset) (dec : 'a decoder) : 'a decoder =
+  current >>= fun pos_before ->
+  seek offset >>= fun () ->
+  dec >>= fun v ->
+  seek pos_before >>= fun () ->
+  return v
 
 
 let d_fetch_long (origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =

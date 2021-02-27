@@ -40,6 +40,12 @@ let mapM df vs =
     return @@ (state, Alist.to_list acc)
 
 
+let transform_result (res : 'a ok) : 'a decoder =
+  match res with
+  | Ok(v)    -> return v
+  | Error(e) -> err e
+
+
 let run common offset d =
   let open ResultMonad in
   let state = {source = common; position = offset} in
@@ -90,6 +96,11 @@ let d_uint8 : int decoder =
       return (advance state 1, n)
 
 
+let d_int8 : int decoder =
+  d_uint8 >>= fun n ->
+  return (if n > 0x7F then n - 0x100 else n)
+
+
 let d_uint16 : int decoder =
   let open ResultMonad in
   fun state ->
@@ -106,6 +117,11 @@ let d_uint16 : int decoder =
         w0 lor w1
       in
       return (advance state 2, n)
+
+
+let d_int16 : int decoder =
+  d_uint16 >>= fun n ->
+  return (if n > 0x7FFF then n - 0x10000 else n)
 
 
 let d_uint32 : wint decoder =

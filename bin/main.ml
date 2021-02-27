@@ -16,16 +16,21 @@ let print_cmap (common, _) =
     cmap common >>= fun icmap ->
     Intermediate.Cmap.get_subtables icmap >>= fun subtables ->
     subtables |> List.iter (fun subtable ->
+      let ids = Intermediate.Cmap.get_subtable_ids subtable in
+      Printf.printf "platform: %d, encoding: %d, format: %d\n"
+        ids.platform_id
+        ids.encoding_id
+        ids.format;
       Intermediate.Cmap.fold_subtable subtable (fun () seg ->
         match seg with
         | Incremental(uch1, uch2, gid) ->
             if Uchar.equal uch1 uch2 then
-              Printf.printf "I U+%04X --> %d\n" (Uchar.to_int uch1) gid
+              Printf.printf "  I U+%04X --> %d\n" (Uchar.to_int uch1) gid
             else
-              Printf.printf "I U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+              Printf.printf "  I U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
 
         | Constant(uch1, uch2, gid) ->
-            Printf.printf "C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+            Printf.printf "  C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
       ) () |> ignore;
     );
     return ()

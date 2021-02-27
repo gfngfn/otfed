@@ -61,6 +61,12 @@ end
 
 type glyph_id = int
 
+type timestamp = wint
+
+type loc_format =
+  | ShortLocFormat
+  | LongLocFormat
+
 module Cmap = struct
   type t
 
@@ -71,4 +77,23 @@ module Cmap = struct
     encoding_id : int;
     format      : int;
   }
+end
+
+module Head = struct
+
+  type t = {
+    font_revision       : wint;
+    flags               : int;
+    units_per_em        : int;
+    created             : timestamp;
+    modified            : timestamp;
+    xmin                : int;
+    ymin                : int;
+    xmax                : int;
+    ymax                : int;
+    mac_style           : int;
+    lowest_rec_ppem     : int;
+    index_to_loc_format : loc_format;
+  }
+
 end

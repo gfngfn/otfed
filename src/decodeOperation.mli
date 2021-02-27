@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeBasic
 
 type 'a decoder
@@ -39,6 +40,9 @@ val d_int16 : int decoder
     this function returns [wint]-typed values. *)
 val d_uint32 : wint decoder
 
+(** Reads 8 bytes as a Unix timestamp. *)
+val d_timestamp : timestamp decoder
+
 (** Same as [d_uint32], except that return values are of type [int].
     Strictly speaking, this function is not valid under 32-bit environments. *)
 val d_uint32_int : int decoder
@@ -62,6 +66,8 @@ val d_list : 'a decoder -> ('a list) decoder
 
 (** Reads a 4cc tag. *)
 val d_tag : Value.Tag.t decoder
+
+val d_loc_format : loc_format decoder
 
 type format_version_result =
   | InitTtf

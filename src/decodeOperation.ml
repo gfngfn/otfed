@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeBasic
 
 
@@ -57,6 +58,13 @@ let d_list dec =
 let d_tag : Value.Tag.t decoder =
   d_uint32 >>= fun n ->
   return @@ Value.Tag.of_wide_int n
+
+
+let d_loc_format : loc_format decoder =
+  d_uint16 >>= function
+  | 0 -> return ShortLocFormat
+  | 1 -> return LongLocFormat
+  | i -> err @@ InvalidLocFormat(i)
 
 
 type format_version_result =

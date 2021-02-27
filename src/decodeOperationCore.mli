@@ -3,6 +3,7 @@
     [DecodeOperation] extends this module with higher-level decoding operations. *)
 
 open Basic
+open Value
 open DecodeBasic
 
 type 'a decoder
@@ -20,3 +21,4 @@ val d_int8 : int decoder
 val d_uint16 : int decoder
 val d_int16 : int decoder
 val d_uint32 : wint decoder
+val d_timestamp : timestamp decoder

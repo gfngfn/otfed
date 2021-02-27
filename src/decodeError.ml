@@ -13,3 +13,4 @@ type t =
   | UnsupportedCmapFormat of int
   | InvalidCodePoint      of int
   | InvalidCodePointRange of Uchar.t * Uchar.t
+  | InvalidLocFormat      of int

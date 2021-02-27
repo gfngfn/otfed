@@ -31,6 +31,11 @@ module Value : sig
       format      : int;
     }
   end
+
+  module Head : sig
+    type t
+  end
+
 end
 
 module Decode : sig
@@ -87,4 +92,6 @@ module Decode : sig
   end
 
   val cmap : common_source -> Intermediate.Cmap.t ok
+
+  val head : common_source -> Value.Head.t ok
 end

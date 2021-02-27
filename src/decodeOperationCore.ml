@@ -1,6 +1,7 @@
 (* `DecodeOperationCore` encapsulates the minimal set of decoding operations. *)
 
 open Basic
+open Value
 open DecodeBasic
 
 
@@ -145,3 +146,32 @@ let d_uint32 : wint decoder =
         w0 lor w1 lor w2 lor w3
       in
       return (advance state 4, n)
+
+
+let d_timestamp : timestamp decoder =
+  let open ResultMonad in
+  fun state ->
+    if miss state 8 then
+      err Error.UnexpectedEnd
+    else
+      let s = state.source.data in
+      let pos = state.position in
+      let by0 = raw_byte s pos in
+      let by1 = raw_byte s (pos + 1) in
+      let by2 = raw_byte s (pos + 2) in
+      let by3 = raw_byte s (pos + 3) in
+      let by4 = raw_byte s (pos + 4) in
+      let by5 = raw_byte s (pos + 5) in
+      let by6 = raw_byte s (pos + 6) in
+      let by7 = raw_byte s (pos + 7) in
+      let n =
+        let open WideInt in
+        let s0 = (of_byte by0 lsl 8) lor of_byte by1 in
+        let s1 = (of_byte by2 lsl 8) lor of_byte by3 in
+        let s2 = (of_byte by4 lsl 8) lor of_byte by5 in
+        let s3 = (of_byte by6 lsl 8) lor of_byte by7 in
+        let v = (s0 lsl 48) lor (s1 lsl 32) lor (s2 lsl 16) lor s3 in
+        let unix_epoch = !%% 2_082_844_800L in (* in seconds since 1904-01-01 00:00:00 *)
+        v -% unix_epoch
+      in
+      return (advance state 8, n)

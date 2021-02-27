@@ -33,16 +33,6 @@ module Cmap = struct
   open DecodeOperation
 
 
-  let d_fetch_long (origin : offset) d =
-    current >>= fun pos_before ->
-    d_uint32_int >>= fun reloffset ->
-    let offset = origin + reloffset in
-    seek offset >>= fun () ->
-    d >>= fun v ->
-    seek (pos_before + 4) >>= fun () ->
-    return (offset, v)
-
-
   let d_encoding_record (cmap : t) : subtable decoder =
     d_uint16 >>= fun platform_id ->
     d_uint16 >>= fun encoding_id ->
@@ -91,7 +81,7 @@ module Cmap = struct
 
 
   let d_cmap_4 _f acc =
-    (* Position: immediately after the format number entry of a cmpa subtable *)
+    (* Position: immediately AFTER the format number entry of a cmap subtable *)
     d_skip (2 * 2) >>= fun () ->
     d_uint16 >>= fun count2 ->
     let _count = count2 / 2 in
@@ -113,7 +103,7 @@ module Cmap = struct
 
 
   let d_cmap_segment k f acc =
-    (* Position: immediately after the format number entry of a cmap subtable *)
+    (* Position: immediately AFTER the format number entry of a cmap subtable *)
     d_skip (1 * 2 + 2 * 4) >>= fun () ->
     d_uint32_int >>= fun nGroups ->
     d_cmap_groups k nGroups f acc

@@ -19,21 +19,31 @@ let d_code_point : Uchar.t decoder =
     err @@ InvalidCodePoint(n)
 
 
+let d_fetch_long (origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
+  current >>= fun pos_before ->
+  d_uint32_int >>= fun reloffset ->
+  let offset = origin + reloffset in
+  seek offset >>= fun () ->
+  dec >>= fun v ->
+  seek (pos_before + 4) >>= fun () ->
+  return (offset, v)
+
+
 let d_repeat : 'a. int -> 'a decoder -> ('a list) decoder =
-fun count d ->
+fun count dec ->
   let rec aux acc i =
     if i <= 0 then
       return @@ Alist.to_list acc
     else
-      d >>= fun v ->
+      dec >>= fun v ->
       aux (Alist.extend acc v) (i - 1)
   in
   aux Alist.empty count
 
 
-let d_list d =
+let d_list dec =
   d_uint16 >>= fun count ->
-  d_repeat count d
+  d_repeat count dec
 
 
 let d_tag : Value.Tag.t decoder =

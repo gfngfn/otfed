@@ -1,3 +1,6 @@
+(** The core operations for byte sequence decoders.
+    This module is intended to be used only by [DecodeOperation];
+    [DecodeOperation] extends this module with higher-level decoding operations. *)
 
 open Basic
 open DecodeBasic

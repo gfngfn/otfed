@@ -60,12 +60,15 @@ end = struct
 end
 
 type glyph_id = int
+[@@deriving show {with_path = false}]
 
 type timestamp = wint
+[@@deriving show {with_path = false}]
 
 type loc_format =
   | ShortLocFormat
   | LongLocFormat
+[@@deriving show {with_path = false}]
 
 module Cmap = struct
   type t
@@ -94,6 +97,7 @@ module Head = struct
     lowest_rec_ppem     : int;
     index_to_loc_format : loc_format;
   }
+  [@@deriving show {with_path = false}]
 end
 
 module Hhea = struct
@@ -109,6 +113,7 @@ module Hhea = struct
     caret_slope_run        : int;
     caret_offset           : int;
   }
+  [@@deriving show {with_path = false}]
 end
 
 module Os2 = struct
@@ -152,4 +157,5 @@ module Os2 = struct
     us_lower_optical_point_size : int option;
     us_upper_optical_point_size : int option;
   }
+  [@@deriving show {with_path = false}]
 end

@@ -87,6 +87,7 @@ module WideInt = struct
 end
 
 type wint = WideInt.t
+[@@deriving show {with_path = false}]
 
 let ( +% ) = WideInt.add
 

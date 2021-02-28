@@ -9,4 +9,5 @@
  (description "Long description")
  (depends
   (dune (>= 2.0))
-  (core_kernel (>= 0.13.0))))
+  (core_kernel (>= 0.13.0))
+  (ppx_deriving (>= 4.4.1))))

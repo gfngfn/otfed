@@ -46,6 +46,7 @@ module Value : sig
       lowest_rec_ppem     : int;
       index_to_loc_format : loc_format;
     }
+    [@@deriving show {with_path = false}]
   end
 
   module Hhea : sig
@@ -61,6 +62,7 @@ module Value : sig
       caret_slope_run        : int;
       caret_offset           : int;
     }
+    [@@deriving show {with_path = false}]
   end
 
   module Os2 : sig
@@ -104,6 +106,7 @@ module Value : sig
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
+    [@@deriving show {with_path = false}]
   end
 end
 

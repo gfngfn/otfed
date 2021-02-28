@@ -42,6 +42,7 @@ module WideInt : sig
 end
 
 type wint = WideInt.t
+[@@deriving show {with_path = false}]
 
 val ( +% ) : wint -> wint -> wint
 

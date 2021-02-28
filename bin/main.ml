@@ -29,7 +29,7 @@ let print_cmap (common, _) =
               Printf.printf "  - I U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
 
         | Constant(uch1, uch2, gid) ->
-            Printf.printf "  C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+            Printf.printf "  - C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
       ) () |> ignore;
     );
     return ()

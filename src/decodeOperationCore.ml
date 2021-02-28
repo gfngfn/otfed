@@ -78,6 +78,16 @@ let raw_byte (s : string) (offset : offset) : char =
   String.get s offset
 
 
+let d_bytes (length : int) : string decoder =
+  let open ResultMonad in
+  fun state ->
+    if miss state length then
+      err Error.UnexpectedEnd
+    else
+      let s = String.sub state.source.data state.position length in
+      return (advance state length, s)
+
+
 let d_skip (n : int) : unit decoder =
   let open ResultMonad in
   fun state ->

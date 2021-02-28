@@ -165,4 +165,6 @@ module Decode : sig
   val head : common_source -> Value.Head.t ok
 
   val hhea : common_source -> Value.Hhea.t ok
+
+  val os2 : common_source -> Value.Os2.t ok
 end

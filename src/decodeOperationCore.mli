@@ -35,6 +35,9 @@ val current : offset decoder
 (** [seek offset] jumps to the position [offset]. *)
 val seek : offset -> unit decoder
 
+(** [d_bytes n] reads [n] bytes as a string. *)
+val d_bytes : int -> string decoder
+
 (** Advances the position by the given number of bytes. *)
 val d_skip : int -> unit decoder
 

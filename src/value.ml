@@ -110,3 +110,46 @@ module Hhea = struct
     caret_offset           : int;
   }
 end
+
+module Os2 = struct
+  type t = {
+    x_avg_char_width            : int;
+    us_weight_class             : int;
+    us_width_class              : int;
+    fs_type                     : int;
+    y_subscript_x_size          : int;
+    y_subscript_y_size          : int;
+    y_subscript_x_offset        : int;
+    y_subscript_y_offset        : int;
+    y_superscript_x_size        : int;
+    y_superscript_y_size        : int;
+    y_superscript_x_offset      : int;
+    y_superscript_y_offset      : int;
+    y_strikeout_size            : int;
+    y_strikeout_position        : int;
+    s_family_class              : int;
+    panose                      : string;  (* 10 bytes. *)
+    ul_unicode_range1           : wint;
+    ul_unicode_range2           : wint;
+    ul_unicode_range3           : wint;
+    ul_unicode_range4           : wint;
+    ach_vend_id                 : string;  (* 4 bytes. *)
+    fs_selection                : int;
+    us_first_char_index         : int;
+    us_last_char_index          : int;
+    s_typo_ascender             : int;
+    s_type_descender            : int;
+    s_typo_linegap              : int;
+    us_win_ascent               : int;
+    us_win_descent              : int;
+    ul_code_page_range_1        : wint option;
+    ul_code_page_range_2        : wint option;
+    s_x_height                  : int option;
+    s_cap_height                : int option;
+    us_default_char             : int option;
+    us_break_char               : int option;
+    us_max_context              : int option;
+    us_lower_optical_point_size : int option;
+    us_upper_optical_point_size : int option;
+  }
+end

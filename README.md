@@ -19,7 +19,7 @@ See also:
   <tr>
     <th>Supported</th><th>Tested</th><th>Supported</th><th>Tested</th>
   </tr>
-  <tr><td colspan="8">Required</td>
+  <tr><td rowspan="8">Required</td>
       <td>cmap</td><td>-</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
   <tr><td>head</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>hhea</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
@@ -29,16 +29,16 @@ See also:
   <tr><td>OS/2</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
-  <tr><td colspan="2">TTF</td>
+  <tr><td rowspan="2">TTF</td>
       <td>loca</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>glyf</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
-  <tr><td colspan="3">CFF</td>
+  <tr><td rowspan="3">CFF</td>
       <td>CFF␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>CFF2</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>VORG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
-  <tr><td colspan="5">Advanced</td>
+  <tr><td rowspan="5">Advanced</td>
       <td>BASE</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>GPOS</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>GSUB</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>

@@ -81,6 +81,20 @@ module Value : sig
     }
   end
 
+  module Hhea : sig
+    type t = {
+      ascender               : int;
+      descender              : int;
+      line_gap               : int;
+      advance_width_max      : int;
+      min_left_side_bearing  : int;
+      min_right_side_bearing : int;
+      xmax_extent            : int;
+      caret_slope_rise       : int;
+      caret_slope_run        : int;
+      caret_offset           : int;
+    }
+  end
 end
 
 module Decode : sig
@@ -139,4 +153,6 @@ module Decode : sig
   val cmap : common_source -> Intermediate.Cmap.t ok
 
   val head : common_source -> Value.Head.t ok
+
+  val hhea : common_source -> Value.Hhea.t ok
 end

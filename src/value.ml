@@ -80,7 +80,6 @@ module Cmap = struct
 end
 
 module Head = struct
-
   type t = {
     font_revision       : wint;
     flags               : int;
@@ -95,5 +94,19 @@ module Head = struct
     lowest_rec_ppem     : int;
     index_to_loc_format : loc_format;
   }
+end
 
+module Hhea = struct
+  type t = {
+    ascender               : int;
+    descender              : int;
+    line_gap               : int;
+    advance_width_max      : int;
+    min_left_side_bearing  : int;
+    min_right_side_bearing : int;
+    xmax_extent            : int;
+    caret_slope_rise       : int;
+    caret_slope_run        : int;
+    caret_offset           : int;
+  }
 end

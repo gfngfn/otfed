@@ -61,6 +61,18 @@ let print_hhea (common, _) =
   ()
 
 
+let print_maxp (common, _) =
+  let open Otfed.Decode in
+  let _ =
+    let open Otfed.ResultMonad in
+    Printf.printf "maxp:\n";
+    maxp common >>= fun maxp ->
+    Format.printf "%a\n" Otfed.Value.Maxp.pp maxp;
+    return ()
+  in
+  ()
+
+
 let _ =
   let s = Core_kernel.In_channel.read_all Sys.argv.(1) in
   let open Otfed.ResultMonad in
@@ -69,6 +81,7 @@ let _ =
       print_table_directory source;
       print_head source;
       print_hhea source;
+      print_maxp source;
       print_cmap source;
       return ()
 

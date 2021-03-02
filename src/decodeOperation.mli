@@ -45,6 +45,6 @@ val d_ttc_header_offset_list : (offset list) decoder
 (** Reads the table directory. *)
 val d_structure : table_directory decoder
 
-(** Given a source [common] and a table tag [tag], [seek_required_table common tag] returns
+(** Given a table directory [td] and a table tag [tag], [seek_required_table td tag] returns
     the pair of the offset and the length of the table. *)
-val seek_required_table : common_source -> Value.Tag.t -> (offset * int) ok
+val seek_required_table : table_directory -> Value.Tag.t -> (offset * int) ok

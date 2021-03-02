@@ -3,7 +3,7 @@
     and is included by `Otfed.Decode`. *)
 
 open Basic
-
+open Value
 
 module Error = DecodeError
 
@@ -16,11 +16,15 @@ type common_source_core = {
 
 module TableDirectory = Map.Make(Value.Tag)
 
+(* Entries `(tag ↦ (offset, length))` contained in a mapping of type `table_directory` stands for:
+   - `offset`: where the table tagged as `tag` starts, and
+   - `length`: how long the table is. *)
 type table_directory = (offset * int) TableDirectory.t
 
 type common_source = {
   core            : common_source_core;
   table_directory : table_directory;
+  loc_format      : loc_format;
 }
 
 type ttf_source = {

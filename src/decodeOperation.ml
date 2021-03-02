@@ -122,8 +122,8 @@ let d_structure : table_directory decoder =
   return map
 
 
-let seek_required_table common tag =
+let seek_required_table table_directory tag =
   let open ResultMonad in
-  match common.table_directory |> TableDirectory.find_opt tag with
+  match table_directory |> TableDirectory.find_opt tag with
   | None    -> err @@ Error.MissingRequiredTable(tag)
   | Some(v) -> return @@ v

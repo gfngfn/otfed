@@ -24,7 +24,7 @@ See also:
   <tr><td>head</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>hhea</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>hmtx</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>maxp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>maxp</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>OS/2</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>

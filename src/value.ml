@@ -159,3 +159,23 @@ module Os2 = struct
   }
   [@@deriving show {with_path = false}]
 end
+
+module Maxp = struct
+  type t = {
+    num_glyphs               : int;
+    max_points               : int;
+    max_contours             : int;
+    max_composite_points     : int;
+    max_composite_contours   : int;
+    max_zones                : int;
+    max_twilight_points      : int;
+    max_storage              : int;
+    max_function_defs        : int;
+    max_instruction_defs     : int;
+    max_stack_elements       : int;
+    max_size_of_instructions : int;
+    max_component_elements   : int;
+    max_component_depth      : int;
+  }
+  [@@deriving show {with_path = false}]
+end

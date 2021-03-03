@@ -20,6 +20,13 @@ module Tag : sig
   val table_name : t
   val table_os2  : t
   val table_post : t
+  val table_cvt  : t
+  val table_fpgm : t
+  val table_glyf : t
+  val table_loca : t
+  val table_prep : t
+  val table_cff  : t
+  val table_vorg : t
 end = struct
   type t = wint
 
@@ -57,6 +64,16 @@ end = struct
   let table_name = !%% 0x6E616D65L
   let table_os2  = !%% 0x4F532F32L
   let table_post = !%% 0x706F7374L
+
+  let table_cvt  = !%% 0x63767420L
+  let table_fpgm = !%% 0x6670676DL
+  let table_glyf = !%% 0x676C7966L
+  let table_loca = !%% 0x6C6F6361L
+  let table_prep = !%% 0x70726570L
+
+  let table_cff  = !%% 0x43464620L
+  let table_vorg = !%% 0x564F5247L
+
 end
 
 type glyph_id = int
@@ -69,6 +86,9 @@ type loc_format =
   | ShortLocFormat
   | LongLocFormat
 [@@deriving show {with_path = false}]
+
+type ttf_glyph_location =
+  | TtfGlyphLocation of int
 
 module Cmap = struct
   type t

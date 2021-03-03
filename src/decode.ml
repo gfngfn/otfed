@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeOperation
 
 
@@ -331,3 +332,49 @@ let maxp (common : common_source) : Value.Maxp.t ok =
       err @@ Error.UnknownTableVersion(version)
   in
   DecodeOperation.run common.core offset dec
+
+
+let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
+  let open DecodeOperation in
+  (* The position is set to the begging of `loca` table. *)
+  d_skip (gid * 2) >>= fun () ->
+  d_uint16 >>= fun half1 ->
+  d_uint16 >>= fun half2 ->
+  if half1 = half2 then
+    return None
+  else
+    let glyf_offset1 = half1 * 2 in
+    let glyf_offset2 = half2 * 2 in
+    return @@ Some(glyf_offset1, glyf_offset2 - glyf_offset1)
+
+
+let d_loca_long (gid : glyph_id) : ((int * int) option) decoder =
+  let open DecodeOperation in
+  (* The position is set to the begging of `loca` table. *)
+  d_skip (gid * 4) >>= fun () ->
+  d_uint32_int >>= fun glyf_offset1 ->
+  d_uint32_int >>= fun glyf_offset2 ->
+  if glyf_offset1 = glyf_offset2 then
+    return None
+  else
+    return @@ Some(glyf_offset1, glyf_offset2 - glyf_offset1)
+
+
+let d_loca (loc_format : loc_format) (gid : glyph_id) : (ttf_glyph_location option) decoder =
+  let open DecodeOperation in
+  (* The position is set to the begging of `loca` table. *)
+  let dec =
+    match loc_format with
+    | ShortLocFormat -> d_loca_short gid
+    | LongLocFormat  -> d_loca_long gid
+  in
+  dec >>= function
+  | None                         -> return None
+  | Some((glyf_offset, _length)) -> return @@ Some(TtfGlyphLocation(glyf_offset))
+
+
+let loca (ttf : ttf_source) (gid : glyph_id) : (ttf_glyph_location option) ok =
+  let open ResultMonad in
+  let common = ttf.ttf_common in
+  seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
+  DecodeOperation.run common.core offset (d_loca common.loc_format gid)

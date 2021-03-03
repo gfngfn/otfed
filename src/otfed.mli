@@ -19,6 +19,8 @@ module Value : sig
     | ShortLocFormat
     | LongLocFormat
 
+  type ttf_glyph_location
+
   module Cmap : sig
     type t
 
@@ -192,4 +194,6 @@ module Decode : sig
   val os2 : common_source -> Value.Os2.t ok
 
   val maxp : common_source -> Value.Maxp.t ok
+
+  val loca : ttf_source -> Value.glyph_id -> (Value.ttf_glyph_location option) ok
 end

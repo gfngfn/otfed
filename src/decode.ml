@@ -378,3 +378,181 @@ let loca (ttf : ttf_source) (gid : glyph_id) : (ttf_glyph_location option) ok =
   let common = ttf.ttf_common in
   seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
   DecodeOperation.run common.core offset (d_loca common.loc_format gid)
+
+
+let d_end_points (numberOfContours : int) : (int Alist.t) decoder =
+  let open DecodeOperation in
+  let rec loop i acc =
+    if i <= 0 then
+      return acc
+    else
+      d_uint16 >>= fun e ->
+      loop (i - 1) (Alist.extend acc e)
+  in
+  loop numberOfContours Alist.empty
+
+
+type flag = {
+  on_curve       : bool;
+  x_short_vector : bool;
+  y_short_vector : bool;
+  this_x_is_same : bool;
+  this_y_is_same : bool;
+}
+
+
+let d_flags (num_points : int) : (flag Alist.t) decoder =
+  let rec extend_repeatedly acc n x =
+    if n <= 0 then
+      acc
+    else
+      extend_repeatedly (Alist.extend acc x) (n - 1) x
+  in
+  let rec aux i acc =
+    let open DecodeOperation in
+    if i <= 0 then
+      return acc
+    else
+      d_uint8 >>= fun byte ->
+      let flag =
+        {
+          on_curve       = (byte land 1 > 0);
+          x_short_vector = (byte land 2 > 0);
+          y_short_vector = (byte land 4 > 0);
+          this_x_is_same = (byte land 16 > 0);
+          this_y_is_same = (byte land 32 > 0);
+        }
+      in
+      let does_repeat = (byte land 8 > 0) in
+      if does_repeat then
+        aux (i - 1) (Alist.extend acc flag)
+      else
+        d_uint8 >>= fun n ->
+        aux (i - 1 - n) (extend_repeatedly acc (n + 1) flag)
+  in
+  aux num_points Alist.empty
+
+
+let d_coordinates is_short is_same (flags : flag list) : (int list) decoder =
+  let open DecodeOperation in
+  let rec aux x acc = function
+    | [] ->
+        return @@ Alist.to_list acc
+
+    | flag :: flags ->
+        begin
+          if is_short flag then
+            d_uint8 >>= fun dx ->
+            return @@ x + (if is_same flag then dx else - dx)
+          else
+            if is_same flag then
+              return x
+            else
+              d_int16 >>= fun dx ->
+              return @@ x + dx
+        end >>= fun x ->
+        aux x (Alist.extend acc x) flags
+
+  in
+  aux 0 Alist.empty flags
+
+
+let d_x_coordinates flags =
+  d_coordinates (fun flag -> flag.x_short_vector) (fun flag -> flag.this_x_is_same) flags
+
+let d_y_coordinates flags =
+  d_coordinates (fun flag -> flag.y_short_vector) (fun flag -> flag.this_y_is_same) flags
+
+
+type contour = (bool * int * int) list
+
+type simple_glyph_description = contour list
+
+type composite_glyph_description = unit list (* TODO *)
+
+type glyph_description =
+  | SimpleGlyph    of simple_glyph_description
+  | CompositeGlyph of composite_glyph_description
+
+type bounding_box = int * int * int * int
+
+
+let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
+  let rec aux pointacc contouracc endPtsOfContours = function
+    | (0, [], [], []) ->
+        assert (Alist.is_empty pointacc);
+        Alist.to_list contouracc
+
+    | (
+        i,
+        flag        :: flags,
+        xCoordinate :: xCoordinates,
+        yCoordinate :: yCoordinates
+      ) ->
+        let point = (flag.on_curve, xCoordinate, yCoordinate) in
+        let (is_final, endPtsOfContours) =
+          match endPtsOfContours with
+          | []      -> (false, [])
+          | e :: es -> if e = i then (true, es) else (false, endPtsOfContours)
+        in
+        let tuple = (i - 1, flags, xCoordinates, yCoordinates) in
+        if is_final then
+          let contour = Alist.to_list (Alist.extend pointacc point) in
+          aux Alist.empty (Alist.extend contouracc contour) endPtsOfContours tuple
+        else
+          aux (Alist.extend pointacc point) contouracc endPtsOfContours tuple
+
+    | _ ->
+        assert false
+  in
+  aux Alist.empty Alist.empty endPtsOfContours (num_points, flags, xCoordinates, yCoordinates)
+
+
+let d_simple_glyph (numberOfContours : int) : simple_glyph_description decoder =
+  let open DecodeOperation in
+  if numberOfContours = 0 then
+    return []
+  else
+    d_end_points numberOfContours >>= fun endPtsOfContours ->
+    (* `num_points`: the total number of points. *)
+    let num_points =
+      match Alist.chop_last endPtsOfContours with
+      | None         -> assert false
+      | Some((_, e)) -> e + 1
+    in
+    let endPtsOfContours = Alist.to_list endPtsOfContours in
+    d_uint16 >>= fun instructionLength ->
+    d_skip instructionLength >>= fun () ->
+    d_flags num_points >>= fun flagacc ->
+    let flags = Alist.to_list flagacc in
+    d_x_coordinates flags >>= fun xCoordinates ->
+    d_y_coordinates flags >>= fun yCoordinates ->
+    return (combine endPtsOfContours num_points flags xCoordinates yCoordinates)
+
+
+let d_composite_glyph : composite_glyph_description decoder =
+  return [] (* TODO *)
+
+
+let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (glyph_description * bounding_box) ok =
+  let open ResultMonad in
+  let common = ttf.ttf_common in
+  seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
+  let dec =
+    let open DecodeOperation in
+    (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
+    d_int16 >>= fun numberOfContours ->
+    d_int16 >>= fun xMin ->
+    d_int16 >>= fun yMin ->
+    d_int16 >>= fun xMax ->
+    d_int16 >>= fun yMax ->
+    if numberOfContours < -1 then
+      err @@ Error.InvalidCompositeFormat(numberOfContours)
+    else if numberOfContours = -1 then
+      d_composite_glyph >>= fun components ->
+      return (CompositeGlyph(components), (xMin, yMin, xMax, yMax))
+    else
+      d_simple_glyph numberOfContours >>= fun contours ->
+      return (SimpleGlyph(contours), (xMin, yMin, xMax, yMax))
+  in
+  dec |> DecodeOperation.run common.core (offset + reloffset)

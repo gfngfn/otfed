@@ -6,6 +6,8 @@ module Alist : sig
   val empty : 'a t
   val extend : 'a t -> 'a -> 'a t
   val to_list : 'a t -> 'a list
+  val is_empty : 'a t -> bool
+  val chop_last : 'a t -> ('a t * 'a) option
 end
 
 module ResultMonad : sig

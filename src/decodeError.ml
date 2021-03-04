@@ -14,3 +14,4 @@ type t =
   | InvalidCodePoint      of int
   | InvalidCodePointRange of Uchar.t * Uchar.t
   | InvalidLocFormat      of int
+  | InvalidCompositeFormat of int

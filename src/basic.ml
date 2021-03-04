@@ -6,6 +6,8 @@ module Alist : sig
   val empty : 'a t
   val extend : 'a t -> 'a -> 'a t
   val to_list : 'a t -> 'a list
+  val is_empty : 'a t -> bool
+  val chop_last : 'a t -> ('a t * 'a) option
 end = struct
   type 'a t = 'a list
 
@@ -14,6 +16,15 @@ end = struct
   let extend acc x = x :: acc
 
   let to_list = List.rev
+
+  let is_empty = function
+    | []     -> true
+    | _ :: _ -> false
+
+  let chop_last acc =
+    match acc with
+    | []      -> None
+    | x :: xs -> Some((xs, x))
 end
 
 module ResultMonad = struct

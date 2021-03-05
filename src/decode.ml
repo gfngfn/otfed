@@ -466,15 +466,31 @@ let d_y_coordinates flags =
 
 type contour = (bool * int * int) list
 
+type linear_transform = {
+  a : float;
+  b : float;
+  c : float;
+  d : float;
+}
+
+type composition =
+  | Vector   of int * int
+  | Matching of int * int
+
 type simple_glyph_description = contour list
 
-type composite_glyph_description = unit list (* TODO *)
+type composite_glyph_description = (glyph_id * composition * linear_transform option) list
 
 type glyph_description =
   | SimpleGlyph    of simple_glyph_description
   | CompositeGlyph of composite_glyph_description
 
-type bounding_box = int * int * int * int
+type bounding_box = {
+  x_min : int;
+  y_min : int;
+  x_max : int;
+  y_max : int;
+}
 
 
 let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
@@ -530,8 +546,74 @@ let d_simple_glyph (numberOfContours : int) : simple_glyph_description decoder =
     return (combine endPtsOfContours num_points flags xCoordinates yCoordinates)
 
 
+type component_flag = {
+  arg_1_and_2_are_words    : bool;
+  args_are_xy_values       : bool;
+  round_xy_to_grid         : bool;
+  we_have_a_scale          : bool;
+  we_have_an_x_and_y_scale : bool;
+  we_have_a_two_by_two     : bool;
+  we_have_instructions     : bool;
+  use_my_metrics           : bool;
+}
+
+
+let d_component_flag : (bool * component_flag) decoder =
+  d_uint16 >>= fun twobytes ->
+  let more_components = (twobytes land 32 > 0) in
+  let cflag =
+    {
+      arg_1_and_2_are_words    = (twobytes land 1 > 0);
+      args_are_xy_values       = (twobytes land 2 > 0);
+      round_xy_to_grid         = (twobytes land 4 > 0);
+      we_have_a_scale          = (twobytes land 8 > 0);
+      we_have_an_x_and_y_scale = (twobytes land 64 > 0);
+      we_have_a_two_by_two     = (twobytes land 128 > 0);
+      we_have_instructions     = (twobytes land 256 > 0);
+      use_my_metrics           = (twobytes land 512 > 0);
+    }
+  in
+  return (more_components, cflag)
+
+
 let d_composite_glyph : composite_glyph_description decoder =
-  return [] (* TODO *)
+  let open DecodeOperation in
+  let rec aux acc =
+    d_component_flag >>= fun (more_components, cflags) ->
+    d_uint16 >>= fun glyphIndex ->
+    let dec = if cflags.arg_1_and_2_are_words then d_int16 else d_int8 in
+    dec >>= fun argument1 ->
+    dec >>= fun argument2 ->
+    begin
+      if cflags.we_have_a_scale then
+        d_f2dot14 >>= fun scale ->
+        return @@ Some{a = scale; b = 0.; c = 0.; d = scale}
+      else if cflags.we_have_an_x_and_y_scale then
+        d_f2dot14 >>= fun xscale ->
+        d_f2dot14 >>= fun yscale ->
+        return @@ Some{a = xscale; b = 0.; c = 0.; d = yscale}
+      else if cflags.we_have_a_two_by_two then
+        d_f2dot14 >>= fun a ->
+        d_f2dot14 >>= fun b ->
+        d_f2dot14 >>= fun c ->
+        d_f2dot14 >>= fun d ->
+        return @@ Some{a = a; b = b; c = c; d = d}
+      else
+        return None
+    end >>= fun linear_transform ->
+    let v =
+      if cflags.args_are_xy_values then
+        Vector(argument1, argument2)
+      else
+        Matching(argument1, argument2)
+    in
+    let acc = Alist.extend acc (glyphIndex, v, linear_transform) in
+    if more_components then
+      aux acc
+    else
+      return @@ Alist.to_list acc
+  in
+  aux Alist.empty
 
 
 let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (glyph_description * bounding_box) ok =
@@ -546,13 +628,14 @@ let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) :
     d_int16 >>= fun yMin ->
     d_int16 >>= fun xMax ->
     d_int16 >>= fun yMax ->
+    let bbox = { x_min = xMin; y_min = yMin; x_max = xMax; y_max = yMax } in
     if numberOfContours < -1 then
       err @@ Error.InvalidCompositeFormat(numberOfContours)
     else if numberOfContours = -1 then
       d_composite_glyph >>= fun components ->
-      return (CompositeGlyph(components), (xMin, yMin, xMax, yMax))
+      return (CompositeGlyph(components), bbox)
     else
       d_simple_glyph numberOfContours >>= fun contours ->
-      return (SimpleGlyph(contours), (xMin, yMin, xMax, yMax))
+      return (SimpleGlyph(contours), bbox)
   in
   dec |> DecodeOperation.run common.core (offset + reloffset)

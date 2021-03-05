@@ -20,6 +20,11 @@ let d_code_point : Uchar.t decoder =
     err @@ Error.InvalidCodePoint(n)
 
 
+let d_f2dot14 : float decoder =
+  d_int16 >>= fun n ->
+  return ((float n) /. 16384.0)
+
+
 let pick (offset : offset) (dec : 'a decoder) : 'a decoder =
   current >>= fun pos_before ->
   seek offset >>= fun () ->

@@ -3,7 +3,6 @@
     and is included by `Otfed.Decode`. *)
 
 open Basic
-open Value
 
 module Error = DecodeError
 
@@ -20,6 +19,10 @@ module TableDirectory = Map.Make(Value.Tag)
    - `offset`: where the table tagged as `tag` starts, and
    - `length`: how long the table is. *)
 type table_directory = (offset * int) TableDirectory.t
+
+type loc_format =
+  | ShortLocFormat
+  | LongLocFormat
 
 type common_source = {
   core            : common_source_core;
@@ -48,3 +51,6 @@ type single_or_collection =
 type cmap_segment =
   | Incremental of Uchar.t * Uchar.t * Value.glyph_id
   | Constant    of Uchar.t * Uchar.t * Value.glyph_id
+
+type ttf_glyph_location =
+  | TtfGlyphLocation of int

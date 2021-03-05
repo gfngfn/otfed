@@ -15,12 +15,6 @@ module Value : sig
 
   type timestamp = wint
 
-  type loc_format =
-    | ShortLocFormat
-    | LongLocFormat
-
-  type ttf_glyph_location
-
   type contour = (bool * int * int) list
 
   type linear_transform = {
@@ -74,7 +68,6 @@ module Value : sig
       ymax                : int;
       mac_style           : int;
       lowest_rec_ppem     : int;
-      index_to_loc_format : loc_format;
     }
     [@@deriving show {with_path = false}]
   end
@@ -183,6 +176,8 @@ module Decode : sig
     | Single     of source
     | Collection of source list
 
+  type ttf_glyph_location
+
   (** [source_of_string s] parses [s] as a complete font file. *)
   val source_of_string : string -> single_or_collection ok
 
@@ -223,7 +218,7 @@ module Decode : sig
 
   val maxp : common_source -> Value.Maxp.t ok
 
-  val loca : ttf_source -> Value.glyph_id -> (Value.ttf_glyph_location option) ok
+  val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
-  val glyf : ttf_source -> Value.ttf_glyph_location -> (Value.glyph_description * Value.bounding_box) ok
+  val glyf : ttf_source -> ttf_glyph_location -> (Value.glyph_description * Value.bounding_box) ok
 end

@@ -118,8 +118,7 @@ let head (common : common_source) : Value.Head.t ok =
       d_int16      >>= fun ymax ->
       d_uint16     >>= fun mac_style ->
       d_uint16     >>= fun lowest_rec_ppem ->
-      d_skip 2     >>= fun () -> (* Skips `fontDirectionHint`. *)
-      d_loc_format >>= fun index_to_loc_format ->
+      (* Skips `fontDirectionHint` and `indexToLocFormat`. *)
       return Value.Head.{
         font_revision;
         flags;
@@ -132,7 +131,6 @@ let head (common : common_source) : Value.Head.t ok =
         ymax;
         mac_style;
         lowest_rec_ppem;
-        index_to_loc_format;
       }
   in
   DecodeOperation.run common.core offset dec

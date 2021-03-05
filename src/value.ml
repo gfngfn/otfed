@@ -82,14 +82,6 @@ type glyph_id = int
 type timestamp = wint
 [@@deriving show {with_path = false}]
 
-type loc_format =
-  | ShortLocFormat
-  | LongLocFormat
-[@@deriving show {with_path = false}]
-
-type ttf_glyph_location =
-  | TtfGlyphLocation of int
-
 type contour = (bool * int * int) list
 
 type linear_transform = {
@@ -143,7 +135,6 @@ module Head = struct
     ymax                : int;
     mac_style           : int;
     lowest_rec_ppem     : int;
-    index_to_loc_format : loc_format;
   }
   [@@deriving show {with_path = false}]
 end

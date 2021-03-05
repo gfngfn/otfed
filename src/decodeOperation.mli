@@ -1,6 +1,5 @@
 
 open Basic
-open Value
 open DecodeBasic
 
 include module type of DecodeOperationCore

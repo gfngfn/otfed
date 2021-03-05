@@ -31,7 +31,7 @@ See also:
 
   <tr><td rowspan="2">TTF</td>
       <td>loca</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>glyf</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>glyf</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
 
   <tr><td rowspan="3">CFF</td>
       <td>CFF␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>

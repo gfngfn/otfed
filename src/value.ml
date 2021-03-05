@@ -90,6 +90,34 @@ type loc_format =
 type ttf_glyph_location =
   | TtfGlyphLocation of int
 
+type contour = (bool * int * int) list
+
+type linear_transform = {
+  a : float;
+  b : float;
+  c : float;
+  d : float;
+}
+
+type composition =
+  | Vector   of int * int
+  | Matching of int * int
+
+type simple_glyph_description = contour list
+
+type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+
+type glyph_description =
+  | SimpleGlyph    of simple_glyph_description
+  | CompositeGlyph of composite_glyph_description
+
+type bounding_box = {
+  x_min : int;
+  y_min : int;
+  x_max : int;
+  y_max : int;
+}
+
 module Cmap = struct
   type t
 

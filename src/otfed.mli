@@ -21,6 +21,34 @@ module Value : sig
 
   type ttf_glyph_location
 
+  type contour = (bool * int * int) list
+
+  type linear_transform = {
+    a : float;
+    b : float;
+    c : float;
+    d : float;
+  }
+
+  type composition =
+    | Vector   of int * int
+    | Matching of int * int
+
+  type simple_glyph_description = contour list
+
+  type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+
+  type glyph_description =
+    | SimpleGlyph    of simple_glyph_description
+    | CompositeGlyph of composite_glyph_description
+
+  type bounding_box = {
+    x_min : int;
+    y_min : int;
+    x_max : int;
+    y_max : int;
+  }
+
   module Cmap : sig
     type t
 
@@ -196,4 +224,6 @@ module Decode : sig
   val maxp : common_source -> Value.Maxp.t ok
 
   val loca : ttf_source -> Value.glyph_id -> (Value.ttf_glyph_location option) ok
+
+  val glyf : ttf_source -> Value.ttf_glyph_location -> (Value.glyph_description * Value.bounding_box) ok
 end

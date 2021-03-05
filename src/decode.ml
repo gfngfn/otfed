@@ -464,35 +464,6 @@ let d_y_coordinates flags =
   d_coordinates (fun flag -> flag.y_short_vector) (fun flag -> flag.this_y_is_same) flags
 
 
-type contour = (bool * int * int) list
-
-type linear_transform = {
-  a : float;
-  b : float;
-  c : float;
-  d : float;
-}
-
-type composition =
-  | Vector   of int * int
-  | Matching of int * int
-
-type simple_glyph_description = contour list
-
-type composite_glyph_description = (glyph_id * composition * linear_transform option) list
-
-type glyph_description =
-  | SimpleGlyph    of simple_glyph_description
-  | CompositeGlyph of composite_glyph_description
-
-type bounding_box = {
-  x_min : int;
-  y_min : int;
-  x_max : int;
-  y_max : int;
-}
-
-
 let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
   let rec aux pointacc contouracc endPtsOfContours = function
     | (0, [], [], []) ->

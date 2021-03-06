@@ -1,5 +1,5 @@
 (executable
- (public_name otfed)
+ (public_name otfedcli)
  (name main)
  (libraries otfed)
  (preprocess

@@ -126,6 +126,15 @@ let d_structure : table_directory decoder =
   return map
 
 
+let d_offsize : offsize decoder =
+  d_uint8 >>= function
+  | 1 -> return OffSize1
+  | 2 -> return OffSize2
+  | 3 -> return OffSize3
+  | 4 -> return OffSize4
+  | n -> err @@ Error.InvalidOffsize(n)
+
+
 let seek_required_table table_directory tag =
   let open ResultMonad in
   match table_directory |> TableDirectory.find_opt tag with

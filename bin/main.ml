@@ -10,13 +10,14 @@ type config = {
   head : bool;
   hhea : bool;
   maxp : bool;
-  glyf : V.glyph_id Alist.t;
+  glyf : (V.glyph_id * string) Alist.t;
 }
 
 type error =
   | UnknownCommand     of string
   | InvalidCommandLine
   | CannotReadFile     of string
+  | CannotWriteFile    of string
   | DecodingError      of D.Error.t
 [@@deriving show { with_path = false }]
 
@@ -96,7 +97,17 @@ let print_maxp (common, _) =
   res |> inj
 
 
-let print_glyf (_, specific) (gid : V.glyph_id) =
+let write_glyph_svg path ~data =
+  let open ResultMonad in
+  try
+    Core_kernel.Out_channel.write_all path ~data;
+    return ()
+  with
+  | _ ->
+      err @@ CannotWriteFile(path)
+
+
+let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Printf.printf "glyf (glyph ID: %d):\n" gid;
   match specific with
@@ -105,17 +116,23 @@ let print_glyf (_, specific) (gid : V.glyph_id) =
       return ()
 
   | D.Ttf(ttf) ->
-      D.loca ttf gid >>= function
+      D.loca ttf gid |> inj >>= function
       | None ->
           Printf.printf "  not defined\n";
           return ()
 
       | Some(loc) ->
-          D.glyf ttf loc >>= fun (descr, bbox) ->
-          Format.printf "  (%a, %a)\n"
-            V.pp_glyph_description descr
-            V.pp_bounding_box bbox;
-          return ()
+          let res =
+            D.hhea common >>= fun hhea ->
+            D.glyf ttf loc >>= fun (descr, bbox) ->
+            let data = Svg.make descr ~bbox ~advance_width:hhea.V.Hhea.advance_width_max in
+            Format.printf "  (%a, %a)\n"
+              V.pp_glyph_description descr
+              V.pp_bounding_box bbox;
+            return data
+          in
+          res |> inj >>= fun data ->
+          write_glyph_svg path ~data
 
 
 let parse_args () =
@@ -132,7 +149,8 @@ let parse_args () =
 
       | "glyf" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
-          aux n { acc with glyf = Alist.extend acc.glyf gid } (i + 2)
+          let path = Sys.argv.(i + 2) in
+          aux n { acc with glyf = Alist.extend acc.glyf (gid, path) } (i + 3)
 
       | s ->
           err @@ UnknownCommand(s)
@@ -186,8 +204,8 @@ let _ =
         begin
           if config.cmap then print_cmap source else return ()
         end >>= fun () ->
-        config.glyf |> Alist.to_list |> mapM (fun gid ->
-          print_glyf source gid |> inj
+        config.glyf |> Alist.to_list |> mapM (fun (gid, path) ->
+          print_glyf source gid path
         ) >>= fun _ ->
         return ()
 

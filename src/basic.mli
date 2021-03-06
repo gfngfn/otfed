@@ -18,6 +18,7 @@ module ResultMonad : sig
 end
 
 type offset = int
+[@@deriving show { with_path = false }]
 
 module WideInt : sig
   type t
@@ -44,7 +45,7 @@ module WideInt : sig
 end
 
 type wint = WideInt.t
-[@@deriving show {with_path = false}]
+[@@deriving show { with_path = false }]
 
 val ( +% ) : wint -> wint -> wint
 

@@ -8,6 +8,7 @@ module Tag : sig
   val compare : t -> t -> int
   val of_wide_int : wint -> t
   val to_string : t -> string
+  val pp : Format.formatter -> t -> unit
   val format_version_OTTO : t
   val format_version_true : t
   val format_version_1_0 : t
@@ -50,6 +51,9 @@ end = struct
       (to_byte b1)
       (to_byte b2)
       (to_byte b3)
+
+  let pp ppf tag =
+    Format.fprintf ppf "%s" (to_string tag)
 
   let format_version_OTTO = !%% 0x4F54544FL
   let format_version_true = !%% 0x74727565L

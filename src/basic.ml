@@ -52,6 +52,7 @@ module ResultMonad = struct
 end
 
 type offset = int
+[@@deriving show { with_path = false }]
 
 module WideInt = struct
   type t = Int64.t

@@ -149,13 +149,14 @@ module Value : sig
       max_component_elements   : int;
       max_component_depth      : int;
     }
-    [@@deriving show {with_path = false}]
+    [@@deriving show { with_path = false }]
   end
 end
 
 module Decode : sig
   module Error : sig
     type t
+    [@@deriving show { with_path = false }]
   end
 
   type 'a ok = ('a, Error.t) result

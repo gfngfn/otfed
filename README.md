@@ -8,6 +8,12 @@ See also:
 * [an extended version of `otfm` for SATySFi](https://github.com/gfngfn/otfm)
 * [SATySFi](https://github.com/gfngfn/SATySFi)
 
+
+## Note
+
+Some unit tests use data extracted from [IPAex明朝](https://moji.or.jp/ipafont/) (IPAex Mincho, `ipaexm.ttf`). See the license [here]((https://moji.or.jp/ipafont/license/)).
+
+
 ## Status
 
 <table>

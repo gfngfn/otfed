@@ -87,6 +87,7 @@ type timestamp = wint
 [@@deriving show {with_path = false}]
 
 type contour = (bool * int * int) list
+[@@deriving show { with_path = false }]
 
 type linear_transform = {
   a : float;
@@ -94,18 +95,23 @@ type linear_transform = {
   c : float;
   d : float;
 }
+[@@deriving show { with_path = false }]
 
 type composition =
   | Vector   of int * int
   | Matching of int * int
+[@@deriving show { with_path = false }]
 
 type simple_glyph_description = contour list
+[@@deriving show { with_path = false }]
 
 type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+[@@deriving show { with_path = false }]
 
 type glyph_description =
   | SimpleGlyph    of simple_glyph_description
   | CompositeGlyph of composite_glyph_description
+[@@deriving show { with_path = false }]
 
 type bounding_box = {
   x_min : int;
@@ -113,6 +119,7 @@ type bounding_box = {
   x_max : int;
   y_max : int;
 }
+[@@deriving show { with_path = false }]
 
 module Cmap = struct
   type t

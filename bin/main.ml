@@ -1,6 +1,8 @@
 
 module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
+module D = Otfed.Decode
+module V = Otfed.Value
 
 
 type config = {
@@ -8,14 +10,14 @@ type config = {
   head : bool;
   hhea : bool;
   maxp : bool;
-  glyf : Otfed.Value.glyph_id Alist.t;
+  glyf : V.glyph_id Alist.t;
 }
 
 type error =
   | UnknownCommand     of string
   | InvalidCommandLine
   | CannotReadFile     of string
-  | DecodingError      of Otfed.Decode.Error.t
+  | DecodingError      of D.Error.t
 [@@deriving show { with_path = false }]
 
 let inj = function
@@ -24,35 +26,34 @@ let inj = function
 
 
 let print_table_directory (common, _) =
-  let tables = Otfed.Decode.tables common in
+  let tables = D.tables common in
   Printf.printf "tables:\n";
   tables |> List.iter (fun tag ->
-    Printf.printf "- %s\n" (Otfed.Value.Tag.to_string tag)
+    Printf.printf "- %s\n" (V.Tag.to_string tag)
   )
 
 
 let print_cmap (common, _) =
-  let open Otfed.Decode in
   Printf.printf "cmap:\n";
   let res =
     let open ResultMonad in
-    cmap common >>= fun icmap ->
-    Intermediate.Cmap.get_subtables icmap >>= fun subtables ->
+    D.cmap common >>= fun icmap ->
+    D.Intermediate.Cmap.get_subtables icmap >>= fun subtables ->
     subtables |> List.iter (fun subtable ->
-      let ids = Intermediate.Cmap.get_subtable_ids subtable in
+      let ids = D.Intermediate.Cmap.get_subtable_ids subtable in
       Printf.printf "- subtable (platform: %d, encoding: %d, format: %d)\n"
         ids.platform_id
         ids.encoding_id
         ids.format;
-      Intermediate.Cmap.fold_subtable subtable (fun () seg ->
+      D.Intermediate.Cmap.fold_subtable subtable (fun () seg ->
         match seg with
-        | Incremental(uch1, uch2, gid) ->
+        | D.Incremental(uch1, uch2, gid) ->
             if Uchar.equal uch1 uch2 then
               Printf.printf "  - I U+%04X --> %d\n" (Uchar.to_int uch1) gid
             else
               Printf.printf "  - I U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
 
-        | Constant(uch1, uch2, gid) ->
+        | D.Constant(uch1, uch2, gid) ->
             Printf.printf "  - C U+%04X, U+%04X --> %d\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gid
       ) () |> ignore;
     );
@@ -62,39 +63,59 @@ let print_cmap (common, _) =
 
 
 let print_head (common, _) =
-  let open Otfed.Decode in
   let res =
     let open ResultMonad in
     Printf.printf "head:\n";
-    head common >>= fun head ->
-    Format.printf "%a\n" Otfed.Value.Head.pp head;
+    D.head common >>= fun head ->
+    Format.printf "%a\n" V.Head.pp head;
     return ()
   in
   res |> inj
 
 
 let print_hhea (common, _) =
-  let open Otfed.Decode in
   let res =
     let open ResultMonad in
     Printf.printf "hhea:\n";
-    hhea common >>= fun hhea ->
-    Format.printf "%a\n" Otfed.Value.Hhea.pp hhea;
+    D.hhea common >>= fun hhea ->
+    Format.printf "%a\n" V.Hhea.pp hhea;
     return ()
   in
   res |> inj
 
 
 let print_maxp (common, _) =
-  let open Otfed.Decode in
+  let open D in
   let res =
     let open ResultMonad in
     Printf.printf "maxp:\n";
     maxp common >>= fun maxp ->
-    Format.printf "%a\n" Otfed.Value.Maxp.pp maxp;
+    Format.printf "%a\n" V.Maxp.pp maxp;
     return ()
   in
   res |> inj
+
+
+let print_glyf (_, specific) (gid : V.glyph_id) =
+  let open ResultMonad in
+  Printf.printf "glyf (glyph ID: %d):\n" gid;
+  match specific with
+  | D.Cff(_) ->
+      Printf.printf "  not a TTF\n";
+      return ()
+
+  | D.Ttf(ttf) ->
+      D.loca ttf gid >>= function
+      | None ->
+          Printf.printf "  not defined\n";
+          return ()
+
+      | Some(loc) ->
+          D.glyf ttf loc >>= fun (descr, bbox) ->
+          Format.printf "  (%a, %a)\n"
+            V.pp_glyph_description descr
+            V.pp_bounding_box bbox;
+          return ()
 
 
 let parse_args () =
@@ -150,7 +171,7 @@ let _ =
     let open ResultMonad in
     parse_args () >>= fun (config, path) ->
     read_file path >>= fun s ->
-    Otfed.Decode.source_of_string s |> inj >>= function
+    D.source_of_string s |> inj >>= function
     | Single(source) ->
         print_table_directory source;
         begin
@@ -165,6 +186,9 @@ let _ =
         begin
           if config.cmap then print_cmap source else return ()
         end >>= fun () ->
+        config.glyf |> Alist.to_list |> mapM (fun gid ->
+          print_glyf source gid |> inj
+        ) >>= fun _ ->
         return ()
 
     | Collection(sources) ->

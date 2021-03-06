@@ -16,6 +16,7 @@ module Value : sig
   type timestamp = wint
 
   type contour = (bool * int * int) list
+  [@@deriving show { with_path = false }]
 
   type linear_transform = {
     a : float;
@@ -23,18 +24,23 @@ module Value : sig
     c : float;
     d : float;
   }
+  [@@deriving show { with_path = false }]
 
   type composition =
     | Vector   of int * int
     | Matching of int * int
+  [@@deriving show { with_path = false }]
 
   type simple_glyph_description = contour list
+  [@@deriving show { with_path = false }]
 
   type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+  [@@deriving show { with_path = false }]
 
   type glyph_description =
     | SimpleGlyph    of simple_glyph_description
     | CompositeGlyph of composite_glyph_description
+  [@@deriving show { with_path = false }]
 
   type bounding_box = {
     x_min : int;
@@ -42,6 +48,7 @@ module Value : sig
     x_max : int;
     y_max : int;
   }
+  [@@deriving show { with_path = false }]
 
   module Cmap : sig
     type t
@@ -129,7 +136,7 @@ module Value : sig
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
-    [@@deriving show {with_path = false}]
+    [@@deriving show { with_path = false }]
   end
 
   module Maxp : sig

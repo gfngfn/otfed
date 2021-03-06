@@ -53,6 +53,9 @@ val d_uint16 : int decoder
 (** Reads 2 bytes as a signed integer. *)
 val d_int16 : int decoder
 
+(** Reads 3 bytes as an unsigned integer. *)
+val d_uint24 : int decoder
+
 (** Reads 4 bytes as an unsigned integer.
     Due to the limitation of the range representable by the type [int] under 32-bit environments,
     this function returns [wint]-typed values. *)

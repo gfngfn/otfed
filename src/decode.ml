@@ -612,6 +612,59 @@ let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) :
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 
+let d_cff_header : cff_header decoder =
+  d_uint8              >>= fun major ->
+  d_uint8              >>= fun minor ->
+  d_uint8              >>= fun hdrSize ->
+  d_offsize            >>= fun offSizeGlobal ->
+  d_skip (hdrSize - 4) >>= fun () ->
+  return {
+    major   = major;
+    minor   = minor;
+    hdrSize = hdrSize;
+    offSize = offSizeGlobal;
+  }
+
+
+let d_charstring_data (len : int) : charstring_data decoder =
+  let open DecodeOperation in
+  current >>= fun offset ->
+  seek (offset + len) >>= fun () ->
+  return (CharStringData(offset, len))
+
+
+let fetch_cff_first (cff : cff_source) : cff_first ok =
+  let open ResultMonad in
+  seek_required_table cff.cff_common.table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
+  let dec =
+    let open DecodeOperation in
+    (* Header *)
+    d_cff_header >>= fun header ->
+
+    (* Name INDEX (which should contain only one element) *)
+    d_index_singleton d_bytes >>= fun name ->
+
+    (* Top DICT INDEX (which should contain only one DICT) *)
+    d_index_singleton d_dict >>= fun dictmap ->
+
+    (* String INDEX *)
+    d_index d_bytes >>= fun string_index ->
+
+    (* Global Subr INDEX *)
+    d_index d_charstring_data >>= fun gsubr_index ->
+
+    return {
+      cff_header   = header;
+      cff_name     = name;
+      top_dict     = dictmap;
+      string_index = Array.of_list string_index;
+      gsubr_index  = Array.of_list gsubr_index;
+      offset_CFF   = offset_CFF;
+    }
+  in
+  dec |> DecodeOperation.run cff.cff_common.core offset_CFF
+
+
 module ForTest = struct
   type 'a decoder = 'a DecodeOperation.decoder
   let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d

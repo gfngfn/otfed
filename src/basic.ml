@@ -108,3 +108,5 @@ let ( -% ) = WideInt.sub
 let ( !% ) = WideInt.of_int
 
 let ( !%% ) = WideInt.of_int64
+
+let is_in_range ~lower:a ~upper:b x = (a <= x && x <= b)

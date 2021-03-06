@@ -54,3 +54,5 @@ val ( -% ) : wint -> wint -> wint
 val ( !% ) : int -> wint
 
 val ( !%% ) : int64 -> wint
+
+val is_in_range : lower:int -> upper:int -> int -> bool

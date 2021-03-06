@@ -36,11 +36,15 @@ let make_contours (descr : V.glyph_description) : q_contour list =
 
 
 let dpoffset = 50
-let display_x x = x
-let display_y y = 1000 - y
+
+let display_x_scheme _units_per_em x = x
+let display_y_scheme units_per_em y = units_per_em - y
 
 
-let path_string_of_contour qcontour =
+
+let path_string_of_contour units_per_em qcontour =
+  let display_x = display_x_scheme units_per_em in
+  let display_y = display_y_scheme units_per_em in
   let (_, curveacc, circacc) =
     qcontour |> List.fold_left (fun (is_first, curveacc, circacc) qelem ->
       match qelem with
@@ -71,14 +75,16 @@ let path_string_of_contour qcontour =
   (Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
 
 
-let make (descr : V.glyph_description) ~bbox:(bbox : V.bounding_box) ~advance_width:(adv : int) =
+let make (descr : V.glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
+  let display_x = display_x_scheme units_per_em in
+  let display_y = display_y_scheme units_per_em in
   let qcontours = make_contours descr in
   let xmin = bbox.V.x_min in
   let ymin = bbox.V.y_min in
   let xmax = bbox.V.x_max in
   let ymax = bbox.V.y_max in
 
-  let pcs = (qcontours |> List.map path_string_of_contour) in
+  let pcs = (qcontours |> List.map (path_string_of_contour units_per_em)) in
   let paths = List.map (fun (x, _) -> x) pcs in
   let circs = List.map (fun (_, y) -> y) pcs in
   let ss =
@@ -86,15 +92,17 @@ let make (descr : V.glyph_description) ~bbox:(bbox : V.bounding_box) ~advance_wi
       [
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
         "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">";
-        Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"1000\" height=\"1100\" viewBox=\"%d %d %d %d\">"
+        Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"%d\" height=\"%d\" viewBox=\"%d %d %d %d\">"
+          (units_per_em + 2 * dpoffset)
+          (ymax - ymin + 2 * dpoffset)
           (display_x (0 - dpoffset))
           (display_y (ymax + dpoffset))
-          (adv + 2 * dpoffset)
+          (units_per_em + 2 * dpoffset)
           (ymax - ymin + 2 * dpoffset);
-        Printf.sprintf "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"gray\" stroke=\"purple\" stroke-width=\"5\" />"
+        Printf.sprintf "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"none\" stroke=\"purple\" stroke-width=\"5\" />"
           (display_x 0)
           (display_y ymax)
-          adv
+          units_per_em
           (ymax - ymin);
         Printf.sprintf "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"none\" stroke=\"blue\" stroke-width=\"5\" />"
           (display_x xmin)
@@ -108,17 +116,3 @@ let make (descr : V.glyph_description) ~bbox:(bbox : V.bounding_box) ~advance_wi
     ]
   in
   String.concat "" ss
-
-(* for test *)
-(*
-let () =
-  initialize () ;
-(*
-  let testword = List.map Uchar.of_char ['O'; 'C'; 'a'; 'm'; 'l'] in
-  let res = get_width_of_word "Hlv" testword in
-    res |> List.iter (fun adv -> print_endline (string_of_int adv))
-*)
-  let dcdr = get_decoder "Hlv" in
-  let (paths, _) = svg_of_uchar (100, 100) dcdr (Uchar.of_char 'R') in
-    print_endline paths
-*)

@@ -880,7 +880,7 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
           cid_count;
         }, FontDicts(fdarray, fdselect))
     else
-    (* -- when the font is not a CIDFont -- *)
+    (* If the font is not a CIDFont *)
       fetch_single_private cff offset_CFF top_dict >>= fun singlepriv ->
       return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->
@@ -902,7 +902,10 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
   return (cff_top, charstring_info)
 
 
-let charstring (_cff : cff_source) (_gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
+let charstring (cff : cff_source) (_gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
+  let open ResultMonad in
+  make_cff_info cff >>= fun (_, charstring_info) ->
+  let (_gsubr_index, _private_info, _offset_CharString_INDEX) = charstring_info in
   failwith "TODO: charstring"
 
 

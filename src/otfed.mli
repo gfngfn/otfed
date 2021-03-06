@@ -15,7 +15,7 @@ module Value : sig
 
   type timestamp = wint
 
-  type contour = (bool * int * int) list
+  type ttf_contour = (bool * int * int) list
   [@@deriving show { with_path = false }]
 
   type linear_transform = {
@@ -31,15 +31,15 @@ module Value : sig
     | Matching of int * int
   [@@deriving show { with_path = false }]
 
-  type simple_glyph_description = contour list
+  type ttf_simple_glyph_description = ttf_contour list
   [@@deriving show { with_path = false }]
 
-  type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+  type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
   [@@deriving show { with_path = false }]
 
-  type glyph_description =
-    | SimpleGlyph    of simple_glyph_description
-    | CompositeGlyph of composite_glyph_description
+  type ttf_glyph_description =
+    | TtfSimpleGlyph    of ttf_simple_glyph_description
+    | TtfCompositeGlyph of ttf_composite_glyph_description
   [@@deriving show { with_path = false }]
 
   type bounding_box = {
@@ -228,11 +228,11 @@ module Decode : sig
 
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
-  val glyf : ttf_source -> ttf_glyph_location -> (Value.glyph_description * Value.bounding_box) ok
+  val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
 
   module ForTest : sig
     type 'a decoder
     val run : string -> 'a decoder -> 'a ok
-    val d_glyf : (Value.glyph_description * Value.bounding_box) decoder
+    val d_glyf : (Value.ttf_glyph_description * Value.bounding_box) decoder
   end
 end

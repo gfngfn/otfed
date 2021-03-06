@@ -12,12 +12,12 @@ type q_contour_element =
 type q_contour = q_contour_element list
 
 
-let make_contours (descr : V.glyph_description) : q_contour list =
+let make_contours (descr : V.ttf_glyph_description) : q_contour list =
   match descr with
-  | V.CompositeGlyph(_) ->
+  | V.TtfCompositeGlyph(_) ->
       []
 
-  | V.SimpleGlyph(contours) ->
+  | V.TtfSimpleGlyph(contours) ->
       contours |> List.map (fun contour ->
         let (xfirst, yfirst) =
           match contour with
@@ -75,7 +75,7 @@ let path_string_of_contour units_per_em qcontour =
   (Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
 
 
-let make (descr : V.glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
+let make (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
   let qcontours = make_contours descr in

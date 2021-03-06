@@ -499,7 +499,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
   aux Alist.empty Alist.empty endPtsOfContours (0, flags, xCoordinates, yCoordinates)
 
 
-let d_simple_glyph (numberOfContours : int) : simple_glyph_description decoder =
+let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decoder =
   let open DecodeOperation in
   if numberOfContours = 0 then
     return []
@@ -552,7 +552,7 @@ let d_component_flag : (bool * component_flag) decoder =
   return (more_components, cflag)
 
 
-let d_composite_glyph : composite_glyph_description decoder =
+let d_composite_glyph : ttf_composite_glyph_description decoder =
   let open DecodeOperation in
   let rec aux acc =
     d_component_flag >>= fun (more_components, cflags) ->
@@ -606,13 +606,13 @@ let d_glyf =
     err @@ Error.InvalidCompositeFormat(numberOfContours)
   else if numberOfContours = -1 then
     d_composite_glyph >>= fun components ->
-    return (CompositeGlyph(components), bbox)
+    return (TtfCompositeGlyph(components), bbox)
   else
     d_simple_glyph numberOfContours >>= fun contours ->
-    return (SimpleGlyph(contours), bbox)
+    return (TtfSimpleGlyph(contours), bbox)
 
 
-let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (glyph_description * bounding_box) ok =
+let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (ttf_glyph_description * bounding_box) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->

@@ -127,7 +127,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
             D.glyf ttf loc >>= fun (descr, bbox) ->
             let data = Svg.make descr ~bbox ~units_per_em:head.V.Head.units_per_em in
             Format.printf "  (%a, %a)\n"
-              V.pp_glyph_description descr
+              V.pp_ttf_glyph_description descr
               V.pp_bounding_box bbox;
             return data
           in

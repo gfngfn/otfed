@@ -21,4 +21,14 @@ type t =
   | NotASingletonIndex
   | NotACffDictElement
   | InconsistentDictLength
+  | NotAnIntegerInDict
+  | NotARealInDict
+  | NotAnIntegerPairInDict
+  | NotAQuadrupleInDict
+  | UnknownCharstringType of int
+  | RequiredKeyNotFound
+  | InvalidRos
+  | SidOutOfBounds of int
+  | NoPrivateDict
+  | UnknownFdselectFormat of int
 [@@deriving show { with_path = false }]

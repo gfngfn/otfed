@@ -133,6 +133,19 @@ type cff_cid_info = {
   cid_count         : int;
 }
 
+type cff_top_dict = {
+  font_name           : string;
+  is_fixed_pitch      : bool;
+  italic_angle        : int;
+  underline_position  : int;
+  underline_thickness : int;
+  paint_type          : int;
+  font_bbox           : int * int * int * int;
+  stroke_width        : int;
+  cid_info            : cff_cid_info option;
+  number_of_glyphs    : int;
+}
+
 (* The type for Private DICT [CFF p.23, Section 15] *)
 type single_private = {
   default_width_x  : int;
@@ -152,6 +165,8 @@ type fdselect =
 type private_info =
   | SinglePrivate of single_private
   | FontDicts     of fdarray * fdselect
+
+type charstring_info = subroutine_index * private_info * int
 
 type csx = int
 

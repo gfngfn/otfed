@@ -665,6 +665,248 @@ let fetch_cff_first (cff : cff_source) : cff_first ok =
   dec |> DecodeOperation.run cff.cff_common.core offset_CFF
 
 
+let get_integer_opt dict key =
+  let open ResultMonad in
+  match dict |> DictMap.find_opt key with
+  | Some(Integer(i) :: []) -> return @@ Some(i)
+  | Some(Real(fl) :: [])   -> return @@ Some(int_of_float fl)
+  | Some(_)                -> err Error.NotAnIntegerInDict
+  | None                   -> return None
+
+
+let get_integer_with_default dict key default =
+  let open ResultMonad in
+  get_integer_opt dict key >>= function
+  | Some(i) -> return i
+  | None    -> return default
+
+
+let get_integer dict key =
+  let open ResultMonad in
+  get_integer_opt dict key >>= function
+  | Some(i) -> return i
+  | None    -> err @@ Error.RequiredKeyNotFound
+
+
+let get_real_with_default dictmap key dflt =
+  let open ResultMonad in
+  match DictMap.find_opt key dictmap with
+  | Some(Real(r) :: []) -> return r
+  | Some(_)             -> err Error.NotARealInDict
+  | None                -> return dflt
+
+
+let get_integer_pair_opt dictmap key =
+  let open ResultMonad in
+  match DictMap.find_opt key dictmap with
+  | Some(Integer(i1) :: Integer(i2) :: []) -> return (Some(i1, i2))
+  | Some(Integer(i1) :: Real(fl2) :: [])   -> return (Some(i1, int_of_float fl2))
+  | Some(Real(fl1) :: Integer(i2) :: [])   -> return (Some(int_of_float fl1, i2))
+  | Some(Real(fl1) :: Real(fl2) :: [])     -> return (Some(int_of_float fl1, int_of_float fl2))
+  | Some(_)                                -> err @@ Error.NotAnIntegerPairInDict
+  | None                                   -> return None
+
+
+let get_iquad_opt dict key default =
+  let open ResultMonad in
+  match dict |> DictMap.find_opt key with
+  | Some(Integer(i1) :: Integer(i2) :: Integer(i3) :: Integer(i4) :: []) -> return (i1, i2, i3, i4)
+  | Some(_)                                                              -> err Error.NotAQuadrupleInDict
+  | None                                                                 -> return default
+
+
+let get_ros dictmap key =
+  let open ResultMonad in
+  match dictmap |> DictMap.find_opt key with
+  | Some(Integer(sid1) :: Integer(sid2) :: Integer(i) :: []) -> return (sid1, sid2, i)
+  | Some(_)                                                  -> err Error.InvalidRos
+  | None                                                     -> err Error.InvalidRos
+
+
+let get_boolean_with_default dict key dflt =
+  let open ResultMonad in
+  get_integer_with_default dict key (if dflt then 1 else 0) >>= fun i ->
+  return (i <> 0)
+
+
+let get_string string_index sid =
+  let open ResultMonad in
+  let nStdString = 391 in
+  if sid < nStdString then
+    failwith "a standard string; remains to be supported."
+  else
+    try return string_index.(sid - nStdString) with
+    | Invalid_argument(_) -> err @@ Error.SidOutOfBounds(sid)
+
+
+let fetch_number_of_glyphs (cff : cff_source) (offset_CharString_INDEX : offset) : int ok =
+  d_uint16 |> DecodeOperation.run cff.cff_common.core offset_CharString_INDEX
+
+
+let d_single_private (size_private : int) : single_private decoder =
+  let open DecodeOperation in
+  let ( !@ ) = transform_result in
+  current >>= fun offset_private ->
+  d_dict size_private >>= fun dict_private ->
+  !@ (get_integer_opt          dict_private (ShortKey(19)))   >>= fun selfoffset_lsubrs_opt ->
+  !@ (get_integer_with_default dict_private (ShortKey(20)) 0) >>= fun default_width_x ->
+  !@ (get_integer_with_default dict_private (ShortKey(21)) 0) >>= fun nominal_width_x ->
+
+  (* Local Subr INDEX *)
+  begin
+    match selfoffset_lsubrs_opt with
+    | None ->
+        return []
+
+    | Some(selfoffset_lsubrs) ->
+        let offset_lsubrs = offset_private + selfoffset_lsubrs in
+        seek offset_lsubrs >>= fun () ->
+        d_index d_charstring_data
+  end >>= fun lsubr_index ->
+  return { default_width_x; nominal_width_x; local_subr_index = Array.of_list lsubr_index }
+
+
+let fetch_single_private (cff : cff_source) (offset_CFF : offset) (dict : dict) : single_private ok =
+  (* Private DICT *)
+  let open ResultMonad in
+  get_integer_pair_opt dict (ShortKey(18)) >>= function
+  | None ->
+      err Error.NoPrivateDict
+
+  | Some(size_private, reloffset_private) ->
+      let offset_private = offset_CFF + reloffset_private in
+      let dec = d_single_private size_private in
+      dec |> DecodeOperation.run cff.cff_common.core offset_private
+
+
+let fetch_fdarray (cff : cff_source) (offset_CFF : offset) (offset_FDArray : offset) : fdarray ok =
+  let dec =
+    let open DecodeOperation in
+    d_index d_dict >>= fun dicts ->
+    dicts |> mapM (fun dict ->
+      transform_result @@ fetch_single_private cff offset_CFF dict
+    ) >>= fun single_privates ->
+    return @@ Array.of_list single_privates
+  in
+  dec |> DecodeOperation.run cff.cff_common.core offset_FDArray
+
+
+let d_fdselect_format_0 (nGlyphs : int) : fdselect decoder =
+  let open DecodeOperation in
+  let idx = Array.make nGlyphs 0 in
+  let rec aux i =
+    if i >= nGlyphs then
+      return (FDSelectFormat0(idx))
+    else
+      begin
+        d_uint8 >>= fun v ->
+        idx.(i) <- v;
+        aux (i + 1)
+      end
+
+  in
+  aux 0
+
+
+let d_fdselect_format_3 : fdselect decoder =
+  let open DecodeOperation in
+  let rec aux num i acc =
+    if i >= num then
+      d_uint16 >>= fun gid_sentinel ->
+      return (FDSelectFormat3(Alist.to_list acc, gid_sentinel))
+    else
+      d_uint16 >>= fun gid ->
+      d_uint8 >>= fun v ->
+      aux num (i + 1) (Alist.extend acc (gid, v))
+  in
+  d_uint16 >>= fun nRanges ->
+  aux nRanges 0 Alist.empty
+
+
+let fetch_fdselect (cff : cff_source) (nGlyphs : int) (offset_FDSelect : offset) : fdselect ok =
+  let open DecodeOperation in
+  let dec =
+    d_uint8 >>= function
+    | 0 -> d_fdselect_format_0 nGlyphs
+    | 3 -> d_fdselect_format_3
+    | n -> err @@ Error.UnknownFdselectFormat(n)
+  in
+  dec |> DecodeOperation.run cff.cff_common.core offset_FDSelect
+
+
+let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
+  let open ResultMonad in
+  fetch_cff_first cff >>= fun cff_first ->
+  let font_name    = cff_first.cff_name in
+  let top_dict     = cff_first.top_dict in
+  let string_index = cff_first.string_index in
+  let gsubr_index  = cff_first.gsubr_index in
+  let offset_CFF   = cff_first.offset_CFF in
+  get_boolean_with_default top_dict (LongKey(1)) false  >>= fun is_fixed_pitch ->
+  get_integer_with_default top_dict (LongKey(2)) 0      >>= fun italic_angle ->
+  get_integer_with_default top_dict (LongKey(3)) (-100) >>= fun underline_position ->
+  get_integer_with_default top_dict (LongKey(4)) 50     >>= fun underline_thickness ->
+  get_integer_with_default top_dict (LongKey(5)) 0      >>= fun paint_type ->
+  get_integer_with_default top_dict (LongKey(6)) 2      >>= fun charstring_type ->
+  if charstring_type <> 2 then
+    err @@ Error.UnknownCharstringType(charstring_type)
+  else
+    get_iquad_opt            top_dict (ShortKey(5)) (0, 0, 0, 0) >>= fun font_bbox ->
+    get_integer_with_default top_dict (LongKey(8) ) 0            >>= fun stroke_width ->
+    get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
+    let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
+    fetch_number_of_glyphs cff offset_CharString_INDEX >>= fun number_of_glyphs ->
+    begin
+      if DictMap.mem (LongKey(30)) top_dict then
+      (* If the font is a CIDFont *)
+        get_ros                  top_dict (LongKey(30))      >>= fun (sid_registry, sid_ordering, supplement) ->
+        get_real_with_default    top_dict (LongKey(31)) 0.   >>= fun cid_font_version ->
+        get_integer_with_default top_dict (LongKey(32)) 0    >>= fun cid_font_revision ->
+        get_integer_with_default top_dict (LongKey(33)) 0    >>= fun cid_font_type ->
+        get_integer_with_default top_dict (LongKey(34)) 8720 >>= fun cid_count ->
+        get_integer              top_dict (LongKey(36))      >>= fun reloffset_FDArray ->
+        get_integer              top_dict (LongKey(37))      >>= fun reloffset_FDSelect ->
+        let offset_FDArray = offset_CFF + reloffset_FDArray in
+        let offset_FDSelect = offset_CFF + reloffset_FDSelect in
+        get_string string_index sid_registry >>= fun registry ->
+        get_string string_index sid_ordering >>= fun ordering ->
+        fetch_fdarray cff offset_CFF offset_FDArray >>= fun fdarray ->
+        fetch_fdselect cff number_of_glyphs offset_FDSelect >>= fun fdselect ->
+        return (Some{
+          registry; ordering; supplement;
+          cid_font_version;
+          cid_font_revision;
+          cid_font_type;
+          cid_count;
+        }, FontDicts(fdarray, fdselect))
+    else
+    (* -- when the font is not a CIDFont -- *)
+      fetch_single_private cff offset_CFF top_dict >>= fun singlepriv ->
+      return (None, SinglePrivate(singlepriv))
+  end >>= fun (cid_info, private_info) ->
+  let cff_top =
+    {
+      font_name;
+      is_fixed_pitch;
+      italic_angle;
+      underline_position;
+      underline_thickness;
+      paint_type;
+      font_bbox;
+      stroke_width;
+      cid_info;
+      number_of_glyphs;
+    }
+  in
+  let charstring_info = (gsubr_index, private_info, offset_CharString_INDEX) in
+  return (cff_top, charstring_info)
+
+
+let charstring (_cff : cff_source) (_gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
+  failwith "TODO: charstring"
+
+
+
 module ForTest = struct
   type 'a decoder = 'a DecodeOperation.decoder
   let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d

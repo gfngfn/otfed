@@ -229,4 +229,10 @@ module Decode : sig
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.glyph_description * Value.bounding_box) ok
+
+  module ForTest : sig
+    type 'a decoder
+    val run : string -> 'a decoder -> 'a ok
+    val d_glyf : (Value.glyph_description * Value.bounding_box) decoder
+  end
 end

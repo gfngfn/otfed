@@ -592,27 +592,35 @@ let d_composite_glyph : composite_glyph_description decoder =
   aux Alist.empty
 
 
+let d_glyf =
+  let open DecodeOperation in
+  (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
+  d_int16 >>= fun numberOfContours ->
+  Printf.printf "!!numberOfContours = %d\n" numberOfContours; (* for debug *)
+  d_int16 >>= fun xMin ->
+  d_int16 >>= fun yMin ->
+  d_int16 >>= fun xMax ->
+  d_int16 >>= fun yMax ->
+  let bbox = { x_min = xMin; y_min = yMin; x_max = xMax; y_max = yMax } in
+  if numberOfContours < -1 then
+    err @@ Error.InvalidCompositeFormat(numberOfContours)
+  else if numberOfContours = -1 then
+    d_composite_glyph >>= fun components ->
+    return (CompositeGlyph(components), bbox)
+  else
+    d_simple_glyph numberOfContours >>= fun contours ->
+    return (SimpleGlyph(contours), bbox)
+
+
 let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (glyph_description * bounding_box) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  let dec =
-    let open DecodeOperation in
-    (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
-    d_int16 >>= fun numberOfContours ->
-    Printf.printf "!!numberOfContours = %d\n" numberOfContours; (* for debug *)
-    d_int16 >>= fun xMin ->
-    d_int16 >>= fun yMin ->
-    d_int16 >>= fun xMax ->
-    d_int16 >>= fun yMax ->
-    let bbox = { x_min = xMin; y_min = yMin; x_max = xMax; y_max = yMax } in
-    if numberOfContours < -1 then
-      err @@ Error.InvalidCompositeFormat(numberOfContours)
-    else if numberOfContours = -1 then
-      d_composite_glyph >>= fun components ->
-      return (CompositeGlyph(components), bbox)
-    else
-      d_simple_glyph numberOfContours >>= fun contours ->
-      return (SimpleGlyph(contours), bbox)
-  in
-  dec |> DecodeOperation.run common.core (offset + reloffset)
+  d_glyf |> DecodeOperation.run common.core (offset + reloffset)
+
+
+module ForTest = struct
+  type 'a decoder = 'a DecodeOperation.decoder
+  let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d
+  let d_glyf = d_glyf
+end

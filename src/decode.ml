@@ -424,10 +424,8 @@ let d_flags (num_points : int) : (flag Alist.t) decoder =
       let does_repeat = (byte land 8 > 0) in
       if does_repeat then
         d_uint8 >>= fun n ->
-        let () = Printf.printf "!!flag 0x%x; repeat = %d\n" byte n in (* for debug *)
         aux (i - 1 - n) (extend_repeatedly acc (n + 1) flag)
       else
-        let () = Printf.printf "!!flag 0x%x; no repeat\n" byte in (* for debug *)
         aux (i - 1) (Alist.extend acc flag)
   in
   aux num_points Alist.empty
@@ -467,10 +465,7 @@ let d_y_coordinates flags =
 let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
   let rec aux pointacc contouracc endPtsOfContours = function
     | (i, [], [], []) ->
-        if i <> num_points then begin
-          Printf.printf "!!i = %d, num_points = %d\n" i num_points; (* for debug *)
-          assert false
-        end;
+        assert (i = num_points);
         assert (Alist.is_empty pointacc);
         Alist.to_list contouracc
 
@@ -513,7 +508,6 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
     in
     let endPtsOfContours = Alist.to_list endPtsOfContours in
     d_uint16 >>= fun instructionLength ->
-    Printf.printf "!!num_points = %d, instructionLength = %d\n" num_points instructionLength; (* for debug *)
     d_skip instructionLength >>= fun () ->
     d_flags num_points >>= fun flagacc ->
     let flags = Alist.to_list flagacc in
@@ -596,7 +590,6 @@ let d_glyf =
   let open DecodeOperation in
   (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
   d_int16 >>= fun numberOfContours ->
-  Printf.printf "!!numberOfContours = %d\n" numberOfContours; (* for debug *)
   d_int16 >>= fun xMin ->
   d_int16 >>= fun yMin ->
   d_int16 >>= fun xMax ->

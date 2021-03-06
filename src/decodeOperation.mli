@@ -62,6 +62,8 @@ val d_index : (int -> 'a decoder) -> ('a list) decoder
 
 val d_index_singleton : (int -> 'a decoder) -> 'a decoder
 
+val d_index_access : (int -> 'a decoder) -> int -> ('a option) decoder
+
 val d_dict : int -> dict decoder
 
 (** Given a table directory [td] and a table tag [tag], [seek_required_table td tag] returns

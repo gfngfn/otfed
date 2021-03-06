@@ -902,11 +902,408 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
   return (cff_top, charstring_info)
 
 
-let charstring (cff : cff_source) (_gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
+let fetch_charstring_data (cff : cff_source) (offset_CharString_INDEX : offset) (gid : glyph_id) =
+  let dec = d_index_access d_charstring_data gid in
+  dec |> DecodeOperation.run cff.cff_common.core offset_CharString_INDEX
+
+
+let select_fd_index (fdselect : fdselect) (gid : glyph_id) : fdindex ok =
+  let open ResultMonad in
+  match fdselect with
+  | FDSelectFormat0(arr) ->
+      begin
+        try return arr.(gid) with
+        | Invalid_argument(_) ->
+            err @@ Error.FdselectOutOfBounds(gid)
+      end
+
+  | FDSelectFormat3(pairs, gid_sentinel) ->
+      if gid >= gid_sentinel then
+        err @@ Error.FdselectOutOfBounds(gid)
+      else
+        let opt =
+          pairs |> List.fold_left (fun opt (gidc, fdi) ->
+            if gidc <= gid then
+              Some(fdi)
+            else
+              opt
+          ) None
+        in
+        begin
+          match opt with
+          | None      -> err @@ Error.FdselectOutOfBounds(gid)
+          | Some(fdi) -> return fdi
+        end
+
+
+let select_local_subr_index (private_info : private_info) (gid : glyph_id) =
+  let open ResultMonad in
+  match private_info with
+  | SinglePrivate(singlepriv) ->
+      return singlepriv.local_subr_index
+
+  | FontDicts(fdarray, fdselect) ->
+      select_fd_index fdselect gid >>= fun fdindex ->
+      try
+        let singlepriv = fdarray.(fdindex) in
+        return singlepriv.local_subr_index
+      with
+      | Invalid_argument(_) ->
+          err @@ Error.FdindexOutOfBounds(fdindex)
+
+
+module IntSet = Set.Make(Int)
+
+
+type charstring_constant = {
+  gsubr_index : subroutine_index;
+  lsubr_index : subroutine_index;
+}
+
+type width_state =
+  | LookingForWidth
+  | WidthDecided of int option
+
+type stack = int ImmutStack.t
+
+type charstring_state = {
+  remaining   : int;
+  width       : width_state;
+  stack       : stack;
+  num_args    : int;
+  num_stems   : int;
+  used_gsubrs : IntSet.t;
+  used_lsubrs : IntSet.t;
+}
+
+
+let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
+  let arglen =
+    if num_stems mod 8 = 0 then
+      num_stems / 8
+    else
+      num_stems / 8 + 1
+  in
+  d_bytes arglen >>= fun arg ->
+  return (arglen, arg)
+
+
+let d_charstring_element (cstate : charstring_state) : (charstring_state * charstring_element) decoder =
+  let num_args = cstate.num_args in
+  let num_stems = cstate.num_stems in
+  let return_simple (step, cselem) =
+    return ({ cstate with remaining = cstate.remaining - step }, cselem)
+  in
+  let return_argument (step, cselem) =
+    let cstate =
+      { cstate with
+        num_args  = num_args + 1;
+        remaining = cstate.remaining - step
+      }
+    in
+    return (cstate, cselem)
+  in
+  let return_flushing_operator (step, cselem) =
+    let cstate =
+      { cstate with
+        num_args  = 0;
+        remaining = cstate.remaining - step
+      }
+    in
+    return (cstate, cselem)
+  in
+  let return_subroutine_operator cselem =
+    let cstate =
+      { cstate with
+        num_args  = num_args - 1;
+        remaining = cstate.remaining - 1
+      }
+    in
+    return (cstate, cselem)
+  in
+  let return_stem (step, cselem) =
+    let cstate =
+      { cstate with
+        num_args  = 0;
+        num_stems = num_stems + num_args / 2;
+        remaining = cstate.remaining - step
+      }
+    in
+    return (cstate, cselem)
+  in
+  (* `num_args` may be an odd number, but it is due to the width value *)
+  d_uint8 >>= function
+  | ( 1 | 3 | 18 | 23) as b0 ->
+    (* `stem` operators *)
+      return_stem (1, Operator(ShortKey(b0)))
+
+  | b0 when b0 |> is_in_range ~lower:0 ~upper:9 ->
+      return_flushing_operator (1, Operator(ShortKey(b0)))
+
+  | (10 | 29) as b0 ->
+    (* `callsubr`/`callgsubr` operator *)
+      return_subroutine_operator (Operator(ShortKey(b0)))
+
+  | 11 ->
+    (* `return` operator *)
+      let cselem = Operator(ShortKey(11)) in
+      return_simple (1, cselem)
+
+  | 12 ->
+      d_uint8 >>= fun b1 ->
+      return_flushing_operator (2, Operator(LongKey(b1)))
+
+  | b0 when b0 |> is_in_range ~lower:13 ~upper:18 ->
+      return_flushing_operator (1, Operator(ShortKey(b0)))
+
+  | 19 ->
+    (* `hintmask` operator *)
+      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
+      return_stem (1 + step, HintMaskOperator(bits))
+
+  | 20 ->
+    (* `cntrmask` operator *)
+      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
+      return_stem (1 + step, CntrMaskOperator(bits))
+
+  | b0  when b0 |> is_in_range ~lower:21 ~upper:27 ->
+      return_flushing_operator (1, Operator(ShortKey(b0)))
+
+  | 28 ->
+      d_twoscompl2 >>= fun ret ->
+      return_argument (3, ArgumentInteger(ret))
+
+  | b0 when b0 |> is_in_range ~lower:30 ~upper:31 ->
+      return_flushing_operator (1, Operator(ShortKey(b0)))
+
+  | b0 when b0 |> is_in_range ~lower:32 ~upper:246 ->
+      return_argument (1, ArgumentInteger(b0 - 139))
+
+  | b0 when b0 |> is_in_range ~lower:247 ~upper:250 ->
+      d_uint8 >>= fun b1 ->
+      return_argument (2, ArgumentInteger((b0 - 247) * 256 + b1 + 108))
+
+  | b0  when b0 |> is_in_range ~lower:251 ~upper:254 ->
+      d_uint8 >>= fun b1 ->
+      return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
+
+  | 255 ->
+      d_twoscompl2 >>= fun ret1 ->
+      d_twoscompl2 >>= fun ret2 ->
+      let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
+      return_argument (5, ArgumentReal(ret))
+
+  | _ ->
+      assert false
+      (* `uint8`-typed value must be in [0 .. 255] *)
+
+
+let pop_mandatory (stack : stack) : (stack * int) decoder =
+  let open DecodeOperation in
+  match ImmutStack.pop stack with
+  | None       -> err Error.InvalidCharstring
+  | Some(pair) -> return pair
+
+
+let pop_opt (stack : stack) : stack * int option =
+  match ImmutStack.pop stack with
+  | None             -> (stack, None)
+  | Some((stack, v)) -> (stack, Some(v))
+
+
+let pop2_opt (stack : stack) : (stack * (int * int)) option =
+  let ( >>= ) = Option.bind in
+  ImmutStack.pop stack >>= fun (stack, y) ->
+  ImmutStack.pop stack >>= fun (stack, x) ->
+  Some((stack, (x, y)))
+
+
+let pop4_opt (stack : stack) : (stack * (int * int * int * int)) option =
+  let ( >>= ) = Option.bind in
+  ImmutStack.pop stack >>= fun (stack, d4) ->
+  ImmutStack.pop stack >>= fun (stack, d3) ->
+  ImmutStack.pop stack >>= fun (stack, d2) ->
+  ImmutStack.pop stack >>= fun (stack, d1) ->
+  Some((stack, (d1, d2, d3, d4)))
+
+
+let pop6_opt (stack : stack) : (stack * (int * int * int * int * int * int)) option =
+  let ( >>= ) = Option.bind in
+  ImmutStack.pop stack >>= fun (stack, d6) ->
+  ImmutStack.pop stack >>= fun (stack, d5) ->
+  ImmutStack.pop stack >>= fun (stack, d4) ->
+  ImmutStack.pop stack >>= fun (stack, d3) ->
+  ImmutStack.pop stack >>= fun (stack, d2) ->
+  ImmutStack.pop stack >>= fun (stack, d1) ->
+  Some((stack, (d1, d2, d3, d4, d5, d6)))
+
+
+let pop8_opt (stack : stack) : (stack * (int * int * int * int * int * int * int * int)) option =
+  let ( >>= ) = Option.bind in
+  ImmutStack.pop stack >>= fun (stack, d8) ->
+  ImmutStack.pop stack >>= fun (stack, d7) ->
+  ImmutStack.pop stack >>= fun (stack, d6) ->
+  ImmutStack.pop stack >>= fun (stack, d5) ->
+  ImmutStack.pop stack >>= fun (stack, d4) ->
+  ImmutStack.pop stack >>= fun (stack, d3) ->
+  ImmutStack.pop stack >>= fun (stack, d2) ->
+  ImmutStack.pop stack >>= fun (stack, d1) ->
+  Some((stack, (d1, d2, d3, d4, d5, d6, d7, d8)))
+
+
+let pop_iter (popf : stack -> (stack * 'a) option) (stack : stack) : stack * 'a list =
+  let rec aux stack acc =
+    match popf stack with
+    | None               -> (stack, acc)  (* returns in the forward direction *)
+    | Some((stack, ret)) -> aux stack (ret :: acc)
+  in
+  aux stack []
+
+
+let make_bezier (dxa, dya, dxb, dyb, dxc, dyc) =
+  ((dxa, dya), (dxb, dyb), (dxc, dyc))
+
+
+let parse_progress (_cconst : charstring_constant) (cstate : charstring_state) =
+  d_charstring_element cstate >>= fun (cstate, cselem) ->
+  let stack = cstate.stack in
+  match cselem with
+  | ArgumentInteger(i) ->
+      let stack = stack |> ImmutStack.push i in
+      return ({ cstate with stack }, [])
+
+  | ArgumentReal(r) ->
+      let stack = stack |> ImmutStack.push (int_of_float r) in
+      return ({ cstate with stack }, [])
+
+  | Operator(ShortKey(1)) ->
+    (* `hstem (1)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      begin
+        match pairs with
+        | [] ->
+            err Error.InvalidCharstring
+
+        | (y, dy) :: cspts ->
+            let (stack, wopt) = pop_opt stack in
+            return ({ cstate with stack; width = WidthDecided(wopt) }, [HStem(y, dy, cspts)])
+      end
+
+  | Operator(ShortKey(3)) ->
+    (* `vstem (3)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      begin
+        match pairs with
+        | [] ->
+            err Error.InvalidCharstring
+
+        | (x, dx) :: cspts ->
+            let (stack, wopt) = pop_opt stack in
+            return ({ cstate with stack; width = WidthDecided(wopt) }, [VStem(x, dx, cspts)])
+      end
+
+  | Operator(ShortKey(4)) ->
+    (* `vmoveto (4)` *)
+      pop_mandatory stack >>= fun (stack, arg) ->
+      let (stack, wopt) = pop_opt stack in
+      return ({ cstate with stack; width = WidthDecided(wopt) }, [VMoveTo(arg)])
+
+  | Operator(ShortKey(5)) ->
+    (* `rlineto (5)` *)
+      let (stack, cspts) = pop_iter pop2_opt stack in
+      return ({ cstate with stack }, [RLineTo(cspts)])
+
+  | Operator(ShortKey(6)) ->
+    (* `hlineto (6)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      let (stack, firstopt) = pop_opt stack in
+      let flats = pairs |> List.map (fun (a, b) -> [a; b]) |> List.concat in
+      begin
+        match firstopt with
+        | None        -> return ({ cstate with stack }, [HLineTo(flats)])
+        | Some(first) -> return ({ cstate with stack }, [HLineTo(first :: flats)])
+      end
+
+  | Operator(ShortKey(7)) ->
+    (* `vlineto (7)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      let (stack, firstopt) = pop_opt stack in
+      let flats = pairs |> List.map (fun (a, b) -> [a; b]) |> List.concat in
+      begin
+        match firstopt with
+        | None        -> return ({ cstate with stack }, [VLineTo(flats)])
+        | Some(first) -> return ({ cstate with stack }, [VLineTo(first :: flats)])
+      end
+
+  | Operator(ShortKey(8)) ->
+    (* `rrcurveto (8)` *)
+      let (stack, tuples) = pop_iter pop6_opt stack in
+      let beziers = tuples |> List.map make_bezier in
+      return ({ cstate with stack }, [RRCurveTo(beziers)])
+
+  | Operator(ShortKey(10)) ->
+    (* `callsubr (10)` *)
+      failwith "TODO: callsubr"
+
+  | Operator(ShortKey(11)) ->
+      (* `return (11)` *)
+      return (cstate, [])
+
+  | _ ->
+      failwith "TODO: parse_progress"
+
+
+let d_charstring (cconst : charstring_constant) (cstate : charstring_state) =
+  let open DecodeOperation in
+  let rec aux (cstate : charstring_state) acc =
+    parse_progress cconst cstate >>= fun (cstate, parsed) ->
+    let acc = Alist.append acc parsed in
+    let remaining = cstate.remaining in
+    if remaining = 0 then
+      return (cstate, acc)
+    else if remaining < 0 then
+      err @@ InvalidCharstring
+    else
+      aux cstate acc
+
+  in
+  aux cstate Alist.empty
+
+
+
+let charstring (cff : cff_source) (gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
-  let (_gsubr_index, _private_info, _offset_CharString_INDEX) = charstring_info in
-  failwith "TODO: charstring"
+  let (gsubr_index, private_info, offset_CharString_INDEX) = charstring_info in
+  fetch_charstring_data cff offset_CharString_INDEX gid >>= function
+  | None ->
+      return None
+
+  | Some(CharStringData(offset, length)) ->
+      select_local_subr_index private_info gid >>= fun lsubr_index ->
+      let cconst =
+        {
+          gsubr_index;
+          lsubr_index;
+        }
+      in
+      let cstate =
+        {
+          remaining   = length;
+          width       = LookingForWidth;
+          stack       = ImmutStack.empty;
+          num_args    = 0;
+          num_stems   = 0;
+          used_gsubrs = IntSet.empty;
+          used_lsubrs = IntSet.empty;
+        }
+      in
+      let dec = d_charstring cconst cstate in
+      dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (cstate, acc) ->
+      match cstate.width with
+      | LookingForWidth    -> err @@ Error.CharstringWithoutWidth
+      | WidthDecided(wopt) -> return @@ Some((wopt, Alist.to_list acc))
+
 
 
 

@@ -257,6 +257,32 @@ fun ldec ->
     d_cff_offset_singleton offsize ldec
 
 
+let d_index_access : 'a. (int -> 'a decoder) -> int -> ('a option) decoder =
+fun ldec i ->
+  d_uint16 >>= fun count ->
+  if i < 0 || count <= i then
+    return None
+  else
+    d_offsize >>= fun offsize ->
+    let offsize_int =
+      match offsize with
+      | OffSize1 -> 1
+      | OffSize2 -> 2
+      | OffSize3 -> 3
+      | OffSize4 -> 4
+    in
+    current >>= fun pos ->
+    let offset_origin = pos + (count + 1) * offsize_int - 1 in
+    d_skip (i * offsize_int) >>= fun () ->
+    d_cff_offset offsize >>= fun reloffset_access ->
+    d_cff_offset offsize >>= fun reloffset_next ->
+    let offset_access = offset_origin + (WideInt.to_int reloffset_access) in
+    let data_length = WideInt.to_int (reloffset_next -% reloffset_access) in
+    seek offset_access >>= fun () ->
+    ldec data_length >>= fun data ->
+    return (Some(data))
+
+
 let d_dict_element : (int * dict_element) decoder =
   d_uint8 >>= function
   | k0 when k0 |> is_in_range ~lower:0 ~upper:11 ->

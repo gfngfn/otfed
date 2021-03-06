@@ -1,10 +1,20 @@
 
 type 'a set = 'a list
 
+module ImmutStack : sig
+  type 'a t
+  val empty : 'a t
+  val size : 'a t -> int
+  val push : 'a -> 'a t -> 'a t
+  val pop : 'a t -> ('a t * 'a) option
+  val pop_all : 'a t -> 'a list
+end
+
 module Alist : sig
   type 'a t
   val empty : 'a t
   val extend : 'a t -> 'a -> 'a t
+  val append : 'a t -> 'a list -> 'a t
   val to_list : 'a t -> 'a list
   val is_empty : 'a t -> bool
   val chop_last : 'a t -> ('a t * 'a) option

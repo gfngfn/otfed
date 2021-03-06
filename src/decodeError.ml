@@ -31,4 +31,8 @@ type t =
   | SidOutOfBounds of int
   | NoPrivateDict
   | UnknownFdselectFormat of int
+  | FdindexOutOfBounds    of int
+  | FdselectOutOfBounds   of int
+  | CharstringWithoutWidth
+  | InvalidCharstring
 [@@deriving show { with_path = false }]

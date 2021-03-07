@@ -4,6 +4,7 @@ type 'a set = 'a list
 module ImmutStack : sig
   type 'a t
   val empty : 'a t
+  val is_empty : 'a t -> bool
   val size : 'a t -> int
   val push : 'a -> 'a t -> 'a t
   val pop : 'a t -> ('a t * 'a) option

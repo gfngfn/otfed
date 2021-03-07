@@ -1324,7 +1324,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       end
 
   | Operator(ShortKey(21)) ->
-      (* `rmoveto (21)` *)
+    (* `rmoveto (21)` *)
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
@@ -1335,6 +1335,38 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
       return ({ cstate with stack; width }, [HMoveTo(arg)])
+
+  | Operator(ShortKey(23)) ->
+    (* `vstemhm (23)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      begin
+        match pairs with
+        | [] ->
+            err Error.InvalidCharstring
+
+        | (x, dx) :: cspts ->
+            let (stack, width) = pop_opt_for_width cstate.width stack in
+            return ({ cstate with width; stack }, [VStemHM(x, dx, cspts)])
+      end
+
+  | Operator(ShortKey(24)) ->
+    (* `rcurveline (24)` *)
+      pop_mandatory stack >>= fun (stack, dyd) ->
+      pop_mandatory stack >>= fun (stack, dxd) ->
+      let (stack, tuples) = pop_iter pop6_opt stack in
+      let beziers = tuples |> List.map make_bezier in
+      return ({ cstate with stack }, [RRCurveTo(beziers); RLineTo([(dxd, dyd)])])
+
+  | Operator(ShortKey(25)) ->
+    (* `rlinecurve (25)` *)
+      pop_mandatory stack >>= fun (stack, dyd) ->
+      pop_mandatory stack >>= fun (stack, dxd) ->
+      pop_mandatory stack >>= fun (stack, dyc) ->
+      pop_mandatory stack >>= fun (stack, dxc) ->
+      pop_mandatory stack >>= fun (stack, dyb) ->
+      pop_mandatory stack >>= fun (stack, dxb) ->
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      return ({ cstate with stack }, [RLineTo(pairs); RRCurveTo([((dxb, dyb), (dxc, dyc), (dxd, dyd))])])
 
   | _ ->
       failwith "TODO: parse_progress"

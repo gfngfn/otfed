@@ -1368,6 +1368,20 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, pairs) = pop_iter pop2_opt stack in
       return ({ cstate with stack }, [RLineTo(pairs); RRCurveTo([((dxb, dyb), (dxc, dyc), (dxd, dyd))])])
 
+  | Operator(ShortKey(26)) ->
+    (* `vvcurveto (26)` *)
+      let (stack, tuples) = pop_iter pop4_opt stack in
+      let rets = tuples |> List.map (fun (dya, dxb, dyb, dyc) -> (dya, (dxb, dyb), dyc)) in
+      let (stack, dx1opt) = pop_opt stack in
+      return ({ cstate with stack }, [VVCurveTo(dx1opt, rets)])
+
+  | Operator(ShortKey(27)) ->
+    (* `hhcurveto (27)` *)
+      let (stack, tuples) = pop_iter pop4_opt stack in
+      let rets = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
+      let (stack, dy1opt) = pop_opt stack in
+      return ({ cstate with stack}, [HHCurveTo(dy1opt, rets)])
+
   | _ ->
       failwith "TODO: parse_progress"
 

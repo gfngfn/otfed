@@ -40,7 +40,7 @@ Some unit tests use data extracted from [IPAex明朝](https://moji.or.jp/ipafont
   <tr><td>glyf</td><td>-</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
 
   <tr><td rowspan="3">CFF</td>
-      <td>CFF␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+      <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>CFF2</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>VORG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 

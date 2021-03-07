@@ -233,7 +233,6 @@ fun ldec ->
         aux (Alist.extend acc v) lengths
   in
   d_uint16 >>= fun count ->
-  Printf.printf "!!d_index (count = %d)\n" count; (* for debug *)
   if count = 0 then
     return []
   else

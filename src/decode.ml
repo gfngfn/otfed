@@ -618,7 +618,6 @@ let d_cff_header : cff_header decoder =
   d_uint8              >>= fun hdrSize ->
   d_offsize            >>= fun offSizeGlobal ->
   d_skip (hdrSize - 4) >>= fun () ->
-  Printf.printf "!!end header (hdrSize = %d)\n" hdrSize; (* for debug *)
   return {
     major   = major;
     minor   = minor;
@@ -630,7 +629,6 @@ let d_cff_header : cff_header decoder =
 let d_charstring_data (len : int) : charstring_data decoder =
   let open DecodeOperation in
   current >>= fun offset ->
-  Printf.printf "!!charstring (offset = %d, length = %d)\n" offset len; (* for debug *)
   seek (offset + len) >>= fun () ->
   return (CharStringData(offset, len))
 
@@ -645,19 +643,15 @@ let fetch_cff_first (cff : cff_source) : cff_first ok =
 
     (* Name INDEX (which should contain only one element) *)
     d_index_singleton d_bytes >>= fun name ->
-    Printf.printf "!!end Name INDEX (name = \"%s\")\n" name; (* for debug *)
 
     (* Top DICT INDEX (which should contain only one DICT) *)
     d_index_singleton d_dict >>= fun top_dict ->
-    Printf.printf "!!end Top Dict INDEX\n"; (* for debug *)
 
     (* String INDEX *)
     d_index d_bytes >>= fun string_index ->
-    Printf.printf "!!end String INDEX\n"; (* for debug *)
 
     (* Global Subr INDEX *)
     d_index d_charstring_data >>= fun gsubr_index ->
-    Printf.printf "!!end Global Subr INDEX\n"; (* for debug *)
 
     return {
       cff_header   = header;

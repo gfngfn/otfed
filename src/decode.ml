@@ -1315,8 +1315,12 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
-        | []               -> err Error.InvalidCharstring
-        | (y, dy) :: cspts -> return ({ cstate with stack }, [HStemHM(y, dy, cspts)])
+        | [] ->
+            err Error.InvalidCharstring
+
+        | (y, dy) :: cspts ->
+            let (stack, width) = pop_opt_for_width cstate.width stack in
+            return ({ cstate with width; stack }, [HStemHM(y, dy, cspts)])
       end
 
   | HintMaskOperator(arg) ->
@@ -1334,7 +1338,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `cntrmask (20)` *)
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      let cstate = { cstate with stack; width = width } in
+      let cstate = { cstate with width; stack } in
       begin
         match pairs with
         | []               -> return (cstate, [CntrMask(arg)])
@@ -1346,13 +1350,13 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with stack; width }, [RMoveTo((dx1, dy1))])
+      return ({ cstate with width; stack }, [RMoveTo((dx1, dy1))])
 
   | Operator(ShortKey(22)) ->
     (* `hmoveto (22)` *)
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with stack; width }, [HMoveTo(arg)])
+      return ({ cstate with width; stack }, [HMoveTo(arg)])
 
   | Operator(ShortKey(23)) ->
     (* `vstemhm (23)` *)
@@ -1398,7 +1402,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, tuples) = pop_iter pop4_opt stack in
       let rets = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
       let (stack, dy1opt) = pop_opt stack in
-      return ({ cstate with stack}, [HHCurveTo(dy1opt, rets)])
+      return ({ cstate with stack }, [HHCurveTo(dy1opt, rets)])
 
   | Operator(ShortKey(29)) ->
     (* `callgsubr (29)` *)
@@ -1410,33 +1414,44 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
 
   | Operator(ShortKey(30)) ->
     (* `vhcurveto (30)` *)
+(*
       begin
+        let pp_sep ppf () = Format.fprintf ppf ",@ " in
         if ImmutStack.size stack mod 4 = 1 then
-          pop_mandatory stack >>= fun (stack, dyf) ->
-          return (stack, Some(dyf))
+          let () = Format.printf "!!stack (odd): %a\n" (Format.pp_print_list ~pp_sep Format.pp_print_int) (ImmutStack.pop_all stack) in
+          pop_mandatory stack >>= fun (stack, df) ->
+          return (stack, Some(df))
         else
+          let () = Format.printf "!!stack (even): %a\n" (Format.pp_print_list ~pp_sep Format.pp_print_int) (ImmutStack.pop_all stack) in
           return (stack, None)
-      end >>= fun (stack, dyfopt) ->
+
+      end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
         let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [VHCurveTo(rets, dyfopt)])
+        return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
       else
         err Error.InvalidCharstring
+*)
+      let (stack, tuples) = pop_iter pop4_opt stack in
+      let (stack, _dfopt) = pop_opt stack in (* FIXME; must be wrong *)
+      let dfopt = None in (* FIXME; must be wrong *)
+      let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
+      return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
 
   | Operator(ShortKey(31)) ->
     (* `hvcurveto (31)` *)
       begin
         if ImmutStack.size stack mod 4 = 1 then
-          pop_mandatory stack >>= fun (stack, dyf) ->
-          return (stack, Some(dyf))
+          pop_mandatory stack >>= fun (stack, df) ->
+          return (stack, Some(df))
         else
           return (stack, None)
-      end >>= fun (stack, dyfopt) ->
+      end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
         let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [HVCurveTo(rets, dyfopt)])
+        return ({ cstate with stack }, [HVCurveTo(rets, dfopt)])
       else
         err Error.InvalidCharstring
 
@@ -1765,16 +1780,16 @@ let path_of_charstring (ops : charstring) : (cubic_path list) ok =
         in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HVCurveTo(hvs, dtF_opt) ->
+    | HVCurveTo(hvs, dfopt) ->
         assert_middle state >>= fun middle ->
         chop_last_of_list hvs >>= fun (hvsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dtF_opt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dfopt curv in
         return (curv, Middle{ middle with elems = peacc })
 
-    | VHCurveTo(vhs, dtF_opt) ->
+    | VHCurveTo(vhs, dfopt) ->
         assert_middle state >>= fun middle ->
         chop_last_of_list vhs >>= fun (vhsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dtF_opt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dfopt curv in
         return (curv, Middle{ middle with elems = peacc })
 
     | Flex(pt1, pt2, pt3, pt4, pt5, pt6, _) ->

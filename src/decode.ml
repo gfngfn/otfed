@@ -1541,6 +1541,280 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring_o
       | WidthDecided(wopt) -> return @@ Some((wopt, Alist.to_list acc))
 
 
+type path_element =
+  | LineTo   of cspoint
+  | BezierTo of cspoint * cspoint * cspoint
+
+
+let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)
+
+let ( +@- ) (x, y) dx = (x + dx, y)
+
+let ( +@| ) (x, y) dy = (x, y + dy)
+
+
+let line_parity ~starts_horizontally (peacc : path_element Alist.t) ws curv =
+  let (_, peacc, curv) =
+    ws |> List.fold_left (fun (is_horizontal, peacc, curv) dt ->
+      let curv =
+        if is_horizontal then
+          curv +@- dt
+        else
+          curv +@| dt
+      in
+      (not is_horizontal, Alist.extend peacc (LineTo(curv)), curv)
+    ) (starts_horizontally, peacc, curv)
+  in
+  (curv, peacc)
+
+
+let curve_parity ~starts_horizontally (peacc : path_element Alist.t) tuples (dtD, dvE, dsF) dtFopt curv =
+  let (is_horizontal, peacc, curv) =
+    tuples |> List.fold_left (fun (is_horizontal, peacc, curv) (dtA, dvB, dsC) ->
+      if is_horizontal then
+        let vA = curv +@- dtA in
+        let vB = vA +@ dvB in
+        let vC = vB +@| dsC in
+        (not is_horizontal, Alist.extend peacc (BezierTo(vA, vB, vC)), vC)
+      else
+        let vA = curv +@| dtA in
+        let vB = vA +@ dvB in
+        let vC = vB +@- dsC in
+        (not is_horizontal, Alist.extend peacc (BezierTo(vA, vB, vC)), vC)
+    ) (starts_horizontally, peacc, curv)
+  in
+  if is_horizontal then
+  (* If `dtD` is x-directed and `dsF` is y-directed *)
+    let vD = curv +@- dtD in
+    let vE = vD +@ dvE in
+    let vF =
+      match dtFopt with
+      | None      -> vE +@| dsF
+      | Some(dtF) -> vE +@ (dtF, dsF)
+    in
+    (vF, Alist.extend peacc (BezierTo(vD, vE, vF)))
+  else
+    let vD = curv +@| dtD in
+    let vE = vD +@ dvE in
+    let vF =
+      match dtFopt with
+      | None      -> vE +@- dsF
+      | Some(dtF) -> vE +@ (dsF, dtF)
+    in
+    (vF, Alist.extend peacc (BezierTo(vD, vE, vF)))
+
+
+let flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 =
+  let abspt1 = curv +@ pt1 in
+  let abspt2 = abspt1 +@ pt2 in
+  let abspt3 = abspt2 +@ pt3 in
+  let abspt4 = abspt3 +@ pt4 in
+  let abspt5 = abspt4 +@ pt5 in
+  let abspt6 = abspt5 +@ pt6 in
+  let curv = abspt6 in
+  (curv, [BezierTo(abspt1, abspt2, abspt3); BezierTo(abspt4, abspt5, abspt6)])
+
+
+type path = cspoint * path_element list
+
+
+type path_reading_state_middle = {
+  start : cspoint;
+  elems : path_element Alist.t;
+  paths : path Alist.t;
+}
+
+type path_reading_state =
+  | Initial
+  | Middle of path_reading_state_middle
+
+
+let start_new_path (state : path_reading_state) (curv : cspoint) : path_reading_state_middle =
+  match state with
+  | Initial ->
+      { start = curv; elems = Alist.empty; paths = Alist.empty }
+
+  | Middle(middle) ->
+      let path = (middle.start, Alist.to_list middle.elems) in
+      { start = curv; elems = Alist.empty; paths = Alist.extend middle.paths path }
+
+
+let assert_middle =
+  let open ResultMonad in
+  function
+  | Initial        -> err Error.InvalidCharstring
+  | Middle(middle) -> return middle
+
+
+let chop_last_of_list xs =
+  let open ResultMonad in
+  match List.rev xs with
+  | []               -> err Error.InvalidCharstring
+  | last :: main_rev -> return (List.rev main_rev, last)
+
+
+let path_of_operations (ops : charstring_operation list) : (path list) ok =
+  let open ResultMonad in
+  ops |> List.fold_left (fun prevres op ->
+    prevres >>= fun (curv, state) ->
+    match op with
+    | HintMask(_)
+    | CntrMask(_)
+    | HStem(_, _, _)
+    | VStem(_, _, _)
+    | HStemHM(_, _, _)
+    | VStemHM(_, _, _) ->
+        return (curv, state)
+
+    | VMoveTo(dy) ->
+        let curv = curv +@| dy in
+        let middle = start_new_path state curv in
+        return (curv, Middle(middle))
+
+    | HMoveTo(dx) ->
+        let curv = curv +@- dx in
+        let middle = start_new_path state curv in
+        return (curv, Middle(middle))
+
+    | RMoveTo(dv) ->
+        let curv = curv +@ dv in
+        let middle = start_new_path state curv in
+        return (curv, Middle(middle))
+
+    | RLineTo(cspts) ->
+        assert_middle state >>= fun middle ->
+        let (curv, peacc) =
+          cspts |> List.fold_left (fun (curv, peacc) dv ->
+            (curv +@ dv, Alist.extend peacc (LineTo(curv +@ dv)))
+          ) (curv, middle.elems)
+        in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | HLineTo(ws) ->
+        assert_middle state >>= fun middle ->
+        let (curv, peacc) = line_parity ~starts_horizontally:true middle.elems ws curv in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | VLineTo(ws) ->
+        assert_middle state >>= fun middle ->
+        let (curv, peacc) = line_parity ~starts_horizontally:false middle.elems ws curv in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | RRCurveTo(tricspts) ->
+        assert_middle state >>= fun middle ->
+        let (curv, peacc) =
+          tricspts |> List.fold_left (fun (curv, peacc) (dvA, dvB, dvC) ->
+            let vA = curv +@ dvA in
+            let vB = vA +@ dvB in
+            let vC = vB +@ dvC in
+            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
+          ) (curv, middle.elems)
+        in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | VVCurveTo(_, []) ->
+        err Error.InvalidCharstring
+
+    | VVCurveTo(dx1opt, (dy1, dv2, dy3) :: vvs) ->
+        assert_middle state >>= fun middle ->
+        let v1 =
+          match dx1opt with
+          | None      -> curv +@| dy1
+          | Some(dx1) -> curv +@ (dx1, dy1)
+        in
+        let v2 = v1 +@ dv2 in
+        let v3 = v2 +@| dy3 in
+        let (curv, peacc) =
+          vvs |> List.fold_left (fun (curv, peacc) (dyA, dvB, dyC) ->
+            let vA = curv +@| dyA in
+            let vB = vA +@ dvB in
+            let vC = vB +@| dyC in
+            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
+          ) (v3, Alist.extend middle.elems (BezierTo(v1, v2, v3)))
+        in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | HHCurveTo(_, []) ->
+        err Error.InvalidCharstring
+
+    | HHCurveTo(dy1opt, (dx1, dv2, dx3) :: hhs) ->
+        assert_middle state >>= fun middle ->
+        let v1 =
+          match dy1opt with
+          | None      -> curv +@- dx1
+          | Some(dy1) -> curv +@ (dx1, dy1)
+        in
+        let v2 = v1 +@ dv2 in
+        let v3 = v2 +@- dx3 in
+        let (curv, peacc) =
+          hhs |> List.fold_left (fun (curv, peacc) (dxA, dvB, dxC) ->
+            let vA = curv +@- dxA in
+            let vB = vA +@ dvB in
+            let vC = vB +@- dxC in
+            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
+          ) (v3, Alist.extend middle.elems (BezierTo(v1, v2, v3)))
+        in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | HVCurveTo(hvs, dtF_opt) ->
+        assert_middle state >>= fun middle ->
+        chop_last_of_list hvs >>= fun (hvsmain, last) ->
+        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dtF_opt curv in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | VHCurveTo(vhs, dtF_opt) ->
+        assert_middle state >>= fun middle ->
+        chop_last_of_list vhs >>= fun (vhsmain, last) ->
+        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dtF_opt curv in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | Flex(pt1, pt2, pt3, pt4, pt5, pt6, _) ->
+        assert_middle state >>= fun middle ->
+        let (curv, pes_flex) = flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 in
+        let peacc = Alist.append middle.elems pes_flex in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | HFlex(dx1, (dx2, dy2), dx3, dx4, dx5, dx6) ->
+        assert_middle state >>= fun middle ->
+        let (curv, pes_flex) = flex_path ~current:curv (dx1, 0) (dx2, dy2) (dx3, 0) (dx4, 0) (dx5, -dy2) (dx6, 0) in
+        let peacc = Alist.append middle.elems pes_flex in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | HFlex1((dx1, dy1), (dx2, dy2), dx3, dx4, (dx5, dy5), dx6) ->
+        assert_middle state >>= fun middle ->
+        let dy6 = - (dy1 + dy2 + dy5) in
+        let (curv, pes_flex) = flex_path ~current:curv (dx1, dy1) (dx2, dy2) (dx3, 0) (dx4, 0) (dx5, dy5) (dx6, dy6) in
+        let peacc = Alist.append middle.elems pes_flex in
+        return (curv, Middle{ middle with elems = peacc })
+
+    | Flex1(pt1, pt2, pt3, pt4, pt5, d6) ->
+        assert_middle state >>= fun middle ->
+        let (dxsum, dysum) = pt1 +@ pt2 +@ pt3 +@ pt4 +@ pt5 in
+        let (xstart, ystart) = curv in
+        let abspt1 = curv +@ pt1 in
+        let abspt2 = abspt1 +@ pt2 in
+        let abspt3 = abspt2 +@ pt3 in
+        let abspt4 = abspt3 +@ pt4 in
+        let abspt5 = abspt4 +@ pt5 in
+        let (absx5, absy5) = abspt5 in
+        let abspt6 =
+          if abs dxsum > abs dysum then
+            (absx5 + d6, ystart)
+          else
+            (xstart, absy5 + d6)
+        in
+        let curv = abspt6 in
+        let pes_flex = [BezierTo(abspt1, abspt2, abspt3); BezierTo(abspt4, abspt5, abspt6)] in
+        let peacc = Alist.append middle.elems pes_flex in
+        return (curv, Middle{ middle with elems = peacc })
+
+    ) (return ((0, 0), Initial)) >>= function
+    | (_, Initial) ->
+        return []
+
+    | (_, Middle(middle)) ->
+        let path = (middle.start, Alist.to_list middle.elems) in
+        return @@ Alist.to_list (Alist.extend middle.paths path)
 
 
 module ForTest = struct

@@ -1160,6 +1160,16 @@ let pop_iter (popf : stack -> (stack * 'a) option) (stack : stack) : stack * 'a 
   aux stack []
 
 
+let pop_opt_for_width (width : width_state) (stack : stack) : stack * width_state =
+  match width with
+  | WidthDecided(_) ->
+      (stack, width)
+
+  | LookingForWidth ->
+      let (stack, wopt) = pop_opt stack in
+      (stack, WidthDecided(wopt))
+
+
 let make_bezier (dxa, dya, dxb, dyb, dxc, dyc) =
   ((dxa, dya), (dxb, dyb), (dxc, dyc))
 
@@ -1206,8 +1216,8 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             err Error.InvalidCharstring
 
         | (y, dy) :: cspts ->
-            let (stack, wopt) = pop_opt stack in
-            return ({ cstate with stack; width = WidthDecided(wopt) }, [HStem(y, dy, cspts)])
+            let (stack, width) = pop_opt_for_width cstate.width stack in
+            return ({ cstate with stack; width = width }, [HStem(y, dy, cspts)])
       end
 
   | Operator(ShortKey(3)) ->
@@ -1226,8 +1236,8 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(4)) ->
     (* `vmoveto (4)` *)
       pop_mandatory stack >>= fun (stack, arg) ->
-      let (stack, wopt) = pop_opt stack in
-      return ({ cstate with stack; width = WidthDecided(wopt) }, [VMoveTo(arg)])
+      let (stack, width) = pop_opt_for_width cstate.width stack in
+      return ({ cstate with stack; width = width }, [VMoveTo(arg)])
 
   | Operator(ShortKey(5)) ->
     (* `rlineto (5)` *)
@@ -1290,6 +1300,37 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
 
         | _ ->
             err Error.InvalidCharstring
+      end
+
+  | Operator(ShortKey(18)) ->
+    (* `hstemhm (18)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      begin
+        match pairs with
+        | []               -> err Error.InvalidCharstring
+        | (y, dy) :: cspts -> return ({ cstate with stack }, [HStemHM(y, dy, cspts)])
+      end
+
+  | HintMaskOperator(arg) ->
+    (* `hintmask (19)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      let (stack, width) = pop_opt_for_width cstate.width stack in
+      let cstate = { cstate with stack; width = width } in
+      begin
+        match pairs with
+        | []               -> return (cstate, [HintMask(arg)])
+        | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); HintMask(arg)])
+      end
+
+  | CntrMaskOperator(arg) ->
+    (* `cntrmask (20)` *)
+      let (stack, pairs) = pop_iter pop2_opt stack in
+      let (stack, width) = pop_opt_for_width cstate.width stack in
+      let cstate = { cstate with stack; width = width } in
+      begin
+        match pairs with
+        | []               -> return (cstate, [CntrMask(arg)])
+        | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); CntrMask(arg)])
       end
 
   | _ ->

@@ -138,6 +138,14 @@ type cubic_path_element =
 type cubic_path = point * cubic_path_element list
 [@@deriving show { with_path = false }]
 
+type quadratic_path_element =
+  | QuadraticLineTo  of point
+  | QuadraticCurveTo of point * point
+[@@deriving show { with_path = false }]
+
+type quadratic_path = point * quadratic_path_element list
+[@@deriving show { with_path = false }]
+
 module Cmap = struct
   type t
 

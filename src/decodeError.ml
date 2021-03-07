@@ -38,5 +38,6 @@ type t =
   | FdselectOutOfBounds       of int
   | CharstringWithoutWidth
   | InvalidCharstring
+  | InvalidTtfContour
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

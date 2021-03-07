@@ -612,6 +612,24 @@ let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) :
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 
+let path_of_ttf_contour (contour : ttf_contour) : quadratic_path ok =
+  let open ResultMonad in
+  begin
+    match contour with
+    | (_, x0, y0) :: tail -> return ((x0, y0), tail)
+    | []                  -> err Error.InvalidTtfContour
+  end >>= fun (pt0, tail) ->
+  let rec aux acc = function
+    | []                                                  -> Alist.to_list acc
+    | (true, x, y) :: tail                                -> aux (Alist.extend acc @@ QuadraticLineTo(x, y)) tail
+    | (false, x1, y1) :: (true, x, y) :: tail             -> aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), (x, y))) tail
+    | (false, x1, y1) :: (((false, x2, y2) :: _) as tail) -> aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), ((x1 + x2) / 2, (y1 + y2) / 2))) tail
+    | (false, x1, y1) :: []                               -> Alist.to_list (Alist.extend acc @@ QuadraticCurveTo((x1, y1), pt0))
+  in
+  let elems = aux Alist.empty tail in
+  return @@ (pt0, elems)
+
+
 let d_cff_header : cff_header decoder =
   d_uint8              >>= fun major ->
   d_uint8              >>= fun minor ->

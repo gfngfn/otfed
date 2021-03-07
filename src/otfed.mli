@@ -68,6 +68,17 @@ module Value : sig
   type cubic_path = point * cubic_path_element list
   [@@deriving show { with_path = false }]
 
+  type quadratic_path_element =
+    | QuadraticLineTo  of point
+    | QuadraticCurveTo of point * point
+  [@@deriving show { with_path = false }]
+
+  (** Represents a (directed) quadratic Bézier curve with absolute coordinates on the XY-plane.
+      A value [(pt, elems)] of this type stands for the path
+      starting at [pt] and subsequent moves of which can be described by [elems]. *)
+  type quadratic_path = point * quadratic_path_element list
+  [@@deriving show { with_path = false }]
+
   type bounding_box = {
     x_min : x_coordinate;
     y_min : y_coordinate;
@@ -294,6 +305,8 @@ module Decode : sig
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
+
+  val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
 
   val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
 

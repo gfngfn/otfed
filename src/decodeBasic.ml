@@ -88,6 +88,7 @@ type string_index = string array
 
 (* Represents a bit vector of arbitrary finite length *)
 type stem_argument = string
+[@@deriving show { with_path = false }]
 
 type charstring_element =
   | ArgumentInteger  of int
@@ -169,10 +170,13 @@ type private_info =
 type charstring_info = subroutine_index * private_info * int
 
 type csx = int
+[@@deriving show { with_path = false }]
 
 type csy = int
+[@@deriving show { with_path = false }]
 
 type cspoint = csx * csy
+[@@deriving show { with_path = false }]
 
 type parsed_charstring =
   | HStem     of int * int * cspoint list                                         (* hstem (1) *)
@@ -196,3 +200,4 @@ type parsed_charstring =
   | HFlex     of int * cspoint * int * int * int * int                            (* hflex (12 34) *)
   | HFlex1    of cspoint * cspoint * int * int * cspoint * int                    (* hflex1 (12 36) *)
   | Flex1     of cspoint * cspoint * cspoint * cspoint * cspoint * int            (* flex1 (12 37) *)
+[@@deriving show { with_path = false }]

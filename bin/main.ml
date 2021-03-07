@@ -11,6 +11,7 @@ type config = {
   hhea : bool;
   maxp : bool;
   glyf : (V.glyph_id * string) Alist.t;
+  cff  : V.glyph_id Alist.t;
 }
 
 type error =
@@ -135,6 +136,34 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           write_glyph_svg path ~data
 
 
+let pp_sep ppf () =
+  Format.fprintf ppf ",@ "
+
+
+let print_cff (_common, specific) (gid : V.glyph_id) =
+  let open ResultMonad in
+  Printf.printf "CFF (glyph ID: %d):\n" gid;
+  match specific with
+  | D.Ttf(_) ->
+      Printf.printf "  not a CFF\n";
+      return ()
+
+  | D.Cff(cff) ->
+      D.charstring cff gid |> inj >>= function
+      | None ->
+          Printf.printf "  not defined\n";
+          return ()
+
+      | Some((wopt, parsed)) ->
+          begin
+            match wopt with
+            | None    -> Printf.printf "  width: not defined\n";
+            | Some(w) -> Printf.printf "  width: %d\n" w;
+          end;
+          Format.printf "%a\n" (Format.pp_print_list ~pp_sep D.pp_parsed_charstring) parsed;
+          return ()
+
+
 let parse_args () =
   let open ResultMonad in
   let rec aux n acc i =
@@ -152,6 +181,10 @@ let parse_args () =
           let path = Sys.argv.(i + 2) in
           aux n { acc with glyf = Alist.extend acc.glyf (gid, path) } (i + 3)
 
+      | "cff" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with cff = Alist.extend acc.cff gid } (i + 2)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -165,6 +198,7 @@ let parse_args () =
         hhea = false;
         maxp = false;
         glyf = Alist.empty;
+        cff  = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -206,6 +240,9 @@ let _ =
         end >>= fun () ->
         config.glyf |> Alist.to_list |> mapM (fun (gid, path) ->
           print_glyf source gid path
+        ) >>= fun _ ->
+        config.cff |> Alist.to_list |> mapM (fun gid ->
+          print_cff source gid
         ) >>= fun _ ->
         return ()
 

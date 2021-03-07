@@ -227,6 +227,7 @@ module Decode : sig
     | HFlex     of int * cspoint * int * int * int * int                           (** [hflex (12 34)] *)
     | HFlex1    of cspoint * cspoint * int * int * cspoint * int                   (** [hflex1 (12 36)] *)
     | Flex1     of cspoint * cspoint * cspoint * cspoint * cspoint * int           (** [flex1 (12 37)] *)
+  [@@deriving show { with_path = false }]
 
   (** Handles intermediate representation of tables for decoding.
       Since the operations provided by this module

@@ -1217,7 +1217,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
 
         | (y, dy) :: cspts ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
-            return ({ cstate with stack; width = width }, [HStem(y, dy, cspts)])
+            return ({ cstate with width; stack }, [HStem(y, dy, cspts)])
       end
 
   | Operator(ShortKey(3)) ->
@@ -1229,15 +1229,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             err Error.InvalidCharstring
 
         | (x, dx) :: cspts ->
-            let (stack, wopt) = pop_opt stack in
-            return ({ cstate with stack; width = WidthDecided(wopt) }, [VStem(x, dx, cspts)])
+            let (stack, width) = pop_opt_for_width cstate.width stack in
+            return ({ cstate with width; stack }, [VStem(x, dx, cspts)])
       end
 
   | Operator(ShortKey(4)) ->
     (* `vmoveto (4)` *)
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with stack; width = width }, [VMoveTo(arg)])
+      return ({ cstate with width; stack }, [VMoveTo(arg)])
 
   | Operator(ShortKey(5)) ->
     (* `rlineto (5)` *)
@@ -1288,7 +1288,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `endchar (14)` *)
       let (stack, width) = pop_opt_for_width cstate.width stack in
       if ImmutStack.is_empty stack then
-        return ({ cstate with width = width; stack = ImmutStack.empty }, [])
+        return ({ cstate with width; stack }, [])
       else
         err Error.InvalidCharstring
 
@@ -1305,7 +1305,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `hintmask (19)` *)
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      let cstate = { cstate with stack; width = width } in
+      let cstate = { cstate with width; stack } in
       begin
         match pairs with
         | []               -> return (cstate, [HintMask(arg)])
@@ -1322,6 +1322,19 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | []               -> return (cstate, [CntrMask(arg)])
         | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); CntrMask(arg)])
       end
+
+  | Operator(ShortKey(21)) ->
+      (* `rmoveto (21)` *)
+      pop_mandatory stack >>= fun (stack, dy1) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
+      let (stack, width) = pop_opt_for_width cstate.width stack in
+      return ({ cstate with stack; width }, [RMoveTo((dx1, dy1))])
+
+  | Operator(ShortKey(22)) ->
+    (* `hmoveto (22)` *)
+      pop_mandatory stack >>= fun (stack, arg) ->
+      let (stack, width) = pop_opt_for_width cstate.width stack in
+      return ({ cstate with stack; width }, [HMoveTo(arg)])
 
   | _ ->
       failwith "TODO: parse_progress"

@@ -1274,6 +1274,24 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `return (11)` *)
       return (cstate, [])
 
+  | Operator(ShortKey(14)) ->
+    (* `endchar (14)` *)
+      let elems = ImmutStack.pop_all stack in
+      begin
+        match (cstate.width, elems) with
+        | (LookingForWidth, w :: []) ->
+            return ({ cstate with width = WidthDecided(Some(w)); stack = ImmutStack.empty }, [])
+
+        | (LookingForWidth, []) ->
+            return ({ cstate with width = WidthDecided(None); stack = ImmutStack.empty }, [])
+
+        | (WidthDecided(_), []) ->
+            return ({ cstate with stack = ImmutStack.empty }, [])
+
+        | _ ->
+            err Error.InvalidCharstring
+      end
+
   | _ ->
       failwith "TODO: parse_progress"
 

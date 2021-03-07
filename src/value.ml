@@ -123,10 +123,10 @@ type ttf_glyph_description =
 [@@deriving show { with_path = false }]
 
 type bounding_box = {
-  x_min : int;
-  y_min : int;
-  x_max : int;
-  y_max : int;
+  x_min : x_coordinate;
+  y_min : y_coordinate;
+  x_max : x_coordinate;
+  y_max : y_coordinate;
 }
 [@@deriving show { with_path = false }]
 

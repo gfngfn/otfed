@@ -42,14 +42,6 @@ module Value : sig
     | TtfCompositeGlyph of ttf_composite_glyph_description
   [@@deriving show { with_path = false }]
 
-  type bounding_box = {
-    x_min : int;
-    y_min : int;
-    x_max : int;
-    y_max : int;
-  }
-  [@@deriving show { with_path = false }]
-
   (** Represents an absolute X-coordinate.
       The unit of measurement is [units_per_em],
       and thus differs for each font in general. *)
@@ -74,6 +66,14 @@ module Value : sig
       A value [(pt, elems)] of this type stands for the path
       starting at [pt] and subsequent moves of which can be described by [elems]. *)
   type path = point * path_element list
+  [@@deriving show { with_path = false }]
+
+  type bounding_box = {
+    x_min : x_coordinate;
+    y_min : y_coordinate;
+    x_max : x_coordinate;
+    y_max : y_coordinate;
+  }
   [@@deriving show { with_path = false }]
 
   module Cmap : sig

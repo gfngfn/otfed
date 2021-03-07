@@ -1216,6 +1216,12 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
+  let return ((cstate, parsed) as v) =
+    let ns = ImmutStack.pop_all cstate.stack in
+    let pp_sep ppf () = Format.fprintf ppf ", " in
+    Format.printf "!!stack (%d, %a): %a\n" (List.length ns) pp_charstring parsed (Format.pp_print_list ~pp_sep Format.pp_print_int) ns; (* for debug *)
+    return v
+  in
   match cselem with
   | ArgumentInteger(i) ->
       let stack = stack |> ImmutStack.push i in
@@ -1444,9 +1450,9 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       begin
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
-          return (stack, Some(df))
+          DecodeOperation.return (stack, Some(df))
         else
-          return (stack, None)
+          DecodeOperation.return (stack, None)
       end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then

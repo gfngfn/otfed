@@ -11,7 +11,7 @@ type config = {
   hhea : bool;
   maxp : bool;
   glyf : (V.glyph_id * string) Alist.t;
-  cff  : V.glyph_id Alist.t;
+  cff  : (V.glyph_id * string) Alist.t;
 }
 
 type error =
@@ -140,7 +140,7 @@ let pp_sep ppf () =
   Format.fprintf ppf ",@ "
 
 
-let print_cff (_common, specific) (gid : V.glyph_id) =
+let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Printf.printf "CFF (glyph ID: %d):\n" gid;
   match specific with
@@ -149,6 +149,7 @@ let print_cff (_common, specific) (gid : V.glyph_id) =
       return ()
 
   | D.Cff(cff) ->
+      D.head common |> inj >>= fun head ->
       D.charstring cff gid |> inj >>= function
       | None ->
           Printf.printf "  not defined\n";
@@ -163,7 +164,8 @@ let print_cff (_common, specific) (gid : V.glyph_id) =
           Format.printf "%a\n" D.pp_charstring charstring;
           D.path_of_charstring charstring |> inj >>= fun paths ->
           Format.printf "%a\n" (Format.pp_print_list ~pp_sep V.pp_cubic_path) paths;
-          return ()
+          let data = Svg.make_cff ~units_per_em:head.V.Head.units_per_em paths in
+          write_glyph_svg path ~data
 
 
 let parse_args () =
@@ -185,7 +187,8 @@ let parse_args () =
 
       | "cff" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
-          aux n { acc with cff = Alist.extend acc.cff gid } (i + 2)
+          let path = Sys.argv.(i + 2) in
+          aux n { acc with cff = Alist.extend acc.cff (gid, path) } (i + 3)
 
       | s ->
           err @@ UnknownCommand(s)
@@ -243,8 +246,8 @@ let _ =
         config.glyf |> Alist.to_list |> mapM (fun (gid, path) ->
           print_glyf source gid path
         ) >>= fun _ ->
-        config.cff |> Alist.to_list |> mapM (fun gid ->
-          print_cff source gid
+        config.cff |> Alist.to_list |> mapM (fun (gid, path) ->
+          print_cff source gid path
         ) >>= fun _ ->
         return ()
 

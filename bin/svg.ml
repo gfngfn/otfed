@@ -7,62 +7,76 @@ module V = Otfed.Value
 
 let dpoffset = 50
 
+let circle_radius = 5
+let index_x_offset = 5
+let index_y_offset = -5
+
 let display_x_scheme _units_per_em x = x
 let display_y_scheme units_per_em y = units_per_em - y
 
-let circle_scheme units_per_em ~color x y =
-  Printf.sprintf "<circle cx=\"%d\" cy=\"%d\" r=\"5\" fill=\"%s\" />"
-    (display_x_scheme units_per_em x)
-    (display_y_scheme units_per_em y)
-    color
+
+let circle_scheme ~units_per_em ?index:index_opt ~color x y =
+  let dispx = display_x_scheme units_per_em x in
+  let dispy = display_y_scheme units_per_em y in
+  let s =
+    Printf.sprintf "<circle cx=\"%d\" cy=\"%d\" r=\"%d\" fill=\"%s\" />"
+      dispx dispy circle_radius color
+  in
+  match index_opt with
+  | None ->
+      s
+
+  | Some(i) ->
+      Printf.sprintf "%s<text x=\"%d\" y=\"%d\">%d</text>"
+        s (dispx + index_x_offset) (dispy + index_y_offset) i
 
 
-let path_string_of_quadratic units_per_em (qpath : V.quadratic_path) =
+let path_string_of_quadratic ~units_per_em ~index:(i : int) (qpath : V.quadratic_path) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
-  let circle = circle_scheme units_per_em in
+  let circle = circle_scheme ~units_per_em in
   let ((x0, y0), qelems) = qpath in
   let curve0 = Printf.sprintf "M%d,%d" (display_x x0) (display_y y0) in
-  let circ0 = circle ~color:"green" x0 y0 in
-  let (curveacc, circacc) =
-    qelems |> List.fold_left (fun (curveacc, circacc) qelem ->
+  let circ0 = circle ~color:"green" ~index:i x0 y0 in
+  let (i, curveacc, circacc) =
+    qelems |> List.fold_left (fun (i, curveacc, circacc) qelem ->
       match qelem with
       | V.QuadraticLineTo((xto, yto)) ->
-          let circ = circle ~color:"green" xto yto in
+          let circ = circle ~color:"green" ~index:i xto yto in
           let curve = Printf.sprintf "L%d,%d" (display_x xto) (display_y yto) in
-          (Alist.extend curveacc curve, Alist.extend circacc circ)
+          (i + 1, Alist.extend curveacc curve, Alist.extend circacc circ)
 
       | V.QuadraticCurveTo((x1, y1), (xto, yto)) ->
           let circ1 = circle ~color:"orange" x1 y1 in
-          let circto = circle ~color:"green" xto yto in
+          let circto = circle ~color:"green" ~index:i xto yto in
           let curve = Printf.sprintf "Q%d,%d %d,%d" (display_x x1) (display_y y1) (display_x xto) (display_y yto) in
-          (Alist.extend curveacc curve, Alist.append circacc [circ1; circto])
-    ) (Alist.extend Alist.empty curve0, Alist.extend Alist.empty circ0)
+          (i + 1, Alist.extend curveacc curve, Alist.append circacc [circ1; circto])
+    ) (i + 1, Alist.extend Alist.empty curve0, Alist.extend Alist.empty circ0)
   in
   let curves = Alist.to_list curveacc in
   let circs = Alist.to_list circacc in
-  (Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
+  (i, Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
 
 
-let path_string_of_cubic units_per_em (cpath : V.cubic_path) =
+let path_string_of_cubic ~units_per_em ~index:(i : int) (cpath : V.cubic_path) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
-  let circle = circle_scheme units_per_em in
+  let circle = circle_scheme ~units_per_em in
   let ((x0, y0), celems) = cpath in
   let curve0 = Printf.sprintf "M%d,%d" (display_x x0) (display_y y0) in
-  let circ0 = circle ~color:"green" x0 y0 in
-  let (curveacc, circacc) =
-    celems |> List.fold_left (fun (curveacc, circacc) celem ->
+  let circ0 = circle ~color:"green" ~index:i x0 y0 in
+  let (i, curveacc, circacc) =
+    celems |> List.fold_left (fun (i, curveacc, circacc) celem ->
       match celem with
       | V.CubicLineTo((xto, yto)) ->
-          let circ = circle ~color:"green" xto yto in
+          let circ = circle ~color:"green" ~index:i xto yto in
           let curve = Printf.sprintf "L%d,%d" (display_x xto) (display_y yto) in
-          (Alist.extend curveacc curve, Alist.extend circacc circ)
+          (i + 1, Alist.extend curveacc curve, Alist.extend circacc circ)
 
       | V.CubicCurveTo((x1, y1), (x2, y2), (xto, yto)) ->
           let circ1 = circle ~color:"orange" x1 y1 in
           let circ2 = circle ~color:"orange" x2 y2 in
-          let circto = circle ~color:"green" xto yto in
+          let circto = circle ~color:"green" ~index:i xto yto in
           let curve =
             Printf.sprintf "C%d,%d %d,%d %d,%d"
               (display_x x1)
@@ -72,12 +86,12 @@ let path_string_of_cubic units_per_em (cpath : V.cubic_path) =
               (display_x xto)
               (display_y yto)
           in
-          (Alist.extend curveacc curve, Alist.append circacc [circ1; circ2; circto])
-    ) (Alist.extend Alist.empty curve0, Alist.extend Alist.empty circ0)
+          (i + 1, Alist.extend curveacc curve, Alist.append circacc [circ1; circ2; circto])
+    ) (i + 1, Alist.extend Alist.empty curve0, Alist.extend Alist.empty circ0)
   in
   let curves = Alist.to_list curveacc in
   let circs = Alist.to_list circacc in
-  (Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
+  (i, Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
 
 
 let svg_prefix_and_suffix ~height ~width ~view_box:(x_min, y_min, x_max, y_max) =
@@ -125,9 +139,14 @@ let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bou
   let y_min = bbox.V.y_min in
   let y_max = bbox.V.y_max in
 
-  let pcs = (qpaths |> List.map (path_string_of_quadratic units_per_em)) in
-  let paths = List.map (fun (x, _) -> x) pcs in
-  let circs = List.map (fun (_, y) -> y) pcs in
+  let (_, pathacc, circacc) =
+    qpaths |> List.fold_left (fun (i, pathacc, circacc) qpath ->
+      let (i, path, circ) = path_string_of_quadratic ~units_per_em ~index:i qpath in
+      (i, Alist.extend pathacc path, Alist.extend circacc circ)
+    ) (0, Alist.empty, Alist.empty)
+  in
+  let paths = Alist.to_list pathacc in
+  let circs = Alist.to_list circacc in
   let ss =
     let (prefix, suffix) =
       svg_prefix_and_suffix
@@ -164,9 +183,14 @@ let make_ttf (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~un
 let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
-  let pcs = cpaths |> List.map (path_string_of_cubic units_per_em) in
-  let paths = List.map (fun (x, _) -> x) pcs in
-  let circs = List.map (fun (_, y) -> y) pcs in
+  let (_, pathacc, circacc) =
+    cpaths |> List.fold_left (fun (i, pathacc, circacc) cpath ->
+      let (i, path, circ) = path_string_of_cubic ~units_per_em ~index:i cpath in
+      (i, Alist.extend pathacc path, Alist.extend circacc circ)
+    ) (0, Alist.empty, Alist.empty)
+  in
+  let paths = Alist.to_list pathacc in
+  let circs = Alist.to_list circacc in
   let y_min = 0 in  (* temporary; should use bbox *)
   let y_max = units_per_em in  (* temporary; should use bbox *)
   let ss =

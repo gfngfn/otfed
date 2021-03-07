@@ -205,7 +205,7 @@ module Decode : sig
 
   type cspoint = csx * csy
 
-  type parsed_charstring =
+  type charstring_operation =
     | HStem     of int * int * cspoint list                                        (** [hstem (1)] *)
     | VStem     of int * int * cspoint list                                        (** [vstem (3)] *)
     | VMoveTo   of int                                                             (** [vmoveto (4)] *)
@@ -262,7 +262,7 @@ module Decode : sig
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
 
-  val charstring : cff_source -> Value.glyph_id -> ((int option * parsed_charstring list) option) ok
+  val charstring : cff_source -> Value.glyph_id -> ((int option * charstring_operation list) option) ok
 
   module ForTest : sig
     type 'a decoder

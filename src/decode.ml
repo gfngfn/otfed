@@ -1489,7 +1489,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       err InvalidCharstring
 
 
-and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * parsed_charstring Alist.t) decoder =
+and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * charstring_operation Alist.t) decoder =
   let open DecodeOperation in
   let rec aux (cstate : charstring_state) acc =
     parse_progress cconst cstate >>= fun (cstate, parsed) ->
@@ -1507,7 +1507,7 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
 
 
 
-let charstring (cff : cff_source) (gid : glyph_id) : ((int option * parsed_charstring list) option) ok =
+let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring_operation list) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
   let (gsubr_index, private_info, offset_CharString_INDEX) = charstring_info in

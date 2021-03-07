@@ -178,7 +178,7 @@ type csy = int
 type cspoint = csx * csy
 [@@deriving show { with_path = false }]
 
-type parsed_charstring =
+type charstring_operation =
   | HStem     of int * int * cspoint list                                         (* hstem (1) *)
   | VStem     of int * int * cspoint list                                         (* vstem (3) *)
   | VMoveTo   of int                                                              (* vmoveto (4) *)

@@ -160,7 +160,7 @@ let print_cff (_common, specific) (gid : V.glyph_id) =
             | None    -> Printf.printf "  width: not defined\n";
             | Some(w) -> Printf.printf "  width: %d\n" w;
           end;
-          Format.printf "%a\n" (Format.pp_print_list ~pp_sep D.pp_parsed_charstring) parsed;
+          Format.printf "%a\n" (Format.pp_print_list ~pp_sep D.pp_charstring_operation) parsed;
           return ()
 
 

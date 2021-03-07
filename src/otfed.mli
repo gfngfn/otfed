@@ -162,8 +162,7 @@ end
 
 module Decode : sig
   module Error : sig
-    type t
-    [@@deriving show { with_path = false }]
+    include module type of DecodeError
   end
 
   type 'a ok = ('a, Error.t) result

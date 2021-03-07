@@ -1,6 +1,9 @@
 
 open Basic
 
+type unsupported_report =
+  | CharstringArithmeticOperator of int
+[@@deriving show { with_path = false }]
 
 type t =
   | UnknownFormatVersion  of Value.Tag.t
@@ -35,4 +38,5 @@ type t =
   | FdselectOutOfBounds   of int
   | CharstringWithoutWidth
   | InvalidCharstring
+  | Unsupported           of unsupported_report
 [@@deriving show { with_path = false }]

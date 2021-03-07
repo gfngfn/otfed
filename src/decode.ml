@@ -1426,7 +1426,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       err Error.InvalidCharstring
 
   | Operator(LongKey(i)) when List.mem i [9; 10; 11; 12; 14; 18; 23; 24; 26; 27; 28; 29; 30] ->
-      failwith (Printf.sprintf "unsupported arithmetic operator '12 %d'" i)
+      err @@ Error.Unsupported(CharstringArithmeticOperator(i))
 
   | Operator(LongKey(34)) ->
     (* `hflex (12 34)` *)

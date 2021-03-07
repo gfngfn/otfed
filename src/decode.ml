@@ -644,11 +644,11 @@ let d_cff_header : cff_header decoder =
   }
 
 
-let d_charstring_data (len : int) : charstring_data decoder =
+let d_charstring_data (length : int) : charstring_data decoder =
   let open DecodeOperation in
   current >>= fun offset ->
-  seek (offset + len) >>= fun () ->
-  return (CharStringData(offset, len))
+  d_skip length >>= fun () ->
+  return (CharStringData(offset, length))
 
 
 let fetch_cff_first (cff : cff_source) : cff_first ok =

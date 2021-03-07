@@ -233,9 +233,13 @@ fun ldec ->
         aux (Alist.extend acc v) lengths
   in
   d_uint16 >>= fun count ->
-  d_offsize >>= fun offsize ->
-  d_cff_length_list offsize count >>= fun lengths ->
-  aux Alist.empty lengths
+  Printf.printf "!!d_index (count = %d)\n" count; (* for debug *)
+  if count = 0 then
+    return []
+  else
+    d_offsize >>= fun offsize ->
+    d_cff_length_list offsize count >>= fun lengths ->
+    aux Alist.empty lengths
 
 
 let d_cff_offset_singleton offsize ldec =

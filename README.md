@@ -26,20 +26,27 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | head                               # Prints the contents of `head` table.
   | hhea                               # Prints the contents of `hhea` table.
   | maxp                               # Prints the contents of `maxp` table.
-  | glyf <glyph-id> <output-svg-file>  # Outputs a glyph of <glyph-id> that has TrueType outlines.
-  | cff <glyph-id> <output-svg-file>   # Outputs a glyph of <glyph-id> that has CFF outlines.
+  | glyf <glyph-id> <output-svg-file>  # Outputs the glyph of ID <glyph-id> that has TrueType outlines.
+  | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
 ```
 
 ### Example usage
 
+Prints all of the Unicode-aware `cmap` subtables in IPAex Mincho:
+
 ```console
-# Prints all of the Unicode-aware `cmap` subtables in IPAex Mincho:
 $ dune exec otfedcli input/ipaexm.ttf cmap
+```
 
-# Outputs a glyph of ID 1000 in IPAex Mincho as an SVG file:
+Outputs the glyph of ID 1000 in IPAex Mincho as an SVG file:
+
+```console
 $ dune exec otfedcli input/ipaexm.ttf glyf 1000 output/ipaexm1000.svg
+```
 
-# Outputs a glyph of ID 50 in Computer Modern Typewriter Italic as an SVG file:
+Outputs the glyph of ID 50 in Computer Modern Typewriter Italic as an SVG file:
+
+```console
 $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
 ```
 

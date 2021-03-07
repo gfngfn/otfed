@@ -57,15 +57,15 @@ module Value : sig
       and thus differs for each font in general. *)
   type point = x_coordinate * y_coordinate
 
-  type path_element =
-    | LineTo   of point
-    | BezierTo of point * point * point
+  type cubic_path_element =
+    | CubicLineTo  of point
+    | CubicCurveTo of point * point * point
   [@@deriving show { with_path = false }]
 
-  (** Represents a (directed) graphical path described by absolute coordinates on the XY-plane.
+  (** Represents a (directed) cubic Bézier curve with absolute coordinates on the XY-plane.
       A value [(pt, elems)] of this type stands for the path
       starting at [pt] and subsequent moves of which can be described by [elems]. *)
-  type path = point * path_element list
+  type cubic_path = point * cubic_path_element list
   [@@deriving show { with_path = false }]
 
   type bounding_box = {
@@ -297,7 +297,7 @@ module Decode : sig
 
   val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
 
-  val path_of_charstring : charstring -> (Value.path list) ok
+  val path_of_charstring : charstring -> (Value.cubic_path list) ok
 
   module ForTest : sig
     type 'a decoder

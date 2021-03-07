@@ -162,7 +162,7 @@ let print_cff (_common, specific) (gid : V.glyph_id) =
           end;
           Format.printf "%a\n" D.pp_charstring charstring;
           D.path_of_charstring charstring |> inj >>= fun paths ->
-          Format.printf "%a\n" (Format.pp_print_list ~pp_sep V.pp_path) paths;
+          Format.printf "%a\n" (Format.pp_print_list ~pp_sep V.pp_cubic_path) paths;
           return ()
 
 

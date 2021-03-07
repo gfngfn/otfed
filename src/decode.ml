@@ -1547,7 +1547,7 @@ let ( +@- ) (x, y) dx = (x + dx, y)
 let ( +@| ) (x, y) dy = (x, y + dy)
 
 
-let line_parity ~starts_horizontally (peacc : path_element Alist.t) ws curv =
+let line_parity ~starts_horizontally (peacc : cubic_path_element Alist.t) ws curv =
   let (_, peacc, curv) =
     ws |> List.fold_left (fun (is_horizontal, peacc, curv) dt ->
       let curv =
@@ -1556,25 +1556,25 @@ let line_parity ~starts_horizontally (peacc : path_element Alist.t) ws curv =
         else
           curv +@| dt
       in
-      (not is_horizontal, Alist.extend peacc (LineTo(curv)), curv)
+      (not is_horizontal, Alist.extend peacc (CubicLineTo(curv)), curv)
     ) (starts_horizontally, peacc, curv)
   in
   (curv, peacc)
 
 
-let curve_parity ~starts_horizontally (peacc : path_element Alist.t) tuples (dtD, dvE, dsF) dtFopt curv =
+let curve_parity ~starts_horizontally (peacc : cubic_path_element Alist.t) tuples (dtD, dvE, dsF) dtFopt curv =
   let (is_horizontal, peacc, curv) =
     tuples |> List.fold_left (fun (is_horizontal, peacc, curv) (dtA, dvB, dsC) ->
       if is_horizontal then
         let vA = curv +@- dtA in
         let vB = vA +@ dvB in
         let vC = vB +@| dsC in
-        (not is_horizontal, Alist.extend peacc (BezierTo(vA, vB, vC)), vC)
+        (not is_horizontal, Alist.extend peacc (CubicCurveTo(vA, vB, vC)), vC)
       else
         let vA = curv +@| dtA in
         let vB = vA +@ dvB in
         let vC = vB +@- dsC in
-        (not is_horizontal, Alist.extend peacc (BezierTo(vA, vB, vC)), vC)
+        (not is_horizontal, Alist.extend peacc (CubicCurveTo(vA, vB, vC)), vC)
     ) (starts_horizontally, peacc, curv)
   in
   if is_horizontal then
@@ -1586,7 +1586,7 @@ let curve_parity ~starts_horizontally (peacc : path_element Alist.t) tuples (dtD
       | None      -> vE +@| dsF
       | Some(dtF) -> vE +@ (dtF, dsF)
     in
-    (vF, Alist.extend peacc (BezierTo(vD, vE, vF)))
+    (vF, Alist.extend peacc (CubicCurveTo(vD, vE, vF)))
   else
     let vD = curv +@| dtD in
     let vE = vD +@ dvE in
@@ -1595,7 +1595,7 @@ let curve_parity ~starts_horizontally (peacc : path_element Alist.t) tuples (dtD
       | None      -> vE +@- dsF
       | Some(dtF) -> vE +@ (dsF, dtF)
     in
-    (vF, Alist.extend peacc (BezierTo(vD, vE, vF)))
+    (vF, Alist.extend peacc (CubicCurveTo(vD, vE, vF)))
 
 
 let flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 =
@@ -1606,13 +1606,13 @@ let flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 =
   let abspt5 = abspt4 +@ pt5 in
   let abspt6 = abspt5 +@ pt6 in
   let curv = abspt6 in
-  (curv, [BezierTo(abspt1, abspt2, abspt3); BezierTo(abspt4, abspt5, abspt6)])
+  (curv, [CubicCurveTo(abspt1, abspt2, abspt3); CubicCurveTo(abspt4, abspt5, abspt6)])
 
 
 type path_reading_state_middle = {
   start : point;
-  elems : path_element Alist.t;
-  paths : path Alist.t;
+  elems : cubic_path_element Alist.t;
+  paths : cubic_path Alist.t;
 }
 
 type path_reading_state =
@@ -1644,7 +1644,7 @@ let chop_last_of_list xs =
   | last :: main_rev -> return (List.rev main_rev, last)
 
 
-let path_of_charstring (ops : charstring) : (path list) ok =
+let path_of_charstring (ops : charstring) : (cubic_path list) ok =
   let open ResultMonad in
   ops |> List.fold_left (fun prevres op ->
     prevres >>= fun (curv, state) ->
@@ -1676,7 +1676,7 @@ let path_of_charstring (ops : charstring) : (path list) ok =
         assert_middle state >>= fun middle ->
         let (curv, peacc) =
           cspts |> List.fold_left (fun (curv, peacc) dv ->
-            (curv +@ dv, Alist.extend peacc (LineTo(curv +@ dv)))
+            (curv +@ dv, Alist.extend peacc (CubicLineTo(curv +@ dv)))
           ) (curv, middle.elems)
         in
         return (curv, Middle{ middle with elems = peacc })
@@ -1698,7 +1698,7 @@ let path_of_charstring (ops : charstring) : (path list) ok =
             let vA = curv +@ dvA in
             let vB = vA +@ dvB in
             let vC = vB +@ dvC in
-            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
+            (vC, Alist.extend peacc (CubicCurveTo(vA, vB, vC)))
           ) (curv, middle.elems)
         in
         return (curv, Middle{ middle with elems = peacc })
@@ -1720,8 +1720,8 @@ let path_of_charstring (ops : charstring) : (path list) ok =
             let vA = curv +@| dyA in
             let vB = vA +@ dvB in
             let vC = vB +@| dyC in
-            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
-          ) (v3, Alist.extend middle.elems (BezierTo(v1, v2, v3)))
+            (vC, Alist.extend peacc (CubicCurveTo(vA, vB, vC)))
+          ) (v3, Alist.extend middle.elems (CubicCurveTo(v1, v2, v3)))
         in
         return (curv, Middle{ middle with elems = peacc })
 
@@ -1742,8 +1742,8 @@ let path_of_charstring (ops : charstring) : (path list) ok =
             let vA = curv +@- dxA in
             let vB = vA +@ dvB in
             let vC = vB +@- dxC in
-            (vC, Alist.extend peacc (BezierTo(vA, vB, vC)))
-          ) (v3, Alist.extend middle.elems (BezierTo(v1, v2, v3)))
+            (vC, Alist.extend peacc (CubicCurveTo(vA, vB, vC)))
+          ) (v3, Alist.extend middle.elems (CubicCurveTo(v1, v2, v3)))
         in
         return (curv, Middle{ middle with elems = peacc })
 
@@ -1795,7 +1795,7 @@ let path_of_charstring (ops : charstring) : (path list) ok =
             (xstart, absy5 + d6)
         in
         let curv = abspt6 in
-        let pes_flex = [BezierTo(abspt1, abspt2, abspt3); BezierTo(abspt4, abspt5, abspt6)] in
+        let pes_flex = [CubicCurveTo(abspt1, abspt2, abspt3); CubicCurveTo(abspt4, abspt5, abspt6)] in
         let peacc = Alist.append middle.elems pes_flex in
         return (curv, Middle{ middle with elems = peacc })
 

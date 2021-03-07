@@ -130,12 +130,12 @@ type bounding_box = {
 }
 [@@deriving show { with_path = false }]
 
-type path_element =
-  | LineTo   of point
-  | BezierTo of point * point * point
+type cubic_path_element =
+  | CubicLineTo  of point
+  | CubicCurveTo of point * point * point
 [@@deriving show { with_path = false }]
 
-type path = point * path_element list
+type cubic_path = point * cubic_path_element list
 [@@deriving show { with_path = false }]
 
 module Cmap = struct

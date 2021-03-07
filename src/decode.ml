@@ -1506,8 +1506,7 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
   aux cstate Alist.empty
 
 
-
-let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring_operation list) option) ok =
+let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
   let (gsubr_index, private_info, offset_CharString_INDEX) = charstring_info in
@@ -1645,7 +1644,7 @@ let chop_last_of_list xs =
   | last :: main_rev -> return (List.rev main_rev, last)
 
 
-let path_of_operations (ops : charstring_operation list) : (path list) ok =
+let path_of_charstring (ops : charstring) : (path list) ok =
   let open ResultMonad in
   ops |> List.fold_left (fun prevres op ->
     prevres >>= fun (curv, state) ->

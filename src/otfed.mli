@@ -259,6 +259,8 @@ module Decode : sig
     | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
   [@@deriving show { with_path = false }]
 
+  type charstring = charstring_operation list
+
   (** Handles intermediate representation of tables for decoding.
       Since the operations provided by this module
       use only sequential sources and
@@ -292,9 +294,9 @@ module Decode : sig
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
 
-  val charstring : cff_source -> Value.glyph_id -> ((int option * charstring_operation list) option) ok
+  val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
 
-  val path_of_operations : charstring_operation list -> (Value.path list) ok
+  val path_of_charstring : charstring -> (Value.path list) ok
 
   module ForTest : sig
     type 'a decoder

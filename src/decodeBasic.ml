@@ -201,3 +201,6 @@ type charstring_operation =
   | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (* [hflex1 (12 36)] *)
   | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (* [flex1 (12 37)] *)
 [@@deriving show { with_path = false }]
+
+type charstring = charstring_operation list
+[@@deriving show { with_path = false }]

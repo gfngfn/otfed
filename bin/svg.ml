@@ -11,7 +11,7 @@ let display_x_scheme _units_per_em x = x
 let display_y_scheme units_per_em y = units_per_em - y
 
 
-let path_string_of_contour units_per_em (qpath : V.quadratic_path) =
+let path_string_of_quadratic units_per_em (qpath : V.quadratic_path) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
   let circle ~color x y =
@@ -43,7 +43,7 @@ let path_string_of_contour units_per_em (qpath : V.quadratic_path) =
   (Printf.sprintf "<path d=\"%s Z\" fill=\"none\" stroke=\"red\" stroke-width=\"5\" />" (String.concat " " curves), String.concat "" circs)
 
 
-let make_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bounding_box) (units_per_em : int) =
+let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bounding_box) (units_per_em : int) =
   let open ResultMonad in
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
@@ -53,7 +53,7 @@ let make_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.boundin
   let xmax = bbox.V.x_max in
   let ymax = bbox.V.y_max in
 
-  let pcs = (qpaths |> List.map (path_string_of_contour units_per_em)) in
+  let pcs = (qpaths |> List.map (path_string_of_quadratic units_per_em)) in
   let paths = List.map (fun (x, _) -> x) pcs in
   let circs = List.map (fun (_, y) -> y) pcs in
   let ss =
@@ -87,8 +87,8 @@ let make_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.boundin
   return @@ String.concat "" ss
 
 
-let make (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
+let make_ttf (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
   let open ResultMonad in
   match descr with
-  | V.TtfSimpleGlyph(simple) -> make_simple simple bbox units_per_em
+  | V.TtfSimpleGlyph(simple) -> make_ttf_simple simple bbox units_per_em
   | V.TtfCompositeGlyph(_)   -> return ""

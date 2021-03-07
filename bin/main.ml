@@ -126,7 +126,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           let res =
             D.head common >>= fun head ->
             D.glyf ttf loc >>= fun (descr, bbox) ->
-            Svg.make descr ~bbox ~units_per_em:head.V.Head.units_per_em >>= fun data ->
+            Svg.make_ttf descr ~bbox ~units_per_em:head.V.Head.units_per_em >>= fun data ->
             Format.printf "  (%a, %a)\n"
               V.pp_ttf_glyph_description descr
               V.pp_bounding_box bbox;

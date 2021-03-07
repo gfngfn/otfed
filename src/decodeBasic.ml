@@ -3,6 +3,7 @@
     and is included by `Otfed.Decode`. *)
 
 open Basic
+open Value
 
 module Error = DecodeError
 
@@ -168,15 +169,6 @@ type private_info =
   | FontDicts     of fdarray * fdselect
 
 type charstring_info = subroutine_index * private_info * int
-
-type csx = int
-[@@deriving show { with_path = false }]
-
-type csy = int
-[@@deriving show { with_path = false }]
-
-type cspoint = csx * csy
-[@@deriving show { with_path = false }]
 
 type charstring_operation =
   | HStem     of int * int * cspoint list                                         (* hstem (1) *)

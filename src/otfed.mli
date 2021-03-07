@@ -50,6 +50,20 @@ module Value : sig
   }
   [@@deriving show { with_path = false }]
 
+  type csx = int
+
+  type csy = int
+
+  type cspoint = csx * csy
+
+  type path_element =
+    | LineTo   of cspoint
+    | BezierTo of cspoint * cspoint * cspoint
+  [@@deriving show { with_path = false }]
+
+  type path = cspoint * path_element list
+  [@@deriving show { with_path = false }]
+
   module Cmap : sig
     type t
 
@@ -199,34 +213,28 @@ module Decode : sig
   (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
   type stem_argument = string
 
-  type csx = int
-
-  type csy = int
-
-  type cspoint = csx * csy
-
   type charstring_operation =
-    | HStem     of int * int * cspoint list                                        (** [hstem (1)] *)
-    | VStem     of int * int * cspoint list                                        (** [vstem (3)] *)
-    | VMoveTo   of int                                                             (** [vmoveto (4)] *)
-    | RLineTo   of cspoint list                                                    (** [rlineto (5)] *)
-    | HLineTo   of int list                                                        (** [hlineto (6)] *)
-    | VLineTo   of int list                                                        (** [vlineto (7)] *)
-    | RRCurveTo of (cspoint * cspoint * cspoint) list                              (** [rrcurveto (8)] *)
-    | HStemHM   of int * int * cspoint list                                        (** [hstemhm (18)] *)
-    | HintMask  of stem_argument                                                   (** [hintmask (19)] *)
-    | CntrMask  of stem_argument                                                   (** [cntrmask (20)] *)
-    | RMoveTo   of cspoint                                                         (** [rmoveto (21)] *)
-    | HMoveTo   of int                                                             (** [hmoveto (22)] *)
-    | VStemHM   of int * int * cspoint list                                        (** [vstemhm (23)] *)
-    | VVCurveTo of csx option * (csy * cspoint * csy) list                         (** [vvcurveto (26)] *)
-    | HHCurveTo of csy option * (csx * cspoint * csx) list                         (** [hhcurveto (27)] *)
-    | VHCurveTo of (int * cspoint * int) list * int option                         (** [vhcurveto (30)] *)
-    | HVCurveTo of (int * cspoint * int) list * int option                         (** [hvcurveto (31)] *)
-    | Flex      of cspoint * cspoint * cspoint * cspoint * cspoint * cspoint * int (** [flex (12 35)] *)
-    | HFlex     of int * cspoint * int * int * int * int                           (** [hflex (12 34)] *)
-    | HFlex1    of cspoint * cspoint * int * int * cspoint * int                   (** [hflex1 (12 36)] *)
-    | Flex1     of cspoint * cspoint * cspoint * cspoint * cspoint * int           (** [flex1 (12 37)] *)
+    | HStem     of int * int * Value.cspoint list                                                                      (** [hstem (1)] *)
+    | VStem     of int * int * Value.cspoint list                                                                      (** [vstem (3)] *)
+    | VMoveTo   of int                                                                                                 (** [vmoveto (4)] *)
+    | RLineTo   of Value.cspoint list                                                                                  (** [rlineto (5)] *)
+    | HLineTo   of int list                                                                                            (** [hlineto (6)] *)
+    | VLineTo   of int list                                                                                            (** [vlineto (7)] *)
+    | RRCurveTo of (Value.cspoint * Value.cspoint * Value.cspoint) list                                                (** [rrcurveto (8)] *)
+    | HStemHM   of int * int * Value.cspoint list                                                                      (** [hstemhm (18)] *)
+    | HintMask  of stem_argument                                                                                       (** [hintmask (19)] *)
+    | CntrMask  of stem_argument                                                                                       (** [cntrmask (20)] *)
+    | RMoveTo   of Value.cspoint                                                                                       (** [rmoveto (21)] *)
+    | HMoveTo   of int                                                                                                 (** [hmoveto (22)] *)
+    | VStemHM   of int * int * Value.cspoint list                                                                      (** [vstemhm (23)] *)
+    | VVCurveTo of Value.csx option * (Value.csy * Value.cspoint * Value.csy) list                                     (** [vvcurveto (26)] *)
+    | HHCurveTo of Value.csy option * (Value.csx * Value.cspoint * Value.csx) list                                     (** [hhcurveto (27)] *)
+    | VHCurveTo of (int * Value.cspoint * int) list * int option                                                       (** [vhcurveto (30)] *)
+    | HVCurveTo of (int * Value.cspoint * int) list * int option                                                       (** [hvcurveto (31)] *)
+    | Flex      of Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * int (** [flex (12 35)] *)
+    | HFlex     of int * Value.cspoint * int * int * int * int                                                         (** [hflex (12 34)] *)
+    | HFlex1    of Value.cspoint * Value.cspoint * int * int * Value.cspoint * int                                     (** [hflex1 (12 36)] *)
+    | Flex1     of Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * int                 (** [flex1 (12 37)] *)
   [@@deriving show { with_path = false }]
 
   (** Handles intermediate representation of tables for decoding.
@@ -263,6 +271,8 @@ module Decode : sig
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
 
   val charstring : cff_source -> Value.glyph_id -> ((int option * charstring_operation list) option) ok
+
+  val path_of_operations : charstring_operation list -> (Value.path list) ok
 
   module ForTest : sig
     type 'a decoder

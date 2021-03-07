@@ -121,6 +121,23 @@ type bounding_box = {
 }
 [@@deriving show { with_path = false }]
 
+type csx = int
+[@@deriving show { with_path = false }]
+
+type csy = int
+[@@deriving show { with_path = false }]
+
+type cspoint = csx * csy
+[@@deriving show { with_path = false }]
+
+type path_element =
+  | LineTo   of cspoint
+  | BezierTo of cspoint * cspoint * cspoint
+[@@deriving show { with_path = false }]
+
+type path = cspoint * path_element list
+[@@deriving show { with_path = false }]
+
 module Cmap = struct
   type t
 

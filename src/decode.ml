@@ -1541,11 +1541,6 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring_o
       | WidthDecided(wopt) -> return @@ Some((wopt, Alist.to_list acc))
 
 
-type path_element =
-  | LineTo   of cspoint
-  | BezierTo of cspoint * cspoint * cspoint
-
-
 let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)
 
 let ( +@- ) (x, y) dx = (x + dx, y)
@@ -1613,9 +1608,6 @@ let flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 =
   let abspt6 = abspt5 +@ pt6 in
   let curv = abspt6 in
   (curv, [BezierTo(abspt1, abspt2, abspt3); BezierTo(abspt4, abspt5, abspt6)])
-
-
-type path = cspoint * path_element list
 
 
 type path_reading_state_middle = {

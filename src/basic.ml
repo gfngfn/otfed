@@ -1,10 +1,39 @@
 
 type 'a set = 'a list
 
+module ImmutStack : sig
+  type 'a t
+  val empty : 'a t
+  val is_empty : 'a t -> bool
+  val size : 'a t -> int
+  val push : 'a -> 'a t -> 'a t
+  val pop : 'a t -> ('a t * 'a) option
+  val pop_all : 'a t -> 'a list
+end = struct
+  type 'a t = 'a list
+
+  let empty = []
+
+  let is_empty = function
+    | []     -> true
+    | _ :: _ -> false
+
+  let size = List.length
+
+  let push x stack = x :: stack
+
+  let pop = function
+    | []      -> None
+    | x :: xs -> Some((xs, x))
+
+  let pop_all stack = stack
+end
+
 module Alist : sig
   type 'a t
   val empty : 'a t
   val extend : 'a t -> 'a -> 'a t
+  val append : 'a t -> 'a list -> 'a t
   val to_list : 'a t -> 'a list
   val is_empty : 'a t -> bool
   val chop_last : 'a t -> ('a t * 'a) option
@@ -14,6 +43,8 @@ end = struct
   let empty = []
 
   let extend acc x = x :: acc
+
+  let append acc xs = List.rev_append xs acc
 
   let to_list = List.rev
 
@@ -108,3 +139,5 @@ let ( -% ) = WideInt.sub
 let ( !% ) = WideInt.of_int
 
 let ( !%% ) = WideInt.of_int64
+
+let is_in_range ~lower:a ~upper:b x = (a <= x && x <= b)

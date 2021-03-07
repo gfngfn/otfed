@@ -135,6 +135,21 @@ let d_int16 : int decoder =
   return (if n > 0x7FFF then n - 0x10000 else n)
 
 
+let d_uint24 : int decoder =
+  let open ResultMonad in
+  fun state ->
+    if miss state 3 then
+      err Error.UnexpectedEnd
+    else
+      let s = state.source.data in
+      let pos = state.position in
+      let by0 = raw_byte s pos in
+      let by1 = raw_byte s (pos + 1) in
+      let by2 = raw_byte s (pos + 2) in
+      let n = (Char.code by0 lsl 16) lor (Char.code by1 lsl 8) lor Char.code by2 in
+      return (advance state 3, n)
+
+
 let d_uint32 : wint decoder =
   let open ResultMonad in
   fun state ->

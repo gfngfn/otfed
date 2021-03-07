@@ -11,6 +11,7 @@ type config = {
   hhea : bool;
   maxp : bool;
   glyf : (V.glyph_id * string) Alist.t;
+  cff  : (V.glyph_id * string) Alist.t;
 }
 
 type error =
@@ -125,13 +126,45 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           let res =
             D.head common >>= fun head ->
             D.glyf ttf loc >>= fun (descr, bbox) ->
-            let data = Svg.make descr ~bbox ~units_per_em:head.V.Head.units_per_em in
+            Svg.make_ttf descr ~bbox ~units_per_em:head.V.Head.units_per_em >>= fun data ->
             Format.printf "  (%a, %a)\n"
               V.pp_ttf_glyph_description descr
               V.pp_bounding_box bbox;
             return data
           in
           res |> inj >>= fun data ->
+          write_glyph_svg path ~data
+
+
+let pp_sep ppf () =
+  Format.fprintf ppf ",@ "
+
+
+let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
+  let open ResultMonad in
+  Printf.printf "CFF (glyph ID: %d):\n" gid;
+  match specific with
+  | D.Ttf(_) ->
+      Printf.printf "  not a CFF\n";
+      return ()
+
+  | D.Cff(cff) ->
+      D.head common |> inj >>= fun head ->
+      D.charstring cff gid |> inj >>= function
+      | None ->
+          Printf.printf "  not defined\n";
+          return ()
+
+      | Some((wopt, charstring)) ->
+          begin
+            match wopt with
+            | None    -> Printf.printf "  width: not defined\n";
+            | Some(w) -> Printf.printf "  width: %d\n" w;
+          end;
+          Format.printf "%a\n" D.pp_charstring charstring;
+          D.path_of_charstring charstring |> inj >>= fun paths ->
+          Format.printf "%a\n" (Format.pp_print_list ~pp_sep V.pp_cubic_path) paths;
+          let data = Svg.make_cff ~units_per_em:head.V.Head.units_per_em paths in
           write_glyph_svg path ~data
 
 
@@ -152,6 +185,11 @@ let parse_args () =
           let path = Sys.argv.(i + 2) in
           aux n { acc with glyf = Alist.extend acc.glyf (gid, path) } (i + 3)
 
+      | "cff" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          let path = Sys.argv.(i + 2) in
+          aux n { acc with cff = Alist.extend acc.cff (gid, path) } (i + 3)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -165,6 +203,7 @@ let parse_args () =
         hhea = false;
         maxp = false;
         glyf = Alist.empty;
+        cff  = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -206,6 +245,9 @@ let _ =
         end >>= fun () ->
         config.glyf |> Alist.to_list |> mapM (fun (gid, path) ->
           print_glyf source gid path
+        ) >>= fun _ ->
+        config.cff |> Alist.to_list |> mapM (fun (gid, path) ->
+          print_cff source gid path
         ) >>= fun _ ->
         return ()
 

@@ -14,6 +14,36 @@ See also:
 Some unit tests use data extracted from [IPAex明朝](https://moji.or.jp/ipafont/) (IPAex Mincho, `ipaexm.ttf`). See the license [here]((https://moji.or.jp/ipafont/license/)).
 
 
+## Usage of an example CLI `otfedcli`
+
+```console
+$ dune exec otfedcli <path/to/font-file> <commands>
+
+<commands> ::= [<command>]*
+
+<command> ::=
+  | cmap
+  | head
+  | hhea
+  | maxp
+  | glyf <glyph-id> <output-svg-path>
+  | cff <glyph-id> <output-svg-path>
+```
+
+### Example usage
+
+```console
+#Prints all of the Unicode-aware cmap subtables in IPAex Mincho
+$ dune exec otfedcli input/ipaexm.ttf cmap
+
+#Outputs a glyph of ID 1000 in IPAex Mincho as an SVG file
+$ dune exec otfedcli input/ipaexm.ttf glyf 1000 output/ipaexm1000.svg
+
+#Outputs a glyph of ID 50 in Computer Modern Typewriter Italic as an SVG file
+$ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
+```
+
+
 ## Status
 
 <table>
@@ -40,7 +70,7 @@ Some unit tests use data extracted from [IPAex明朝](https://moji.or.jp/ipafont
   <tr><td>glyf</td><td>-</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
 
   <tr><td rowspan="3">CFF</td>
-      <td>CFF␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+      <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>CFF2</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>VORG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 

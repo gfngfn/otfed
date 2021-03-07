@@ -42,11 +42,48 @@ module Value : sig
     | TtfCompositeGlyph of ttf_composite_glyph_description
   [@@deriving show { with_path = false }]
 
+  (** Represents an absolute X-coordinate.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type x_coordinate = int
+
+  (** Represents an absolute Y-coordinate.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type y_coordinate = int
+
+  (** Represents an absolute coordinate on the XY-plane.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type point = x_coordinate * y_coordinate
+
+  type cubic_path_element =
+    | CubicLineTo  of point
+    | CubicCurveTo of point * point * point
+  [@@deriving show { with_path = false }]
+
+  (** Represents a (directed) cubic Bézier curve with absolute coordinates on the XY-plane.
+      A value [(pt, elems)] of this type stands for the path
+      starting at [pt] and subsequent moves of which can be described by [elems]. *)
+  type cubic_path = point * cubic_path_element list
+  [@@deriving show { with_path = false }]
+
+  type quadratic_path_element =
+    | QuadraticLineTo  of point
+    | QuadraticCurveTo of point * point
+  [@@deriving show { with_path = false }]
+
+  (** Represents a (directed) quadratic Bézier curve with absolute coordinates on the XY-plane.
+      A value [(pt, elems)] of this type stands for the path
+      starting at [pt] and subsequent moves of which can be described by [elems]. *)
+  type quadratic_path = point * quadratic_path_element list
+  [@@deriving show { with_path = false }]
+
   type bounding_box = {
-    x_min : int;
-    y_min : int;
-    x_max : int;
-    y_max : int;
+    x_min : x_coordinate;
+    y_min : y_coordinate;
+    x_max : x_coordinate;
+    y_max : y_coordinate;
   }
   [@@deriving show { with_path = false }]
 
@@ -162,8 +199,7 @@ end
 
 module Decode : sig
   module Error : sig
-    type t
-    [@@deriving show { with_path = false }]
+    include module type of DecodeError
   end
 
   type 'a ok = ('a, Error.t) result
@@ -197,6 +233,46 @@ module Decode : sig
     | Incremental of Uchar.t * Uchar.t * Value.glyph_id
     | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
+  (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
+  type stem_argument = string
+
+  (** Represents a relative advancement in the direction of the X-axis. *)
+  type cs_x = int
+
+  (** Represents a relative advancement in the direction of the Y-axis. *)
+  type cs_y = int
+
+  (** Represents a relative vector. *)
+  type cs_point = cs_x * cs_y
+
+  (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
+  type charstring_operation =
+    | HStem     of int * int * cs_point list                                             (** [hstem (1)] *)
+    | VStem     of int * int * cs_point list                                             (** [vstem (3)] *)
+    | VMoveTo   of int                                                                   (** [vmoveto (4)] *)
+    | RLineTo   of cs_point list                                                         (** [rlineto (5)] *)
+    | HLineTo   of int list                                                              (** [hlineto (6)] *)
+    | VLineTo   of int list                                                              (** [vlineto (7)] *)
+    | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (** [rrcurveto (8)] *)
+    | HStemHM   of int * int * cs_point list                                             (** [hstemhm (18)] *)
+    | HintMask  of stem_argument                                                         (** [hintmask (19)] *)
+    | CntrMask  of stem_argument                                                         (** [cntrmask (20)] *)
+    | RMoveTo   of cs_point                                                              (** [rmoveto (21)] *)
+    | HMoveTo   of int                                                                   (** [hmoveto (22)] *)
+    | VStemHM   of int * int * cs_point list                                             (** [vstemhm (23)] *)
+    | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (** [vvcurveto (26)] *)
+    | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (** [hhcurveto (27)] *)
+    | VHCurveTo of (int * cs_point * int) list * int option                              (** [vhcurveto (30)] *)
+    | HVCurveTo of (int * cs_point * int) list * int option                              (** [hvcurveto (31)] *)
+    | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (** [flex (12 35)] *)
+    | HFlex     of int * cs_point * int * int * int * int                                (** [hflex (12 34)] *)
+    | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (** [hflex1 (12 36)] *)
+    | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
+  [@@deriving show { with_path = false }]
+
+  type charstring = charstring_operation list
+  [@@deriving show { with_path = false }]
+
   (** Handles intermediate representation of tables for decoding.
       Since the operations provided by this module
       use only sequential sources and
@@ -229,6 +305,12 @@ module Decode : sig
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
+
+  val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
+
+  val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
+
+  val path_of_charstring : charstring -> (Value.cubic_path list) ok
 
   module ForTest : sig
     type 'a decoder

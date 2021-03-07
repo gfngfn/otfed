@@ -86,7 +86,16 @@ type glyph_id = int
 type timestamp = wint
 [@@deriving show {with_path = false}]
 
-type ttf_contour = (bool * int * int) list
+type x_coordinate = int
+[@@deriving show { with_path = false }]
+
+type y_coordinate = int
+[@@deriving show { with_path = false }]
+
+type point = x_coordinate * y_coordinate
+[@@deriving show { with_path = false }]
+
+type ttf_contour = (bool * x_coordinate * y_coordinate) list
 [@@deriving show { with_path = false }]
 
 type linear_transform = {
@@ -98,7 +107,7 @@ type linear_transform = {
 [@@deriving show { with_path = false }]
 
 type composition =
-  | Vector   of int * int
+  | Vector   of x_coordinate * y_coordinate
   | Matching of int * int
 [@@deriving show { with_path = false }]
 
@@ -114,11 +123,27 @@ type ttf_glyph_description =
 [@@deriving show { with_path = false }]
 
 type bounding_box = {
-  x_min : int;
-  y_min : int;
-  x_max : int;
-  y_max : int;
+  x_min : x_coordinate;
+  y_min : y_coordinate;
+  x_max : x_coordinate;
+  y_max : y_coordinate;
 }
+[@@deriving show { with_path = false }]
+
+type cubic_path_element =
+  | CubicLineTo  of point
+  | CubicCurveTo of point * point * point
+[@@deriving show { with_path = false }]
+
+type cubic_path = point * cubic_path_element list
+[@@deriving show { with_path = false }]
+
+type quadratic_path_element =
+  | QuadraticLineTo  of point
+  | QuadraticCurveTo of point * point
+[@@deriving show { with_path = false }]
+
+type quadratic_path = point * quadratic_path_element list
 [@@deriving show { with_path = false }]
 
 module Cmap = struct

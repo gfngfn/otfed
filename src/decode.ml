@@ -1164,7 +1164,28 @@ let make_bezier (dxa, dya, dxb, dyb, dxc, dyc) =
   ((dxa, dya), (dxb, dyb), (dxc, dyc))
 
 
-let parse_progress (_cconst : charstring_constant) (cstate : charstring_state) =
+let convert_subroutine_number (subr_index : subroutine_index) (i : int) =
+  let arrlen = Array.length subr_index in
+  let bias =
+    if arrlen < 1240 then 107 else
+      if arrlen < 33900 then 1131 else
+        32768
+  in
+  bias + i
+
+
+let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int * int) ok =
+  let open ResultMonad in
+  try
+    let biased_number = convert_subroutine_number subr_index i in
+    let CharStringData(offset, length) = subr_index.(biased_number) in
+    return (offset, length, biased_number)
+  with
+  | Invalid_argument(_) ->
+      err Error.InvalidCharstring
+
+
+let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
   match cselem with
@@ -1243,17 +1264,21 @@ let parse_progress (_cconst : charstring_constant) (cstate : charstring_state) =
 
   | Operator(ShortKey(10)) ->
     (* `callsubr (10)` *)
-      failwith "TODO: callsubr"
+      pop_mandatory stack >>= fun (stack, i) ->
+      transform_result @@ access_subroutine cconst.lsubr_index i >>= fun (offset, length, biased_number) ->
+      pick offset (d_charstring cconst { cstate with remaining = length }) >>= fun (cstate, acc) ->
+      let cstate = { cstate with stack; used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number } in
+      return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
-      (* `return (11)` *)
+    (* `return (11)` *)
       return (cstate, [])
 
   | _ ->
       failwith "TODO: parse_progress"
 
 
-let d_charstring (cconst : charstring_constant) (cstate : charstring_state) =
+and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * parsed_charstring Alist.t) decoder =
   let open DecodeOperation in
   let rec aux (cstate : charstring_state) acc =
     parse_progress cconst cstate >>= fun (cstate, parsed) ->

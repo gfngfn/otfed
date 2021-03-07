@@ -196,6 +196,38 @@ module Decode : sig
     | Incremental of Uchar.t * Uchar.t * Value.glyph_id
     | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
+  (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
+  type stem_argument = string
+
+  type csx = int
+
+  type csy = int
+
+  type cspoint = csx * csy
+
+  type parsed_charstring =
+    | HStem     of int * int * cspoint list                                        (** [hstem (1)] *)
+    | VStem     of int * int * cspoint list                                        (** [vstem (3)] *)
+    | VMoveTo   of int                                                             (** [vmoveto (4)] *)
+    | RLineTo   of cspoint list                                                    (** [rlineto (5)] *)
+    | HLineTo   of int list                                                        (** [hlineto (6)] *)
+    | VLineTo   of int list                                                        (** [vlineto (7)] *)
+    | RRCurveTo of (cspoint * cspoint * cspoint) list                              (** [rrcurveto (8)] *)
+    | HStemHM   of int * int * cspoint list                                        (** [hstemhm (18)] *)
+    | HintMask  of stem_argument                                                   (** [hintmask (19)] *)
+    | CntrMask  of stem_argument                                                   (** [cntrmask (20)] *)
+    | RMoveTo   of cspoint                                                         (** [rmoveto (21)] *)
+    | HMoveTo   of int                                                             (** [hmoveto (22)] *)
+    | VStemHM   of int * int * cspoint list                                        (** [vstemhm (23)] *)
+    | VVCurveTo of csx option * (csy * cspoint * csy) list                         (** [vvcurveto (26)] *)
+    | HHCurveTo of csy option * (csx * cspoint * csx) list                         (** [hhcurveto (27)] *)
+    | VHCurveTo of (int * cspoint * int) list * int option                         (** [vhcurveto (30)] *)
+    | HVCurveTo of (int * cspoint * int) list * int option                         (** [hvcurveto (31)] *)
+    | Flex      of cspoint * cspoint * cspoint * cspoint * cspoint * cspoint * int (** [flex (12 35)] *)
+    | HFlex     of int * cspoint * int * int * int * int                           (** [hflex (12 34)] *)
+    | HFlex1    of cspoint * cspoint * int * int * cspoint * int                   (** [hflex1 (12 36)] *)
+    | Flex1     of cspoint * cspoint * cspoint * cspoint * cspoint * int           (** [flex1 (12 37)] *)
+
   (** Handles intermediate representation of tables for decoding.
       Since the operations provided by this module
       use only sequential sources and
@@ -228,6 +260,8 @@ module Decode : sig
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
   val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
+
+  val charstring : cff_source -> Value.glyph_id -> ((int option * parsed_charstring list) option) ok
 
   module ForTest : sig
     type 'a decoder

@@ -3,7 +3,6 @@
     and is included by `Otfed.Decode`. *)
 
 open Basic
-open Value
 
 module Error = DecodeError
 
@@ -170,26 +169,35 @@ type private_info =
 
 type charstring_info = subroutine_index * private_info * int
 
+type cs_x = int
+[@@deriving show { with_path = false }]
+
+type cs_y = int
+[@@deriving show { with_path = false }]
+
+type cs_point = cs_x * cs_y
+[@@deriving show { with_path = false }]
+
 type charstring_operation =
-  | HStem     of int * int * cspoint list                                         (* hstem (1) *)
-  | VStem     of int * int * cspoint list                                         (* vstem (3) *)
-  | VMoveTo   of int                                                              (* vmoveto (4) *)
-  | RLineTo   of cspoint list                                                     (* rlineto (5) *)
-  | HLineTo   of int list                                                         (* hlineto (6) *)
-  | VLineTo   of int list                                                         (* vlineto (7) *)
-  | RRCurveTo of (cspoint * cspoint * cspoint) list                               (* rrcurveto (8) *)
-  | HStemHM   of int * int * cspoint list                                         (* hstemhm (18) *)
-  | HintMask  of stem_argument                                                    (* hintmask (19) *)
-  | CntrMask  of stem_argument                                                    (* cntrmask (20) *)
-  | RMoveTo   of cspoint                                                          (* rmoveto (21) *)
-  | HMoveTo   of int                                                              (* hmoveto (22) *)
-  | VStemHM   of int * int * cspoint list                                         (* vstemhm (23) *)
-  | VVCurveTo of csx option * (csy * cspoint * csy) list                          (* vvcurveto (26) *)
-  | HHCurveTo of csy option * (csx * cspoint * csx) list                          (* hhcurveto (27) *)
-  | VHCurveTo of (int * cspoint * int) list * int option                          (* vhcurveto (30) *)
-  | HVCurveTo of (int * cspoint * int) list * int option                          (* hvcurveto (31) *)
-  | Flex      of cspoint * cspoint * cspoint * cspoint * cspoint * cspoint * int  (* flex (12 35) *)
-  | HFlex     of int * cspoint * int * int * int * int                            (* hflex (12 34) *)
-  | HFlex1    of cspoint * cspoint * int * int * cspoint * int                    (* hflex1 (12 36) *)
-  | Flex1     of cspoint * cspoint * cspoint * cspoint * cspoint * int            (* flex1 (12 37) *)
+  | HStem     of int * int * cs_point list                                             (* [hstem (1)] *)
+  | VStem     of int * int * cs_point list                                             (* [vstem (3)] *)
+  | VMoveTo   of int                                                                   (* [vmoveto (4)] *)
+  | RLineTo   of cs_point list                                                         (* [rlineto (5)] *)
+  | HLineTo   of int list                                                              (* [hlineto (6)] *)
+  | VLineTo   of int list                                                              (* [vlineto (7)] *)
+  | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (* [rrcurveto (8)] *)
+  | HStemHM   of int * int * cs_point list                                             (* [hstemhm (18)] *)
+  | HintMask  of stem_argument                                                         (* [hintmask (19)] *)
+  | CntrMask  of stem_argument                                                         (* [cntrmask (20)] *)
+  | RMoveTo   of cs_point                                                              (* [rmoveto (21)] *)
+  | HMoveTo   of int                                                                   (* [hmoveto (22)] *)
+  | VStemHM   of int * int * cs_point list                                             (* [vstemhm (23)] *)
+  | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (* [vvcurveto (26)] *)
+  | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (* [hhcurveto (27)] *)
+  | VHCurveTo of (int * cs_point * int) list * int option                              (* [vhcurveto (30)] *)
+  | HVCurveTo of (int * cs_point * int) list * int option                              (* [hvcurveto (31)] *)
+  | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (* [flex (12 35)] *)
+  | HFlex     of int * cs_point * int * int * int * int                                (* [hflex (12 34)] *)
+  | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (* [hflex1 (12 36)] *)
+  | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (* [flex1 (12 37)] *)
 [@@deriving show { with_path = false }]

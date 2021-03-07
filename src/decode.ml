@@ -1611,7 +1611,7 @@ let flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 =
 
 
 type path_reading_state_middle = {
-  start : cspoint;
+  start : point;
   elems : path_element Alist.t;
   paths : path Alist.t;
 }
@@ -1621,7 +1621,7 @@ type path_reading_state =
   | Middle of path_reading_state_middle
 
 
-let start_new_path (state : path_reading_state) (curv : cspoint) : path_reading_state_middle =
+let start_new_path (state : path_reading_state) (curv : point) : path_reading_state_middle =
   match state with
   | Initial ->
       { start = curv; elems = Alist.empty; paths = Alist.empty }

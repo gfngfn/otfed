@@ -50,18 +50,30 @@ module Value : sig
   }
   [@@deriving show { with_path = false }]
 
-  type csx = int
+  (** Represents an absolute X-coordinate.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type x_coordinate = int
 
-  type csy = int
+  (** Represents an absolute Y-coordinate.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type y_coordinate = int
 
-  type cspoint = csx * csy
+  (** Represents an absolute coordinate on the XY-plane.
+      The unit of measurement is [units_per_em],
+      and thus differs for each font in general. *)
+  type point = x_coordinate * y_coordinate
 
   type path_element =
-    | LineTo   of cspoint
-    | BezierTo of cspoint * cspoint * cspoint
+    | LineTo   of point
+    | BezierTo of point * point * point
   [@@deriving show { with_path = false }]
 
-  type path = cspoint * path_element list
+  (** Represents a (directed) graphical path described by absolute coordinates on the XY-plane.
+      A value [(pt, elems)] of this type stands for the path
+      starting at [pt] and subsequent moves of which can be described by [elems]. *)
+  type path = point * path_element list
   [@@deriving show { with_path = false }]
 
   module Cmap : sig
@@ -213,28 +225,38 @@ module Decode : sig
   (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
   type stem_argument = string
 
+  (** Represents a relative advancement in the direction of the X-axis. *)
+  type cs_x = int
+
+  (** Represents a relative advancement in the direction of the Y-axis. *)
+  type cs_y = int
+
+  (** Represents a relative vector. *)
+  type cs_point = cs_x * cs_y
+
+  (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
   type charstring_operation =
-    | HStem     of int * int * Value.cspoint list                                                                      (** [hstem (1)] *)
-    | VStem     of int * int * Value.cspoint list                                                                      (** [vstem (3)] *)
-    | VMoveTo   of int                                                                                                 (** [vmoveto (4)] *)
-    | RLineTo   of Value.cspoint list                                                                                  (** [rlineto (5)] *)
-    | HLineTo   of int list                                                                                            (** [hlineto (6)] *)
-    | VLineTo   of int list                                                                                            (** [vlineto (7)] *)
-    | RRCurveTo of (Value.cspoint * Value.cspoint * Value.cspoint) list                                                (** [rrcurveto (8)] *)
-    | HStemHM   of int * int * Value.cspoint list                                                                      (** [hstemhm (18)] *)
-    | HintMask  of stem_argument                                                                                       (** [hintmask (19)] *)
-    | CntrMask  of stem_argument                                                                                       (** [cntrmask (20)] *)
-    | RMoveTo   of Value.cspoint                                                                                       (** [rmoveto (21)] *)
-    | HMoveTo   of int                                                                                                 (** [hmoveto (22)] *)
-    | VStemHM   of int * int * Value.cspoint list                                                                      (** [vstemhm (23)] *)
-    | VVCurveTo of Value.csx option * (Value.csy * Value.cspoint * Value.csy) list                                     (** [vvcurveto (26)] *)
-    | HHCurveTo of Value.csy option * (Value.csx * Value.cspoint * Value.csx) list                                     (** [hhcurveto (27)] *)
-    | VHCurveTo of (int * Value.cspoint * int) list * int option                                                       (** [vhcurveto (30)] *)
-    | HVCurveTo of (int * Value.cspoint * int) list * int option                                                       (** [hvcurveto (31)] *)
-    | Flex      of Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * int (** [flex (12 35)] *)
-    | HFlex     of int * Value.cspoint * int * int * int * int                                                         (** [hflex (12 34)] *)
-    | HFlex1    of Value.cspoint * Value.cspoint * int * int * Value.cspoint * int                                     (** [hflex1 (12 36)] *)
-    | Flex1     of Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * Value.cspoint * int                 (** [flex1 (12 37)] *)
+    | HStem     of int * int * cs_point list                                             (** [hstem (1)] *)
+    | VStem     of int * int * cs_point list                                             (** [vstem (3)] *)
+    | VMoveTo   of int                                                                   (** [vmoveto (4)] *)
+    | RLineTo   of cs_point list                                                         (** [rlineto (5)] *)
+    | HLineTo   of int list                                                              (** [hlineto (6)] *)
+    | VLineTo   of int list                                                              (** [vlineto (7)] *)
+    | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (** [rrcurveto (8)] *)
+    | HStemHM   of int * int * cs_point list                                             (** [hstemhm (18)] *)
+    | HintMask  of stem_argument                                                         (** [hintmask (19)] *)
+    | CntrMask  of stem_argument                                                         (** [cntrmask (20)] *)
+    | RMoveTo   of cs_point                                                              (** [rmoveto (21)] *)
+    | HMoveTo   of int                                                                   (** [hmoveto (22)] *)
+    | VStemHM   of int * int * cs_point list                                             (** [vstemhm (23)] *)
+    | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (** [vvcurveto (26)] *)
+    | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (** [hhcurveto (27)] *)
+    | VHCurveTo of (int * cs_point * int) list * int option                              (** [vhcurveto (30)] *)
+    | HVCurveTo of (int * cs_point * int) list * int option                              (** [hvcurveto (31)] *)
+    | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (** [flex (12 35)] *)
+    | HFlex     of int * cs_point * int * int * int * int                                (** [hflex (12 34)] *)
+    | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (** [hflex1 (12 36)] *)
+    | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
   [@@deriving show { with_path = false }]
 
   (** Handles intermediate representation of tables for decoding.

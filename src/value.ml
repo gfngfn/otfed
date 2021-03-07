@@ -86,7 +86,16 @@ type glyph_id = int
 type timestamp = wint
 [@@deriving show {with_path = false}]
 
-type ttf_contour = (bool * int * int) list
+type x_coordinate = int
+[@@deriving show { with_path = false }]
+
+type y_coordinate = int
+[@@deriving show { with_path = false }]
+
+type point = x_coordinate * y_coordinate
+[@@deriving show { with_path = false }]
+
+type ttf_contour = (bool * x_coordinate * y_coordinate) list
 [@@deriving show { with_path = false }]
 
 type linear_transform = {
@@ -98,7 +107,7 @@ type linear_transform = {
 [@@deriving show { with_path = false }]
 
 type composition =
-  | Vector   of int * int
+  | Vector   of x_coordinate * y_coordinate
   | Matching of int * int
 [@@deriving show { with_path = false }]
 
@@ -121,21 +130,12 @@ type bounding_box = {
 }
 [@@deriving show { with_path = false }]
 
-type csx = int
-[@@deriving show { with_path = false }]
-
-type csy = int
-[@@deriving show { with_path = false }]
-
-type cspoint = csx * csy
-[@@deriving show { with_path = false }]
-
 type path_element =
-  | LineTo   of cspoint
-  | BezierTo of cspoint * cspoint * cspoint
+  | LineTo   of point
+  | BezierTo of point * point * point
 [@@deriving show { with_path = false }]
 
-type path = cspoint * path_element list
+type path = point * path_element list
 [@@deriving show { with_path = false }]
 
 module Cmap = struct

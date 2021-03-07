@@ -154,13 +154,15 @@ let print_cff (_common, specific) (gid : V.glyph_id) =
           Printf.printf "  not defined\n";
           return ()
 
-      | Some((wopt, parsed)) ->
+      | Some((wopt, charstring)) ->
           begin
             match wopt with
             | None    -> Printf.printf "  width: not defined\n";
             | Some(w) -> Printf.printf "  width: %d\n" w;
           end;
-          Format.printf "%a\n" (Format.pp_print_list ~pp_sep D.pp_charstring_operation) parsed;
+          Format.printf "%a\n" D.pp_charstring charstring;
+          D.path_of_charstring charstring |> inj >>= fun paths ->
+          Format.printf "%a\n" (Format.pp_print_list ~pp_sep V.pp_path) paths;
           return ()
 
 

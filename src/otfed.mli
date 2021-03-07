@@ -260,6 +260,7 @@ module Decode : sig
   [@@deriving show { with_path = false }]
 
   type charstring = charstring_operation list
+  [@@deriving show { with_path = false }]
 
   (** Handles intermediate representation of tables for decoding.
       Since the operations provided by this module

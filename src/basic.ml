@@ -26,7 +26,7 @@ end = struct
     | []      -> None
     | x :: xs -> Some((xs, x))
 
-  let pop_all = List.rev
+  let pop_all stack = stack
 end
 
 module Alist : sig

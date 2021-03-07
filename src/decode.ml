@@ -1382,6 +1382,49 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, dy1opt) = pop_opt stack in
       return ({ cstate with stack}, [HHCurveTo(dy1opt, rets)])
 
+  | Operator(ShortKey(29)) ->
+    (* `callgsubr (29)` *)
+      pop_mandatory stack >>= fun (stack, i) ->
+      transform_result @@ access_subroutine cconst.gsubr_index i >>= fun (offset, length, biased_number) ->
+      pick offset (d_charstring cconst { cstate with remaining = length }) >>= fun (cstate, acc) ->
+      let cstate = { cstate with stack; used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number } in
+      return (cstate, Alist.to_list acc)
+
+  | Operator(ShortKey(30)) ->
+    (* `vhcurveto (30)` *)
+      begin
+        if ImmutStack.size stack mod 4 = 1 then
+          pop_mandatory stack >>= fun (stack, dyf) ->
+          return (stack, Some(dyf))
+        else
+          return (stack, None)
+      end >>= fun (stack, dyfopt) ->
+      let (stack, tuples) = pop_iter pop4_opt stack in
+      if ImmutStack.is_empty stack then
+        let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
+        return ({ cstate with stack }, [VHCurveTo(rets, dyfopt)])
+      else
+        err Error.InvalidCharstring
+
+  | Operator(ShortKey(31)) ->
+    (* `hvcurveto (31)` *)
+      begin
+        if ImmutStack.size stack mod 4 = 1 then
+          pop_mandatory stack >>= fun (stack, dyf) ->
+          return (stack, Some(dyf))
+        else
+          return (stack, None)
+      end >>= fun (stack, dyfopt) ->
+      let (stack, tuples) = pop_iter pop4_opt stack in
+      if ImmutStack.is_empty stack then
+        let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
+        return ({ cstate with stack }, [HVCurveTo(rets, dyfopt)])
+      else
+        err Error.InvalidCharstring
+
+  | Operator(ShortKey(_)) ->
+      err Error.InvalidCharstring
+
   | _ ->
       failwith "TODO: parse_progress"
 

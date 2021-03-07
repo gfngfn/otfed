@@ -1425,8 +1425,68 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(_)) ->
       err Error.InvalidCharstring
 
-  | _ ->
-      failwith "TODO: parse_progress"
+  | Operator(LongKey(i)) when List.mem i [9; 10; 11; 12; 14; 18; 23; 24; 26; 27; 28; 29; 30] ->
+      failwith (Printf.sprintf "unsupported arithmetic operator '12 %d'" i)
+
+  | Operator(LongKey(34)) ->
+    (* `hflex (12 34)` *)
+      pop_mandatory stack >>= fun (stack, dx6) ->
+      pop_mandatory stack >>= fun (stack, dx5) ->
+      pop_mandatory stack >>= fun (stack, dx4) ->
+      pop_mandatory stack >>= fun (stack, dx3) ->
+      pop_mandatory stack >>= fun (stack, dy2) ->
+      pop_mandatory stack >>= fun (stack, dx2) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
+      return ({ cstate with stack }, [HFlex(dx1, (dx2, dy2), dx3, dx4, dx5, dx6)])
+
+  | Operator(LongKey(35)) ->
+    (* `flex (12 35)` *)
+      pop_mandatory stack >>= fun (stack, fd) ->
+      pop_mandatory stack >>= fun (stack, dy6) ->
+      pop_mandatory stack >>= fun (stack, dx6) ->
+      pop_mandatory stack >>= fun (stack, dy5) ->
+      pop_mandatory stack >>= fun (stack, dx5) ->
+      pop_mandatory stack >>= fun (stack, dy4) ->
+      pop_mandatory stack >>= fun (stack, dx4) ->
+      pop_mandatory stack >>= fun (stack, dy3) ->
+      pop_mandatory stack >>= fun (stack, dx3) ->
+      pop_mandatory stack >>= fun (stack, dy2) ->
+      pop_mandatory stack >>= fun (stack, dx2) ->
+      pop_mandatory stack >>= fun (stack, dy1) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
+      let parsed = [Flex((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), (dx6, dy6), fd)] in
+      return ({ cstate with stack }, parsed)
+
+  | Operator(LongKey(36)) ->
+    (* `hflex1 (12 36)` *)
+      pop_mandatory stack >>= fun (stack, dx6) ->
+      pop_mandatory stack >>= fun (stack, dy5) ->
+      pop_mandatory stack >>= fun (stack, dx5) ->
+      pop_mandatory stack >>= fun (stack, dx4) ->
+      pop_mandatory stack >>= fun (stack, dx3) ->
+      pop_mandatory stack >>= fun (stack, dy2) ->
+      pop_mandatory stack >>= fun (stack, dx2) ->
+      pop_mandatory stack >>= fun (stack, dy1) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
+      return ({ cstate with stack }, [HFlex1((dx1, dy1), (dx2, dy2), dx3, dx4, (dx5, dy5), dx6)])
+
+  | Operator(LongKey(37)) ->
+    (* `flex1 (12 37)` *)
+      pop_mandatory stack >>= fun (stack, d6) ->
+      pop_mandatory stack >>= fun (stack, dy5) ->
+      pop_mandatory stack >>= fun (stack, dx5) ->
+      pop_mandatory stack >>= fun (stack, dy4) ->
+      pop_mandatory stack >>= fun (stack, dx4) ->
+      pop_mandatory stack >>= fun (stack, dy3) ->
+      pop_mandatory stack >>= fun (stack, dx3) ->
+      pop_mandatory stack >>= fun (stack, dy2) ->
+      pop_mandatory stack >>= fun (stack, dx2) ->
+      pop_mandatory stack >>= fun (stack, dy1) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
+      return ({ cstate with stack }, [Flex1((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), d6)])
+
+  | Operator(LongKey(_)) ->
+      err InvalidCharstring
 
 
 and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * parsed_charstring Alist.t) decoder =

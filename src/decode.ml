@@ -1019,6 +1019,7 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
   let num_args = cstate.num_args in
   let num_stems = cstate.num_stems in
   let return_simple (step, cselem) =
+    debug step cselem >>= fun () -> (* for debug *)
     return ({ cstate with remaining = cstate.remaining - step }, cselem)
   in
   let return_argument (step, cselem) =
@@ -1314,9 +1315,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(10)) ->
     (* `callsubr (10)` *)
       pop_mandatory stack >>= fun (stack, i) ->
+      let remaining = cstate.remaining in
       transform_result @@ access_subroutine cconst.lsubr_index i >>= fun (offset, length, biased_number) ->
       pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
-      let cstate = { cstate with stack; used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number } in
+      let cstate =
+        { cstate with
+          remaining   = remaining;
+          used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
+        }
+      in
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
@@ -1427,10 +1434,16 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
 
   | Operator(ShortKey(29)) ->
     (* `callgsubr (29)` *)
+      let remaining = cstate.remaining in
       pop_mandatory stack >>= fun (stack, i) ->
       transform_result @@ access_subroutine cconst.gsubr_index i >>= fun (offset, length, biased_number) ->
       pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
-      let cstate = { cstate with stack; used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number } in
+      let cstate =
+        { cstate with
+          remaining  = remaining;
+          used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
+        }
+      in
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(30)) ->

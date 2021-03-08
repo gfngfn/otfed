@@ -18,7 +18,7 @@ let () =
   let gsubr_index = Array.make gsize (D.CharStringData(0, 0)) in
   let (lsize, lkeyval) = TestCaseCff1.lsubrs in
   let lsubr_index = Array.make lsize (D.CharStringData(0, 0)) in
-  let (start, data) =
+  let (start, data, charstring_length) =
     let buf = Buffer.create 1024 in
     let start =
       gkeyval |> List.fold_left (fun start (i, s) ->
@@ -38,10 +38,13 @@ let () =
         start + len
       ) start
     in
+    let charstring_length = String.length TestCaseCff1.charstring_data in
+    Format.printf "start: %d, charstring_length: %d\n" start charstring_length;
     Buffer.add_string buf TestCaseCff1.charstring_data;
-    (start, Buffer.contents buf)
+    let data = Buffer.contents buf in
+    (start, data, charstring_length)
   in
-  let res = T.run_d_charstring ~gsubr_index ~lsubr_index data start in
+  let res = T.run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
   match res with
   | Error(e) -> Format.printf "%a\n" D.Error.pp e
   | Ok(got)  -> Format.printf "%a\n" (Format.pp_print_list D.pp_charstring_operation) got

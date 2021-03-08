@@ -321,6 +321,6 @@ module Decode : sig
     val run_d_charstring :
       gsubr_index:subroutine_index ->
       lsubr_index:subroutine_index ->
-      string -> int -> (charstring_operation list) ok
+      string -> start:int -> charstring_length:int -> (charstring_operation list) ok
   end
 end

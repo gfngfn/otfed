@@ -1855,9 +1855,9 @@ module ForTest = struct
   type 'a decoder = 'a DecodeOperation.decoder
   let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d
   let d_glyf = d_glyf
-  let run_d_charstring ~gsubr_index ~lsubr_index data start =
+  let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
     let length = String.length data in
-    let cstate = initial_charstring_state length in
+    let cstate = initial_charstring_state charstring_length in
     let dec =
       let open DecodeOperation in
       d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->

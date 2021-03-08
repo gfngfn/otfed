@@ -60,6 +60,7 @@ type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
 type cff_key =
   | ShortKey of int
   | LongKey  of int
+[@@deriving show { with_path = false }]
 
 type cff_value =
   | Integer of int
@@ -96,6 +97,7 @@ type charstring_element =
   | Operator         of cff_key
   | HintMaskOperator of stem_argument
   | CntrMaskOperator of stem_argument
+[@@deriving show { with_path = false }]
 
 (* `CharString(offset, length)`
    ` `offset`: the (absolute) offset to the charstring data

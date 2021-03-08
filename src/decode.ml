@@ -644,11 +644,11 @@ let d_cff_header : cff_header decoder =
   }
 
 
-let d_charstring_data (len : int) : charstring_data decoder =
+let d_charstring_data (length : int) : charstring_data decoder =
   let open DecodeOperation in
   current >>= fun offset ->
-  seek (offset + len) >>= fun () ->
-  return (CharStringData(offset, len))
+  d_skip length >>= fun () ->
+  return (CharStringData(offset, length))
 
 
 let fetch_cff_first (cff : cff_source) : cff_first ok =
@@ -1101,7 +1101,7 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
       d_uint8 >>= fun b1 ->
       return_argument (2, ArgumentInteger((b0 - 247) * 256 + b1 + 108))
 
-  | b0  when b0 |> is_in_range ~lower:251 ~upper:254 ->
+  | b0 when b0 |> is_in_range ~lower:251 ~upper:254 ->
       d_uint8 >>= fun b1 ->
       return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
 
@@ -1214,6 +1214,7 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
+  let open DecodeOperation in
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
   match cselem with
@@ -1293,9 +1294,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(10)) ->
     (* `callsubr (10)` *)
       pop_mandatory stack >>= fun (stack, i) ->
+      let remaining = cstate.remaining in
       transform_result @@ access_subroutine cconst.lsubr_index i >>= fun (offset, length, biased_number) ->
-      pick offset (d_charstring cconst { cstate with remaining = length }) >>= fun (cstate, acc) ->
-      let cstate = { cstate with stack; used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number } in
+      pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
+      let cstate =
+        { cstate with
+          remaining   = remaining;
+          used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
+        }
+      in
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
@@ -1315,8 +1322,12 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
-        | []               -> err Error.InvalidCharstring
-        | (y, dy) :: cspts -> return ({ cstate with stack }, [HStemHM(y, dy, cspts)])
+        | [] ->
+            err Error.InvalidCharstring
+
+        | (y, dy) :: cspts ->
+            let (stack, width) = pop_opt_for_width cstate.width stack in
+            return ({ cstate with width; stack }, [HStemHM(y, dy, cspts)])
       end
 
   | HintMaskOperator(arg) ->
@@ -1334,7 +1345,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `cntrmask (20)` *)
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      let cstate = { cstate with stack; width = width } in
+      let cstate = { cstate with width; stack } in
       begin
         match pairs with
         | []               -> return (cstate, [CntrMask(arg)])
@@ -1346,13 +1357,13 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with stack; width }, [RMoveTo((dx1, dy1))])
+      return ({ cstate with width; stack }, [RMoveTo((dx1, dy1))])
 
   | Operator(ShortKey(22)) ->
     (* `hmoveto (22)` *)
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with stack; width }, [HMoveTo(arg)])
+      return ({ cstate with width; stack }, [HMoveTo(arg)])
 
   | Operator(ShortKey(23)) ->
     (* `vstemhm (23)` *)
@@ -1398,29 +1409,36 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, tuples) = pop_iter pop4_opt stack in
       let rets = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
       let (stack, dy1opt) = pop_opt stack in
-      return ({ cstate with stack}, [HHCurveTo(dy1opt, rets)])
+      return ({ cstate with stack }, [HHCurveTo(dy1opt, rets)])
 
   | Operator(ShortKey(29)) ->
     (* `callgsubr (29)` *)
+      let remaining = cstate.remaining in
       pop_mandatory stack >>= fun (stack, i) ->
       transform_result @@ access_subroutine cconst.gsubr_index i >>= fun (offset, length, biased_number) ->
-      pick offset (d_charstring cconst { cstate with remaining = length }) >>= fun (cstate, acc) ->
-      let cstate = { cstate with stack; used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number } in
+      pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
+      let cstate =
+        { cstate with
+          remaining  = remaining;
+          used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
+        }
+      in
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(30)) ->
     (* `vhcurveto (30)` *)
       begin
         if ImmutStack.size stack mod 4 = 1 then
-          pop_mandatory stack >>= fun (stack, dyf) ->
-          return (stack, Some(dyf))
+          pop_mandatory stack >>= fun (stack, df) ->
+          return (stack, Some(df))
         else
           return (stack, None)
-      end >>= fun (stack, dyfopt) ->
+
+      end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
         let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [VHCurveTo(rets, dyfopt)])
+        return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
       else
         err Error.InvalidCharstring
 
@@ -1428,15 +1446,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
     (* `hvcurveto (31)` *)
       begin
         if ImmutStack.size stack mod 4 = 1 then
-          pop_mandatory stack >>= fun (stack, dyf) ->
-          return (stack, Some(dyf))
+          pop_mandatory stack >>= fun (stack, df) ->
+          return (stack, Some(df))
         else
           return (stack, None)
-      end >>= fun (stack, dyfopt) ->
+      end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
         let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [HVCurveTo(rets, dyfopt)])
+        return ({ cstate with stack }, [HVCurveTo(rets, dfopt)])
       else
         err Error.InvalidCharstring
 
@@ -1765,16 +1783,16 @@ let path_of_charstring (ops : charstring) : (cubic_path list) ok =
         in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HVCurveTo(hvs, dtF_opt) ->
+    | HVCurveTo(hvs, dfopt) ->
         assert_middle state >>= fun middle ->
         chop_last_of_list hvs >>= fun (hvsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dtF_opt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dfopt curv in
         return (curv, Middle{ middle with elems = peacc })
 
-    | VHCurveTo(vhs, dtF_opt) ->
+    | VHCurveTo(vhs, dfopt) ->
         assert_middle state >>= fun middle ->
         chop_last_of_list vhs >>= fun (vhsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dtF_opt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dfopt curv in
         return (curv, Middle{ middle with elems = peacc })
 
     | Flex(pt1, pt2, pt3, pt4, pt5, pt6, _) ->

@@ -1006,24 +1006,13 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
   return (arglen, arg)
 
 
-let debug step cselem =
-  current >>= fun pos ->
-  pick (pos - step) (d_bytes step) >>= fun s ->
-  Format.printf "!!read: %s --> %a\n"
-    ((Core_kernel.String.to_list s) |> List.map (fun ch -> Printf.sprintf "{%d}" (Char.code ch)) |> String.concat "")
-    pp_charstring_element cselem;  (* for debug *)
-  return ()
-
-
 let d_charstring_element (cstate : charstring_state) : (charstring_state * charstring_element) decoder =
   let num_args = cstate.num_args in
   let num_stems = cstate.num_stems in
   let return_simple (step, cselem) =
-    debug step cselem >>= fun () -> (* for debug *)
     return ({ cstate with remaining = cstate.remaining - step }, cselem)
   in
   let return_argument (step, cselem) =
-    debug step cselem >>= fun () -> (* for debug *)
     let cstate =
       { cstate with
         num_args  = num_args + 1;
@@ -1033,7 +1022,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_flushing_operator (step, cselem) =
-    debug step cselem >>= fun () -> (* for debug *)
     let cstate =
       { cstate with
         num_args  = 0;
@@ -1043,7 +1031,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_subroutine_operator cselem =
-    debug 1 cselem >>= fun () -> (* for debug *)
     let cstate =
       { cstate with
         num_args  = num_args - 1;
@@ -1053,7 +1040,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_stem (step, cselem) =
-    debug step cselem >>= fun () -> (* for debug *)
     let cstate =
       { cstate with
         num_args  = 0;
@@ -1073,13 +1059,11 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
       return_flushing_operator (1, Operator(ShortKey(b0)))
 
   | (10 | 29) as b0 ->
-      print_endline "!!subr"; (* for debug *)
     (* `callsubr`/`callgsubr` operator *)
       return_subroutine_operator (Operator(ShortKey(b0)))
 
   | 11 ->
     (* `return` operator *)
-      print_endline "!!return"; (* for debug *)
       let cselem = Operator(ShortKey(11)) in
       return_simple (1, cselem)
 
@@ -1230,14 +1214,9 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
+  let open DecodeOperation in
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
-  let return ((cstate, parsed) as v) =
-    let ns = ImmutStack.pop_all cstate.stack in
-    let pp_sep ppf () = Format.fprintf ppf ", " in
-    Format.printf "!!stack (%d, %a): %a\n" (List.length ns) pp_charstring parsed (Format.pp_print_list ~pp_sep Format.pp_print_int) ns; (* for debug *)
-    return v
-  in
   match cselem with
   | ArgumentInteger(i) ->
       let stack = stack |> ImmutStack.push i in
@@ -1449,14 +1428,11 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(30)) ->
     (* `vhcurveto (30)` *)
       begin
-        let pp_sep ppf () = Format.fprintf ppf ",@ " in
         if ImmutStack.size stack mod 4 = 1 then
-          let () = Format.printf "!!stack (odd): %a\n" (Format.pp_print_list ~pp_sep Format.pp_print_int) (ImmutStack.pop_all stack) in
           pop_mandatory stack >>= fun (stack, df) ->
-          DecodeOperation.return (stack, Some(df))
+          return (stack, Some(df))
         else
-          let () = Format.printf "!!stack (even): %a\n" (Format.pp_print_list ~pp_sep Format.pp_print_int) (ImmutStack.pop_all stack) in
-          DecodeOperation.return (stack, None)
+          return (stack, None)
 
       end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
@@ -1465,22 +1441,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
       else
         err Error.InvalidCharstring
-(*
-      let (stack, tuples) = pop_iter pop4_opt stack in
-      let (stack, _dfopt) = pop_opt stack in (* FIXME; must be wrong *)
-      let dfopt = None in (* FIXME; must be wrong *)
-      let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-      return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
-*)
 
   | Operator(ShortKey(31)) ->
     (* `hvcurveto (31)` *)
       begin
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
-          DecodeOperation.return (stack, Some(df))
+          return (stack, Some(df))
         else
-          DecodeOperation.return (stack, None)
+          return (stack, None)
       end >>= fun (stack, dfopt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then

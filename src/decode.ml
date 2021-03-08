@@ -1303,6 +1303,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
         }
       in
+      Format.printf "!!callsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d\n" (Array.length cconst.lsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
@@ -1423,6 +1424,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
         }
       in
+      Format.printf "!!callgsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d\n" (Array.length cconst.gsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(30)) ->
@@ -1542,6 +1544,18 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
   aux cstate Alist.empty
 
 
+let initial_charstring_state length =
+  {
+    remaining   = length;
+    width       = LookingForWidth;
+    stack       = ImmutStack.empty;
+    num_args    = 0;
+    num_stems   = 0;
+    used_gsubrs = IntSet.empty;
+    used_lsubrs = IntSet.empty;
+  }
+
+
 let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
@@ -1551,6 +1565,7 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) 
       return None
 
   | Some(CharStringData(offset, length)) ->
+      Format.printf "!!gid = %d, offset = %d, length = %d\n" gid offset length;
       select_local_subr_index private_info gid >>= fun lsubr_index ->
       let cconst =
         {
@@ -1558,17 +1573,7 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) 
           lsubr_index;
         }
       in
-      let cstate =
-        {
-          remaining   = length;
-          width       = LookingForWidth;
-          stack       = ImmutStack.empty;
-          num_args    = 0;
-          num_stems   = 0;
-          used_gsubrs = IntSet.empty;
-          used_lsubrs = IntSet.empty;
-        }
-      in
+      let cstate = initial_charstring_state length in
       let dec = d_charstring cconst cstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (cstate, acc) ->
       match cstate.width with
@@ -1845,7 +1850,18 @@ let path_of_charstring (ops : charstring) : (cubic_path list) ok =
 
 
 module ForTest = struct
+  type charstring_data = DecodeBasic.charstring_data
+  type subroutine_index = DecodeBasic.subroutine_index
   type 'a decoder = 'a DecodeOperation.decoder
   let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d
   let d_glyf = d_glyf
+  let run_d_charstring ~gsubr_index ~lsubr_index data start =
+    let length = String.length data in
+    let cstate = initial_charstring_state length in
+    let dec =
+      let open DecodeOperation in
+      d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
+      return @@ Alist.to_list opacc
+    in
+    dec |> DecodeOperation.run { data = data; max = length - 1 } start
 end

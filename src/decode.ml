@@ -45,7 +45,7 @@ let source_of_string (s : string) : single_or_collection ok =
   let core =
     {
       data = s;
-      max  = String.length s - 1;
+      max  = String.length s;
     }
   in
   let dec =
@@ -1303,7 +1303,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
         }
       in
-      Format.printf "!!callsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d\n" (Array.length cconst.lsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
@@ -1424,7 +1423,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
         }
       in
-      Format.printf "!!callgsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d\n" (Array.length cconst.gsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(30)) ->
@@ -1853,15 +1851,14 @@ module ForTest = struct
   type charstring_data = DecodeBasic.charstring_data
   type subroutine_index = DecodeBasic.subroutine_index
   type 'a decoder = 'a DecodeOperation.decoder
-  let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d
+  let run s d = DecodeOperation.run { data = s; max = String.length s } 0 d
   let d_glyf = d_glyf
   let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
-    let length = String.length data in
     let cstate = initial_charstring_state charstring_length in
     let dec =
       let open DecodeOperation in
       d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
       return @@ Alist.to_list opacc
     in
-    dec |> DecodeOperation.run { data = data; max = length - 1 } start
+    dec |> DecodeOperation.run { data = data; max = String.length data } start
 end

@@ -15,7 +15,7 @@ let gsubrs = (264, [
     TestUtil.make_string_odd [0xf850; 0x80a4] 0x0b;
   176 -->
     (* `lmroman10-regular.otf`, offset: 19758, length: 7 *)
-    TestUtil.make_string_odd [0xf833; 0xf70b; 1595] 0x0b;
+    TestUtil.make_string_odd [0xf833; 0xf70b; 0x1595] 0x0b;
   254 -->
     (* `lmroman10-regular.otf`, offset: 20534, length: 6 *)
     TestUtil.make_string_even [0x06a1; 0x8e8b; 0xa00b];

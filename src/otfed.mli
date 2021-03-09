@@ -312,9 +312,15 @@ module Decode : sig
 
   val path_of_charstring : charstring -> (Value.cubic_path list) ok
 
+  type charstring_data = CharStringData of int * int
+  type subroutine_index = charstring_data array
   module ForTest : sig
     type 'a decoder
     val run : string -> 'a decoder -> 'a ok
     val d_glyf : (Value.ttf_glyph_description * Value.bounding_box) decoder
+    val run_d_charstring :
+      gsubr_index:subroutine_index ->
+      lsubr_index:subroutine_index ->
+      string -> start:int -> charstring_length:int -> (charstring_operation list) ok
   end
 end

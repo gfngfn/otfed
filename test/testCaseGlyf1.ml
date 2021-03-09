@@ -3,7 +3,7 @@ module V = Otfed.Value
 
 
 let data =
-  TestUtil.string_of_uint16_list [
+  TestUtil.make_string_even [
     (* `ipaexm.ttf`, glyph ID 1000 (offset: 520500, length: 608) *)
     0x0006; 0x0033; 0xff6d; 0x07ab; 0x0694; 0x001f; 0x0023; 0x0055;
     0x0059; 0x005d; 0x0061; 0x0125; 0x40ff; 0x1a16; 0x1402; 0x3a14;

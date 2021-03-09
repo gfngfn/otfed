@@ -45,7 +45,7 @@ let source_of_string (s : string) : single_or_collection ok =
   let core =
     {
       data = s;
-      max  = String.length s - 1;
+      max  = String.length s;
     }
   in
   let dec =
@@ -1542,6 +1542,18 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
   aux cstate Alist.empty
 
 
+let initial_charstring_state length =
+  {
+    remaining   = length;
+    width       = LookingForWidth;
+    stack       = ImmutStack.empty;
+    num_args    = 0;
+    num_stems   = 0;
+    used_gsubrs = IntSet.empty;
+    used_lsubrs = IntSet.empty;
+  }
+
+
 let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
@@ -1558,17 +1570,7 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) 
           lsubr_index;
         }
       in
-      let cstate =
-        {
-          remaining   = length;
-          width       = LookingForWidth;
-          stack       = ImmutStack.empty;
-          num_args    = 0;
-          num_stems   = 0;
-          used_gsubrs = IntSet.empty;
-          used_lsubrs = IntSet.empty;
-        }
-      in
+      let cstate = initial_charstring_state length in
       let dec = d_charstring cconst cstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (cstate, acc) ->
       match cstate.width with
@@ -1845,7 +1847,17 @@ let path_of_charstring (ops : charstring) : (cubic_path list) ok =
 
 
 module ForTest = struct
+  type charstring_data = DecodeBasic.charstring_data
+  type subroutine_index = DecodeBasic.subroutine_index
   type 'a decoder = 'a DecodeOperation.decoder
-  let run s d = DecodeOperation.run { data = s; max = String.length s - 1 } 0 d
+  let run s d = DecodeOperation.run { data = s; max = String.length s } 0 d
   let d_glyf = d_glyf
+  let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
+    let cstate = initial_charstring_state charstring_length in
+    let dec =
+      let open DecodeOperation in
+      d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
+      return @@ Alist.to_list opacc
+    in
+    dec |> DecodeOperation.run { data = data; max = String.length data } start
 end

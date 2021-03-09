@@ -1006,25 +1006,13 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
   return (arglen, arg)
 
 
-let debug step cselem =
-  current >>= fun pos ->
-  pick (pos - step) (d_bytes step) >>= fun s ->
-  Format.printf "@[<h>!!R(offset: %d) %s --> %a@]@,"
-    (pos - step)
-    ((Core_kernel.String.to_list s) |> List.map (fun ch -> Printf.sprintf "{%d}" (Char.code ch)) |> String.concat "")
-    pp_charstring_element cselem;  (* for debug *)
-  return ()
-
-
 let d_charstring_element (cstate : charstring_state) : (charstring_state * charstring_element) decoder =
   let num_args = cstate.num_args in
   let num_stems = cstate.num_stems in
   let return_simple (step, cselem) =
-    debug step cselem >>= fun () ->
     return ({ cstate with remaining = cstate.remaining - step }, cselem)
   in
   let return_argument (step, cselem) =
-    debug step cselem >>= fun () ->
     let cstate =
       { cstate with
         num_args  = num_args + 1;
@@ -1034,7 +1022,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_flushing_operator (step, cselem) =
-    debug step cselem >>= fun () ->
     let cstate =
       { cstate with
         num_args  = 0;
@@ -1044,7 +1031,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_subroutine_operator cselem =
-    debug 1 cselem >>= fun () ->
     let cstate =
       { cstate with
         num_args  = num_args - 1;
@@ -1054,7 +1040,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
     return (cstate, cselem)
   in
   let return_stem (step, cselem) =
-    debug step cselem >>= fun () ->
     let cstate =
       { cstate with
         num_args  = 0;
@@ -1079,7 +1064,6 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
 
   | 11 ->
     (* `return` operator *)
-      Format.printf "!!return@,"; (* for debug *)
       let cselem = Operator(ShortKey(11)) in
       return_simple (1, cselem)
 
@@ -1231,12 +1215,6 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
-  let return ((cstate, parsed) as v) =
-    let ns = ImmutStack.pop_all cstate.stack in
-    let pp_sep ppf () = Format.fprintf ppf ", " in
-    Format.printf "@[<h>!!stack (%d, %a): %a@]@," (List.length ns) pp_charstring parsed (Format.pp_print_list ~pp_sep Format.pp_print_int) ns; (* for debug *)
-    return v
-  in
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
   match cselem with
@@ -1325,7 +1303,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
         }
       in
-      Format.printf "!!callsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d@," (Array.length cconst.lsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(11)) ->
@@ -1446,13 +1423,11 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
         }
       in
-      Format.printf "!!callgsubr: num_subrs = %d, index = %d, biased = %d, offset = %d, length = %d@," (Array.length cconst.gsubr_index) i biased_number offset length;
       return (cstate, Alist.to_list acc)
 
   | Operator(ShortKey(30)) ->
     (* `vhcurveto (30)` *)
       begin
-        let return = DecodeOperation.return in  (* for debug *)
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
           return (stack, Some(df))
@@ -1470,7 +1445,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   | Operator(ShortKey(31)) ->
     (* `hvcurveto (31)` *)
       begin
-        let return = DecodeOperation.return in  (* for debug *)
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
           return (stack, Some(df))
@@ -1589,7 +1563,6 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) 
       return None
 
   | Some(CharStringData(offset, length)) ->
-      Format.printf "!!gid = %d, offset = %d, length = %d@," gid offset length;
       select_local_subr_index private_info gid >>= fun lsubr_index ->
       let cconst =
         {

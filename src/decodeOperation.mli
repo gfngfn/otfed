@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeBasic
 
 include module type of DecodeOperationCore
@@ -28,7 +29,7 @@ val d_repeat : int -> 'a decoder -> ('a list) decoder
 val d_list : 'a decoder -> ('a list) decoder
 
 (** Reads a 4cc tag. *)
-val d_tag : Value.Tag.t decoder
+val d_tag : Tag.t decoder
 
 val d_loc_format : loc_format decoder
 
@@ -45,6 +46,11 @@ val d_ttc_header_offset_list : (offset list) decoder
 
 (** Reads the table directory. *)
 val d_structure : table_directory decoder
+
+(** Reads a Coverage table [page 139]. *)
+val d_coverage : (glyph_id list) decoder
+
+val combine_coverage : (glyph_id list) -> 'a list -> ((glyph_id * 'a) list) decoder
 
 (** Reads an OffSize value. *)
 val d_offsize : offsize decoder
@@ -68,4 +74,6 @@ val d_dict : int -> dict decoder
 
 (** Given a table directory [td] and a table tag [tag], [seek_required_table td tag] returns
     the pair of the offset and the length of the table. *)
-val seek_required_table : table_directory -> Value.Tag.t -> (offset * int) ok
+val seek_required_table : table_directory -> Tag.t -> (offset * int) ok
+
+val seek_table : table_directory -> Tag.t -> (offset * int) option

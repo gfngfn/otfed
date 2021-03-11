@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeBasic
 
 
@@ -124,6 +125,32 @@ let d_structure : table_directory decoder =
     ) TableDirectory.empty
   in
   return map
+
+
+let d_range_record : (glyph_id list) decoder =
+  let rec range acc i j =
+    if i > j then Alist.to_list acc else
+      range (Alist.extend acc i) (i + 1) j
+  in
+  d_uint16 >>= fun start_gid ->
+  d_uint16 >>= fun end_gid ->
+  d_skip 2 >>= fun () -> (* Skips `startCoverageIndex` *)
+  return (range Alist.empty start_gid end_gid)
+
+
+let d_coverage : (glyph_id list) decoder =
+  (* The position is supposed to be set to the beginning of a Coverage table [page 139]. *)
+  d_uint16 >>= fun coverageFormat ->
+  match coverageFormat with
+  | 1 -> d_list d_uint16
+  | 2 -> d_list d_range_record >>= fun ranges -> return (List.concat ranges)
+  | _ -> err @@ Error.UnknownCoverageFormat(coverageFormat)
+
+
+let combine_coverage : 'a. glyph_id list -> 'a list -> ((glyph_id * 'a) list) decoder =
+fun coverage vs ->
+  try return (List.combine coverage vs) with
+  | Invalid_argument(_) -> err @@ Error.InvalidCoverageLength
 
 
 let d_offsize : offsize decoder =
@@ -357,3 +384,7 @@ let seek_required_table table_directory tag =
   match table_directory |> TableDirectory.find_opt tag with
   | None    -> err @@ Error.MissingRequiredTable(tag)
   | Some(v) -> return @@ v
+
+
+let seek_table table_directory tag =
+  table_directory |> TableDirectory.find_opt tag

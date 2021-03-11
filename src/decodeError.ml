@@ -39,5 +39,7 @@ type t =
   | CharstringWithoutWidth
   | InvalidCharstring
   | InvalidTtfContour
+  | UnknownCoverageFormat     of int
+  | InvalidCoverageLength
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

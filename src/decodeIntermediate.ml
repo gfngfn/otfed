@@ -217,3 +217,33 @@ module Cmap = struct
     run cmap.core offset dec
 
 end
+
+
+module GxxxScheme = struct
+
+  include GeneralTable
+
+  type script = {
+    script_source              : t;
+    script_tag                 : string;
+    script_offset_Script_table : int;
+    script_offset_FeatureList  : int;
+    script_offset_LookupList   : int;
+  }
+
+  type langsys = {
+    langsys_source             : t;
+    langsys_tag                : string;
+    langsys_offset_LangSys     : int;
+    langsys_offset_FeatureList : int;
+    langsys_offset_LookupList  : int;
+  }
+
+  type feature = {
+    feature_source            : t;
+    feature_tag               : string;
+    feature_offset_Feature    : int;
+    feature_offset_LookupList : int;
+  }
+
+end

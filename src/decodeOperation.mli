@@ -20,6 +20,9 @@ val pick : offset -> 'a decoder -> 'a decoder
 (** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
 val d_offset : offset -> offset decoder
 
+(** Same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
+val d_offset_opt : offset -> (offset option) decoder
+
 (** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
     and then reads data at [origin + rel] by using [dec].
     Here, the position advances by 2 bytes. *)

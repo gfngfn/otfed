@@ -248,6 +248,18 @@ module GxxxScheme = struct
   }
 
 
+  let get_script_tag script =
+    script.script_tag
+
+
+  let get_langsys_tag langsys =
+    langsys.langsys_tag
+
+
+  let get_feature_tag feature =
+    feature.feature_tag
+
+
   let d_tag_and_offset_record (offset_ScriptList : offset) : (string * offset) decoder =
     d_bytes 4 >>= fun tag ->
     d_offset offset_ScriptList >>= fun offset ->
@@ -262,7 +274,6 @@ module GxxxScheme = struct
   let scripts (gxxx : t) : (script list) ok =
     let offset_Gxxx = gxxx.offset in
     let dec =
-      let open DecodeOperation in
       d_uint32 >>= fun version ->
       if version <> !%% 0x00010000L then
         err @@ Error.UnknownTableVersion(version)
@@ -284,5 +295,40 @@ module GxxxScheme = struct
       return scripts
     in
     dec |> DecodeOperation.run gxxx.core offset_Gxxx
+
+
+  let langsyses (script : script) : (langsys option * langsys list) ok =
+    let gxxx               = script.script_source in
+    let offset_Script      = script.script_offset_Script in
+    let offset_FeatureList = script.script_offset_FeatureList in
+    let offset_LookupList  = script.script_offset_LookupList in
+    let dec =
+      d_offset_opt offset_Script >>= fun offset_DefaultLangSys_opt ->
+      d_list (d_tag_and_offset_record offset_Script) >>= fun langSysList ->
+      let default_langsys_opt =
+        offset_DefaultLangSys_opt |> Option.map (fun offset_DefaultLangSys ->
+          {
+            langsys_source             = gxxx;
+            langsys_tag                = "DFLT";
+            langsys_offset_LangSys     = offset_DefaultLangSys;
+            langsys_offset_FeatureList = offset_FeatureList;
+            langsys_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      let langsyses =
+        langSysList |> List.map (fun (langSysTag, offset_LangSys) ->
+          {
+            langsys_source             = gxxx;
+            langsys_tag                = langSysTag;
+            langsys_offset_LangSys     = offset_LangSys;
+            langsys_offset_FeatureList = offset_FeatureList;
+            langsys_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      return (default_langsys_opt, langsyses)
+    in
+    dec |> DecodeOperation.run gxxx.core offset_Script
 
 end

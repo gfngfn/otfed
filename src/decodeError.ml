@@ -41,5 +41,7 @@ type t =
   | InvalidTtfContour
   | UnknownCoverageFormat     of int
   | InvalidCoverageLength
+  | UnknownLookupOrder        of int
+  | InvalidFeatureIndex       of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

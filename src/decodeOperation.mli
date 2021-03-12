@@ -39,6 +39,9 @@ val d_repeat : int -> 'a decoder -> ('a list) decoder
 (** [d_list dec] reads a 2-byte unsigned integer [count] and then behaves the same way as [d_repeat count dec]. *)
 val d_list : 'a decoder -> ('a list) decoder
 
+(** Similar to [d_list], but [d_list_filtered] is equipped with an additional predicate over 0-origin indices. *)
+val d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder
+
 (** Reads a 4cc tag. *)
 val d_tag : Tag.t decoder
 

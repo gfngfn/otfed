@@ -78,6 +78,22 @@ let d_list dec =
   d_repeat count dec
 
 
+let d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder =
+fun dec predicate ->
+  let rec aux acc imax i =
+    if i >= imax then
+      return @@ Alist.to_list acc
+    else
+      dec >>= fun data ->
+      if predicate i then
+        aux (Alist.extend acc data) imax (i + 1)
+      else
+        aux acc imax (i + 1)
+  in
+  d_uint16 >>= fun count ->
+  aux Alist.empty count 0
+
+
 let d_tag : Value.Tag.t decoder =
   d_uint32 >>= fun n ->
   return @@ Value.Tag.of_wide_int n

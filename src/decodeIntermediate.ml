@@ -331,4 +331,66 @@ module GxxxScheme = struct
     in
     dec |> DecodeOperation.run gxxx.core offset_Script
 
+
+  module FeatureIndexSet = Set.Make(Int)
+
+
+  let features (langsys : langsys) : (feature option * feature list) ok =
+    let gxxx               = langsys.langsys_source in
+    let offset_LangSys     = langsys.langsys_offset_LangSys in
+    let offset_FeatureList = langsys.langsys_offset_FeatureList in
+    let offset_LookupList  = langsys.langsys_offset_LookupList in
+    let decLangSys =
+      (* The position is set to the beginning of a LangSys table [page 134]. *)
+      d_uint16 >>= fun lookupOrder ->
+      if lookupOrder <> 0 then
+        err @@ Error.UnknownLookupOrder(lookupOrder)
+      else
+        d_uint16 >>= fun requiredFeatureIndex ->
+        d_list d_uint16 >>= fun featureIndices ->
+        return (requiredFeatureIndex, FeatureIndexSet.of_list featureIndices)
+    in
+    let decFeature (requiredFeatureIndex, featureIndexSet) =
+      d_list_filtered
+        (d_tag_and_offset_record offset_FeatureList)
+        (fun i -> FeatureIndexSet.mem i featureIndexSet) >>= fun featureList ->
+      let features =
+        featureList |> List.map (fun (featureTag, offset_Feature) ->
+          {
+            feature_source            = gxxx;
+            feature_tag               = featureTag;
+            feature_offset_Feature    = offset_Feature;
+            feature_offset_LookupList = offset_LookupList;
+          }
+        )
+      in
+      begin
+        match requiredFeatureIndex with
+        | 0xFFFF ->
+            return None
+
+        | _ ->
+            let dec =
+              d_tag_and_offset_record offset_FeatureList >>= fun pair ->
+              return @@ Some(pair)
+            in
+            pick (offset_FeatureList + 6 * requiredFeatureIndex) dec
+            (* 6 is the size of FeatureRecord [page 135]. *)
+      end >>= fun tag_and_offset_opt ->
+      let required_feature_opt =
+        tag_and_offset_opt |> Option.map (fun (tag, offset) ->
+          {
+            feature_source            = gxxx;
+            feature_tag               = tag;
+            feature_offset_Feature    = offset;
+            feature_offset_LookupList = offset_LookupList;
+          }
+        )
+      in
+      return (required_feature_opt, features)
+    in
+    let open ResultMonad in
+    decLangSys |> run gxxx.core offset_LangSys >>= fun pair ->
+    (decFeature pair) |> run gxxx.core offset_FeatureList
+
 end

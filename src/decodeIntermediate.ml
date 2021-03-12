@@ -1,6 +1,7 @@
 
 open Basic
 open DecodeBasic
+open DecodeOperation
 
 
 module GeneralTable = struct
@@ -224,26 +225,64 @@ module GxxxScheme = struct
   include GeneralTable
 
   type script = {
-    script_source              : t;
-    script_tag                 : string;
-    script_offset_Script_table : int;
-    script_offset_FeatureList  : int;
-    script_offset_LookupList   : int;
+    script_source             : t;
+    script_tag                : string;
+    script_offset_Script      : offset;
+    script_offset_FeatureList : offset;
+    script_offset_LookupList  : offset;
   }
 
   type langsys = {
     langsys_source             : t;
     langsys_tag                : string;
-    langsys_offset_LangSys     : int;
-    langsys_offset_FeatureList : int;
-    langsys_offset_LookupList  : int;
+    langsys_offset_LangSys     : offset;
+    langsys_offset_FeatureList : offset;
+    langsys_offset_LookupList  : offset;
   }
 
   type feature = {
     feature_source            : t;
     feature_tag               : string;
-    feature_offset_Feature    : int;
-    feature_offset_LookupList : int;
+    feature_offset_Feature    : offset;
+    feature_offset_LookupList : offset;
   }
+
+
+  let d_tag_and_offset_record (offset_ScriptList : offset) : (string * offset) decoder =
+    d_bytes 4 >>= fun tag ->
+    d_offset offset_ScriptList >>= fun offset ->
+    return (tag, offset)
+
+
+  let d_tag_and_offset_list : ((string * int) list) decoder =
+    current >>= fun offset_ScriptList ->
+    d_list (d_tag_and_offset_record offset_ScriptList)
+
+
+  let scripts (gxxx : t) : (script list) ok =
+    let offset_Gxxx = gxxx.offset in
+    let dec =
+      let open DecodeOperation in
+      d_uint32 >>= fun version ->
+      if version <> !%% 0x00010000L then
+        err @@ Error.UnknownTableVersion(version)
+      else
+        d_fetch offset_Gxxx d_tag_and_offset_list >>= fun scriptList ->
+        d_offset offset_Gxxx >>= fun offset_FeatureList ->
+        d_offset offset_Gxxx >>= fun offset_LookupList ->
+      let scripts =
+        scriptList |> List.map (fun (scriptTag, offset_Script) ->
+          {
+            script_source             = gxxx;
+            script_tag                = scriptTag;
+            script_offset_Script      = offset_Script;
+            script_offset_FeatureList = offset_FeatureList;
+            script_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      return scripts
+    in
+    dec |> DecodeOperation.run gxxx.core offset_Gxxx
 
 end

@@ -33,6 +33,16 @@ let pick (offset : offset) (dec : 'a decoder) : 'a decoder =
   return v
 
 
+let d_offset (offset_origin : offset) : offset decoder =
+  d_uint16 >>= fun reloffset ->
+  return (offset_origin + reloffset)
+
+
+let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
+  d_offset offset_origin >>= fun offset ->
+  pick offset dec
+
+
 let d_fetch_long (origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
   current >>= fun pos_before ->
   d_uint32_int >>= fun reloffset ->

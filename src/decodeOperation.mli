@@ -17,6 +17,14 @@ val d_f2dot14 : float decoder
 (** [pick offset dec] reads data at [offset] by using [dec], and does NOT move the position. *)
 val pick : offset -> 'a decoder -> 'a decoder
 
+(** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
+val d_offset : offset -> offset decoder
+
+(** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
+    and then reads data at [origin + rel] by using [dec].
+    Here, the position advances by 2 bytes. *)
+val d_fetch : offset -> 'a decoder -> 'a decoder
+
 (** [d_fetch_long origin dec] reads a 4-byte relative offset [rel],
     fetches the value at the position [(origin + rel)] by using [dec],
     and returns the pair of the position and the value. *)

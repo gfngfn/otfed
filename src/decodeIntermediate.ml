@@ -423,14 +423,14 @@ module Gsub = struct
   include GxxxScheme
 
 
-  type gsub_subtable =
+  type subtable =
     | SingleSubtable    of (glyph_id * glyph_id) list
         (* LookupType 1: Single substitution subtable [page 251] *)
     | AlternateSubtable of (glyph_id * (glyph_id list)) list
         (* LookupType 3: Alternate substitution subtable [page 253] *)
     | LigatureSubtable  of (glyph_id * (glyph_id list * glyph_id) list) list
         (* LookupType 4: Ligature substitution subtable [page 254] *)
-    | Unsupported
+    | UnsupportedSubtable
 
 
   let d_single_substitution_subtable_format_1 (offset_Substitution : offset) =
@@ -492,7 +492,7 @@ module Gsub = struct
     | _ -> err @@ Error.UnknownFormatNumber(substFormat)
 
 
-  let lookup_gsub =
+  let lookup =
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
     d_uint16 >>= fun _lookupFlag ->
@@ -510,9 +510,13 @@ module Gsub = struct
         return @@ LigatureSubtable(List.concat assocs)
 
     | 2 | 5 | 6 | 7 | 8 ->
-        err @@ Error.Unsupported(Error.UnsupportedGsubLookupType(lookupType))
+        return UnsupportedSubtable
 
     | _ ->
         err @@ Error.UnknownGsubLookupType(lookupType)
+
+
+  let subtables (feature : feature) : (subtable list) ok =
+    subtables_scheme lookup feature
 
 end

@@ -3,7 +3,6 @@ open Basic
 
 type unsupported_report =
   | CharstringArithmeticOperator of int
-  | UnsupportedGsubLookupType    of int
 [@@deriving show { with_path = false }]
 
 type t =

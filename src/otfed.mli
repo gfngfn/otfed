@@ -290,6 +290,30 @@ module Decode : sig
 
       val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
     end
+
+    module Gsub : sig
+      type t
+
+      type subtable
+
+      type script
+
+      type langsys
+
+      type feature
+
+      val get_script_tag : script -> string
+
+      val get_langsys_tag : langsys -> string
+
+      val get_feature_tag : feature -> string
+
+      val scripts : t -> (script set) ok
+
+      val langsyses : script -> (langsys option * langsys set) ok
+
+      val features : langsys -> (feature option * feature set) ok
+    end
   end
 
   val cmap : common_source -> Intermediate.Cmap.t ok
@@ -301,6 +325,8 @@ module Decode : sig
   val os2 : common_source -> Value.Os2.t ok
 
   val maxp : common_source -> Value.Maxp.t ok
+
+  val gsub : common_source -> (Intermediate.Gsub.t option) ok
 
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 

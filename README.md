@@ -22,12 +22,15 @@ $ dune exec otfedcli <path/to/font-file> <commands>
 <commands> ::= [<command>]*
 
 <command> ::=
+  | tables                             # Prints all the tags of tables contained in the font.
   | cmap                               # Prints all the Unicode-aware `cmap` subtables.
   | head                               # Prints the contents of `head` table.
   | hhea                               # Prints the contents of `hhea` table.
   | maxp                               # Prints the contents of `maxp` table.
   | glyf <glyph-id> <output-svg-file>  # Outputs the glyph of ID <glyph-id> that has TrueType outlines.
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
+  | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
+  | gpos <script> <langsys> <feature>  # Prints the contents of `GPOS` subtables.
 ```
 
 ### Example usage

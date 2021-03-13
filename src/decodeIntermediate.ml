@@ -635,16 +635,16 @@ module Gpos = struct
   type mark_record = mark_class * anchor
 
   type base_record = (anchor option) array
-    (* Indexed by `mark_class`.
-       UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables can contain NULL pointers. *)
+    (* Arrays of this type are indexed by `mark_class`.
+       UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
 
   type component_record = (anchor option) array
-    (* Indexed by `mark_class`. *)
+    (* Arrays of this type are indexed by `mark_class`. *)
 
   type ligature_attach = component_record list
 
   type mark2_record = anchor array
-    (* Indexed by `mark_class`. *)
+    (* Arrays of this type are indexed by `mark_class`. *)
 
   type class_value = int
 

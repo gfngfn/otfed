@@ -906,33 +906,35 @@ module Gpos = struct
   let lookup_exact offsets lookupType : (subtable list) decoder =
     match lookupType with
     | 1 ->
-      (* Single adjustment *)
+      (* Single adjustment positioning [page 192] *)
         pick_each offsets d_single_adjustment_subtable
 
     | 2 ->
-      (* Pair adjustment *)
+      (* Pair adjustment positioning [page 194] *)
         pick_each offsets d_pair_adjustment_subtable
 
     | 3 ->
-      (* Cursive attachment *)
+      (* Cursive attachment positioning [page 197] *)
         return []  (* TODO *)
 
     | 4 ->
-      (* MarkToBase attachment *)
+      (* MarkToBase attachment positioning [page 198] *)
         pick_each offsets d_mark_to_base_attachment_subtable
 
     | 5 ->
-      (* MarkToLigature attachment *)
+      (* MarkToLigature attachment positioning [page 199] *)
         pick_each offsets d_mark_to_ligature_attachment_subtable
 
     | 6 ->
-      (* MarkToMark attachment *)
+      (* MarkToMark attachment positioning [page 201] *)
         pick_each offsets d_mark_to_mark_attachment_subtable
 
     | 7 ->
+      (* Contextual positioning [page 203] *)
         return []  (* TODO *)
 
     | 8 ->
+      (* Chaining contextual positioning [page 209] *)
         return []  (* TODO *)
 
     | 9 ->
@@ -965,6 +967,7 @@ module Gpos = struct
     d_list (d_offset offset_Lookup) >>= fun offsets ->
     match lookupType with
     | 9 ->
+      (* Extension positioning [page 213] *)
         pick_each offsets d_extension_position >>= fun subtabless ->
         return (List.concat subtabless)
 

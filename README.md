@@ -83,8 +83,8 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
 
   <tr><td rowspan="5">Advanced</td>
       <td>BASE</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>GPOS</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>GSUB</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>-</td></tr>
+  <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>-</td></tr>
   <tr><td>MATH</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>kern</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 </table>

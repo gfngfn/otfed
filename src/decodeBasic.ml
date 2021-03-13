@@ -28,6 +28,8 @@ type common_source = {
   core            : common_source_core;
   table_directory : table_directory;
   loc_format      : loc_format;
+  num_glyphs      : int;
+  num_h_metrics   : int;
 }
 
 type ttf_source = {

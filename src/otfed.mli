@@ -291,6 +291,12 @@ module Decode : sig
       val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
     end
 
+    module Hmtx : sig
+      type t
+
+      val get : t -> Value.glyph_id -> ((int * int) option) ok
+    end
+
     module Gsub : sig
       type t
 
@@ -431,6 +437,8 @@ module Decode : sig
   val os2 : common_source -> Value.Os2.t ok
 
   val maxp : common_source -> Value.Maxp.t ok
+
+  val hmtx : common_source -> Intermediate.Hmtx.t ok
 
   val gsub : common_source -> (Intermediate.Gsub.t option) ok
 

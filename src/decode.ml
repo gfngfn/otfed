@@ -9,18 +9,34 @@ include DecodeBasic
 
 let fetch_loc_format core table_directory =
   let open ResultMonad in
-  seek_required_table table_directory Value.Tag.table_head >>= fun (offset, _length) ->
+  seek_required_table table_directory Tag.table_head >>= fun (offset, _length) ->
   run core (offset + 50) d_loc_format
+
+
+let fetch_num_glyphs core table_directory =
+  let open ResultMonad in
+  seek_required_table table_directory Tag.table_maxp >>= fun (offset, _length) ->
+  d_uint16 |> run core (offset + 4)
+
+
+let fetch_num_h_metrics core table_directory =
+  let open ResultMonad in
+  seek_required_table table_directory Tag.table_hhea >>= fun (offset, _length) ->
+  d_uint16 |> run core (offset + 34)
 
 
 let d_init_ttf core =
   d_structure >>= fun table_directory ->
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
+  transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
+  transform_result (fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
   let common =
     {
       core            = core;
       table_directory = table_directory;
       loc_format      = loc_format;
+      num_glyphs      = num_glyphs;
+      num_h_metrics   = num_h_metrics;
     }
   in
   let ttf = {ttf_common = common} in
@@ -30,11 +46,15 @@ let d_init_ttf core =
 let d_init_cff (core : common_source_core) : source decoder =
   d_structure >>= fun table_directory ->
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
+  transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
+  transform_result (fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
   let common =
     {
       core            = core;
       table_directory = table_directory;
       loc_format      = loc_format;
+      num_glyphs      = num_glyphs;
+      num_h_metrics   = num_h_metrics;
     }
   in
   let cff = {cff_common = common} in
@@ -94,7 +114,7 @@ module Intermediate = DecodeIntermediate
 let cmap (common : common_source) : Intermediate.Cmap.t ok =
   let open ResultMonad in
   seek_required_table common.table_directory Value.Tag.table_cmap >>= fun (offset, length) ->
-  return @@ Intermediate.Cmap.make common.core offset length
+  return @@ Intermediate.Cmap.make common.core ~offset ~length
 
 
 let head (common : common_source) : Value.Head.t ok =
@@ -332,6 +352,14 @@ let maxp (common : common_source) : Value.Maxp.t ok =
   DecodeOperation.run common.core offset dec
 
 
+let hmtx (common : common_source) =
+  let open ResultMonad in
+  seek_required_table common.table_directory Tag.table_hmtx >>= fun (offset, length) ->
+  let num_glyphs = common.num_glyphs in
+  let num_h_metrics = common.num_h_metrics in
+  return @@ DecodeIntermediate.Hmtx.make common.core ~offset ~length ~num_glyphs ~num_h_metrics
+
+
 let gsub (common : common_source) =
   let open ResultMonad in
   match seek_table common.table_directory Tag.table_gsub with
@@ -339,7 +367,7 @@ let gsub (common : common_source) =
       return None
 
   | Some((offset, length)) ->
-      return @@ Some(DecodeIntermediate.Gsub.make common.core offset length)
+      return @@ Some(DecodeIntermediate.Gsub.make common.core ~offset ~length)
 
 
 let gpos (common : common_source) =
@@ -349,7 +377,7 @@ let gpos (common : common_source) =
       return None
 
   | Some((offset, length)) ->
-      return @@ Some(DecodeIntermediate.Gpos.make common.core offset length)
+      return @@ Some(DecodeIntermediate.Gpos.make common.core ~offset ~length)
 
 
 include DecodeTtf

@@ -5,28 +5,38 @@ open DecodeBasic
 open DecodeOperation
 
 
-module GeneralTable = struct
+module GeneralTable(Info : sig type t end) = struct
 
   type t = {
     core   : common_source_core;
     offset : offset;
     length : int;
+    info   : Info.t;
   }
 
 
-  let make (core : common_source_core) (offset : offset) (length : int) : t =
+  let make_scheme (core : common_source_core) (offset : offset) (length : int) (info : Info.t) : t =
     {
       core   = core;
       offset = offset;
       length = length;
+      info   = info;
     }
+
+
+  let get_info (general_table : t) : Info.t =
+    general_table.info
 
 end
 
 
 module Cmap = struct
 
-  include GeneralTable
+  include GeneralTable(struct type t = unit end)
+
+
+  let make core ~offset ~length =
+    make_scheme core offset length ()
 
 
   type subtable = t * offset * Value.Cmap.subtable_ids
@@ -221,9 +231,47 @@ module Cmap = struct
 end
 
 
+module Hmtx = struct
+
+  type info = {
+    num_glyphs    : int;
+    num_h_metrics : int;
+  }
+
+  include GeneralTable(struct type t = info end)
+
+
+  let make core ~offset ~length ~num_glyphs ~num_h_metrics =
+    make_scheme core offset length { num_glyphs; num_h_metrics }
+
+
+  let get (hmtx : t) (gid : glyph_id) : ((int * int) option) ok =
+    let open ResultMonad in
+    let info = get_info hmtx in
+    if gid < 0 || info.num_glyphs <= gid then
+      return None
+    else
+      let index = if gid >= info.num_h_metrics then info.num_h_metrics - 1 else gid in
+      let dec =
+        let open DecodeOperation in
+        d_uint16 >>= fun advanceWidth ->
+        d_int16 >>= fun lsb ->
+        return @@ Some((advanceWidth, lsb))
+      in
+      dec |> run hmtx.core (hmtx.offset + 4 * index)
+
+end
+
+
+
 module GxxxScheme = struct
 
-  include GeneralTable
+  include GeneralTable(struct type t = unit end)
+
+
+  let make core ~offset ~length =
+    make_scheme core offset length ()
+
 
   type script = {
     script_source             : t;

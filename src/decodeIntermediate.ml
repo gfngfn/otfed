@@ -393,4 +393,25 @@ module GxxxScheme = struct
     decLangSys |> run gxxx.core offset_LangSys >>= fun pair ->
     (decFeature pair) |> run gxxx.core offset_FeatureList
 
+
+  module LookupListIndexSet = Set.Make(Int)
+
+
+  let subtables_scheme : 'a. 'a decoder -> feature -> ('a list) ok =
+  fun lookup feature ->
+    let gxxx              = feature.feature_source in
+    let offset_Feature    = feature.feature_offset_Feature in
+    let offset_LookupList = feature.feature_offset_LookupList in
+    let dec =
+      (* The position is set to the beginning of a Feature table. *)
+      d_uint16 >>= fun _featureParams ->
+      d_list d_uint16 >>= fun lookupListIndexList ->
+      let lookupListIndexSet = LookupListIndexSet.of_list lookupListIndexList in
+      d_list_filtered
+        (d_offset offset_LookupList)
+        (fun i -> LookupListIndexSet.mem i lookupListIndexSet) >>= fun offsets ->
+      pick_each offsets lookup
+    in
+    dec |> run gxxx.core offset_Feature
+
 end

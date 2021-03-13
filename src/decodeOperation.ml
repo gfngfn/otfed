@@ -33,6 +33,10 @@ let pick (offset : offset) (dec : 'a decoder) : 'a decoder =
   return v
 
 
+let pick_each (offsets : offset list) (dec : 'a decoder) : ('a list) decoder =
+  offsets |> mapM (fun offset -> pick offset dec)
+
+
 let d_offset (offset_origin : offset) : offset decoder =
   d_uint16 >>= fun reloffset ->
   return (offset_origin + reloffset)

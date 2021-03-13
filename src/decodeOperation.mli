@@ -17,6 +17,9 @@ val d_f2dot14 : float decoder
 (** [pick offset dec] reads data at [offset] by using [dec], and does NOT move the position. *)
 val pick : offset -> 'a decoder -> 'a decoder
 
+(** [pick_each offsets dec] repeatedly run [pick offset dec] for each [offset] in [offsets]. *)
+val pick_each : offset list -> 'a decoder -> ('a list) decoder
+
 (** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
 val d_offset : offset -> offset decoder
 

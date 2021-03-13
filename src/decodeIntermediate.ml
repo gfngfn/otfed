@@ -516,7 +516,36 @@ module Gsub = struct
         err @@ Error.UnknownGsubLookupType(lookupType)
 
 
-  let subtables (feature : feature) : (subtable list) ok =
-    subtables_scheme lookup feature
+  type 'a folding_single = 'a -> glyph_id * glyph_id -> 'a
+
+  type 'a folding_alt = 'a -> glyph_id * glyph_id list -> 'a
+
+  type 'a folding_lig = 'a -> glyph_id * (glyph_id list * glyph_id) list -> 'a
+
+
+  let fold_subtables
+      ?single:(f_single = (fun acc _ -> acc))
+      ?alt:(f_alt = (fun acc _ -> acc))
+      ?lig:(f_lig = (fun acc _ -> acc))
+      (feature : feature) (init : 'a) : 'a ok =
+    let open ResultMonad in
+    subtables_scheme lookup feature >>= fun subtables ->
+    let acc =
+      subtables |> List.fold_left (fun acc subtable ->
+        match subtable with
+        | SingleSubtable(assoc) ->
+            List.fold_left f_single acc assoc
+
+        | AlternateSubtable(assoc) ->
+            List.fold_left f_alt acc assoc
+
+        | LigatureSubtable(assoc) ->
+            List.fold_left f_lig acc assoc
+
+        | UnsupportedSubtable ->
+            acc
+      ) init
+    in
+    return acc
 
 end

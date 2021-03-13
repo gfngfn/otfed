@@ -553,3 +553,10 @@ module Gsub = struct
     return acc
 
 end
+
+
+module Gpos = struct
+
+  include GxxxScheme
+
+end

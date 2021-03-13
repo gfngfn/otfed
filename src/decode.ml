@@ -342,6 +342,16 @@ let gsub (common : common_source) =
       return @@ Some(DecodeIntermediate.Gsub.make common.core offset length)
 
 
+let gpos (common : common_source) =
+  let open ResultMonad in
+  match seek_table common.table_directory Tag.table_gpos with
+  | None ->
+      return None
+
+  | Some((offset, length)) ->
+      return @@ Some(DecodeIntermediate.Gpos.make common.core offset length)
+
+
 include DecodeTtf
 
 include DecodeCff
@@ -350,8 +360,13 @@ module ForTest = struct
   type charstring_data = DecodeBasic.charstring_data
   type subroutine_index = DecodeBasic.subroutine_index
   type 'a decoder = 'a DecodeOperation.decoder
-  let run s d = DecodeOperation.run { data = s; max = String.length s } 0 d
-  let d_glyf = d_glyf
+
+  let run s d =
+    DecodeOperation.run { data = s; max = String.length s } 0 d
+
+  let d_glyf =
+    d_glyf
+
   let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
     let cstate = initial_charstring_state charstring_length in
     let dec =

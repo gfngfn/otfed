@@ -875,8 +875,32 @@ module Gpos = struct
         err @@ Error.UnknownFormatNumber(posFormat)
 
 
+  let d_mark2_record offset_Mark2Array classCount : mark2_record decoder =
+    d_repeat classCount (d_fetch offset_Mark2Array d_anchor) >>= fun anchors ->
+    return (Array.of_list anchors)
+
+
+  let d_mark2_array  classCount : (mark2_record list) decoder =
+    current >>= fun offset_Mark2Array ->
+    d_list (d_mark2_record offset_Mark2Array classCount)
+
+
   let d_mark_to_mark_attachment_subtable =
-    current >>= fun _ -> failwith "TODO"
+    current >>= fun offset_MarkToMarkPos ->
+    d_uint16 >>= fun posFormat ->
+    match posFormat with
+    | 1 ->
+        d_fetch offset_MarkToMarkPos d_coverage >>= fun mark1Coverage ->
+        d_fetch offset_MarkToMarkPos d_coverage >>= fun mark2Coverage ->
+        d_uint16 >>= fun classCount ->
+        d_fetch offset_MarkToMarkPos (d_mark_array classCount) >>= fun markArray ->
+        d_fetch offset_MarkToMarkPos (d_mark2_array classCount) >>= fun mark2Array ->
+        combine_coverage mark1Coverage markArray >>= fun mark_assoc ->
+        combine_coverage mark2Coverage mark2Array >>= fun mark2_assoc ->
+        return (MarkMarkPos1(classCount, mark_assoc, mark2_assoc))
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
 
 
   let lookup_exact offsets lookupType : (subtable list) decoder =

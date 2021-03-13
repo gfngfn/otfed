@@ -771,8 +771,75 @@ module Gpos = struct
         err @@ Error.UnknownFormatNumber(posFormat)
 
 
+  let d_device_table : device_table decoder =
+    d_uint16 >>= fun startSize ->
+    d_uint16 >>= fun endSize ->
+    d_uint16 >>= fun deltaFormat ->
+    d_uint16 >>= fun deltaValue ->
+    return (startSize, endSize, deltaFormat, deltaValue)
+
+
+  let d_anchor : anchor decoder =
+    d_uint16 >>= fun anchorFormat ->
+    d_int16 >>= fun xcoord ->
+    d_int16 >>= fun ycoord ->
+    match anchorFormat with
+    | 1 ->
+        return (xcoord, ycoord, NoAnchorAdjustment)
+
+    | 2 ->
+        d_uint16 >>= fun anchorPoint ->
+        return (xcoord, ycoord, AnchorPointAdjustment(anchorPoint))
+
+    | 3 ->
+        d_device_table >>= fun xdevtable ->
+        d_device_table >>= fun ydevtable ->
+        return (xcoord, ycoord, DeviceAnchorAdjustment(xdevtable, ydevtable))
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(anchorFormat)
+
+
+  let d_mark_record offset_MarkArray classCount : mark_record decoder =
+    d_uint16 >>= fun classId ->
+    if classId > classCount then
+      err @@ Error.InvalidMarkClass(classId)
+    else
+      d_fetch offset_MarkArray d_anchor >>= fun anchor ->
+      return (classId, anchor)
+
+
+  let d_mark_array classCount : (mark_record list) decoder =
+    current >>= fun offset_MarkArray ->
+    d_list (d_mark_record offset_MarkArray classCount)
+
+
+  let d_base_record offset_BaseArray classCount : base_record decoder =
+    d_repeat classCount (d_fetch_opt offset_BaseArray d_anchor) >>= fun anchors ->
+    return (Array.of_list anchors)
+
+
+  let d_base_array classCount : (base_record list) decoder =
+    current >>= fun offset_BaseArray ->
+    d_list (d_base_record offset_BaseArray classCount)
+
+
   let d_mark_to_base_attachment_subtable =
-    current >>= fun _ -> failwith "TODO"
+    current >>= fun offset_MarkBasePos ->
+    d_uint16 >>= fun posFormat ->
+    match posFormat with
+    | 1 ->
+        d_fetch offset_MarkBasePos d_coverage >>= fun markCoverage ->
+        d_fetch offset_MarkBasePos d_coverage >>= fun baseCoverage ->
+        d_uint16 >>= fun classCount ->
+        d_fetch offset_MarkBasePos (d_mark_array classCount) >>= fun markArray ->
+        d_fetch offset_MarkBasePos (d_base_array classCount) >>= fun baseArray ->
+        combine_coverage markCoverage markArray >>= fun mark_assoc ->
+        combine_coverage baseCoverage baseArray >>= fun base_assoc ->
+        return (MarkBasePos1(classCount, mark_assoc, base_assoc))
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
 
 
   let d_mark_to_ligature_attachment_subtable =

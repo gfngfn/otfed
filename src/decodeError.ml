@@ -47,5 +47,6 @@ type t =
   | UnknownGposLookupType     of int
   | UnknownFormatNumber       of int
   | LayeredExtensionPosition
+  | InvalidMarkClass          of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

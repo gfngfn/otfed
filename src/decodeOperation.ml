@@ -60,6 +60,16 @@ let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
   pick offset dec
 
 
+let d_fetch_opt (offset_origin : offset) (dec : 'a decoder) : ('a option) decoder =
+  d_offset_opt offset_origin >>= function
+  | None ->
+      return None
+
+  | Some(offset) ->
+      pick offset dec >>= fun v ->
+      return @@ Some(v)
+
+
 let d_fetch_long (offset_origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
   current >>= fun pos_before ->
   d_long_offset offset_origin >>= fun offset ->

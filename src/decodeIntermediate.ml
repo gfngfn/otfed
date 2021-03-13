@@ -403,17 +403,23 @@ module GxxxScheme = struct
     let gxxx              = feature.feature_source in
     let offset_Feature    = feature.feature_offset_Feature in
     let offset_LookupList = feature.feature_offset_LookupList in
-    let dec =
+    let decFeature =
       (* The position is set to the beginning of a Feature table. *)
       d_uint16 >>= fun _featureParams ->
       d_list d_uint16 >>= fun lookupListIndexList ->
-      let lookupListIndexSet = LookupListIndexSet.of_list lookupListIndexList in
+      let pp_sep ppf () = Format.fprintf ppf ", " in
+      Format.printf "!!lookupListIndexList = {%a}@," (Format.pp_print_list ~pp_sep Format.pp_print_int) lookupListIndexList;
+      return @@ LookupListIndexSet.of_list lookupListIndexList
+    in
+    let decLookup lookupListIndexSet =
       d_list_filtered
         (d_offset offset_LookupList)
         (fun i -> LookupListIndexSet.mem i lookupListIndexSet) >>= fun offsets ->
       pick_each offsets lookup
     in
-    dec |> run gxxx.core offset_Feature
+    let open ResultMonad in
+    decFeature |> run gxxx.core offset_Feature >>= fun lookupListIndexSet ->
+    (decLookup lookupListIndexSet) |> run gxxx.core offset_LookupList
 
 end
 

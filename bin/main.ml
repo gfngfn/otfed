@@ -138,7 +138,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
 
 
 let pp_sep ppf () =
-  Format.fprintf ppf ",@ "
+  Format.fprintf ppf ", "
 
 
 let pp_list pp =
@@ -184,7 +184,7 @@ let print_gsub_feature (feature : DGsub.feature) =
     ~lig:(fun () (gid_from, tos) ->
       Format.printf "  - lig: %d -->@," gid_from;
       tos |> List.iter (fun (gids_tail, gid_to) ->
-        Format.printf "    * %a --> %d@," (pp_list Format.pp_print_int) gids_tail gid_to
+        Format.printf "    * {%a} --> %d@," (pp_list Format.pp_print_int) gids_tail gid_to
       )
     )
     feature ()

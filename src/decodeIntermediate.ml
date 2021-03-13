@@ -531,7 +531,7 @@ module Gsub = struct
       ?single:(f_single = (fun acc _ -> acc))
       ?alt:(f_alt = (fun acc _ -> acc))
       ?lig:(f_lig = (fun acc _ -> acc))
-      (feature : feature) (init : 'a) : 'a ok =
+      (feature : feature) (acc : 'a) : 'a ok =
     let open ResultMonad in
     subtables_scheme lookup feature >>= fun subtables ->
     let acc =
@@ -548,7 +548,7 @@ module Gsub = struct
 
         | UnsupportedSubtable ->
             acc
-      ) init
+      ) acc
     in
     return acc
 
@@ -970,5 +970,60 @@ module Gpos = struct
 
     | _ ->
         lookup_exact offsets lookupType
+
+
+  type 'a folding_single1 = 'a -> glyph_id list -> value_record -> 'a
+
+  type 'a folding_single2 = 'a -> glyph_id * value_record -> 'a
+
+  type 'a folding_pair1 = 'a -> glyph_id * (glyph_id * value_record * value_record) list -> 'a
+
+  type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (class_value * (class_value * value_record * value_record) list) list -> 'a
+
+  type 'a folding_markbase1 = int -> 'a -> (glyph_id * mark_record) list -> (glyph_id * base_record) list -> 'a
+
+  type 'a folding_marklig1 = int -> 'a -> (glyph_id * mark_record) list -> (glyph_id * ligature_attach) list -> 'a
+
+  type 'a folding_markmark1 = int -> 'a -> (glyph_id * mark_record) list -> (glyph_id * mark2_record) list -> 'a
+
+
+  let fold_subtables
+      ?single1:(f_single1 = (fun acc _ _ -> acc))
+      ?single2:(f_single2 = (fun acc _ -> acc))
+      ?pair1:(f_pair1 = (fun acc _ -> acc))
+      ?pair2:(f_pair2 = (fun _ _ acc _ -> acc))
+      ?markbase1:(f_markbase1 = (fun _ acc _ _ -> acc))
+      ?marklig1:(f_marklig1 = (fun _ acc _ _ -> acc))
+      ?markmark1:(f_markmark1 = (fun _ acc _ _ -> acc))
+      (feature : feature) (acc : 'a) : 'a ok =
+    let open ResultMonad in
+    subtables_scheme lookup feature >>= fun subtabless ->
+    let subtables = List.concat subtabless in
+    let acc =
+      subtables |> List.fold_left (fun acc subtable ->
+        match subtable with
+        | SinglePosAdjustment1(coverage, valrecs) ->
+            f_single1 acc coverage valrecs
+
+        | SinglePosAdjustment2(assoc) ->
+            List.fold_left f_single2 acc assoc
+
+        | PairPosAdjustment1(assoc) ->
+            List.fold_left f_pair1 acc assoc
+
+        | PairPosAdjustment2(clsdeflst1, clsdeflst2, assoc) ->
+            f_pair2 clsdeflst1 clsdeflst2 acc assoc
+
+        | MarkBasePos1(classCount, mark_assoc, base_assoc) ->
+            f_markbase1 classCount acc mark_assoc base_assoc
+
+        | MarkLigPos1(classCount, mark_assoc, ligature_assoc) ->
+            f_marklig1 classCount acc mark_assoc ligature_assoc
+
+        | MarkMarkPos1(classCount, mark_assoc, mark2_assoc) ->
+            f_markmark1 classCount acc mark_assoc mark2_assoc
+      ) acc
+    in
+    return acc
 
 end

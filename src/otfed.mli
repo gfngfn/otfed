@@ -345,6 +345,79 @@ module Decode : sig
       val langsyses : script -> (langsys option * langsys set) ok
 
       val features : langsys -> (feature option * feature set) ok
+
+      (** The type for ValueRecords (page 214). *)
+      type value_record = {
+        x_placement  : int option;
+        y_placement  : int option;
+        x_advance    : int option;
+        y_advance    : int option;
+        x_pla_device : int option;
+        y_pla_device : int option;
+        x_adv_device : int option;
+        y_adv_device : int option;
+      }
+
+      type class_value = int
+
+      type class_definition =
+        | GlyphToClass      of Value.glyph_id * class_value
+        | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * class_value
+
+      type device_table = int * int * int * int
+
+      (** The type for Anchor tables (page 215). *)
+      type anchor_adjustment =
+        | NoAnchorAdjustment
+        | AnchorPointAdjustment  of int
+        | DeviceAnchorAdjustment of device_table * device_table
+
+      type design_units = int
+
+      type anchor = design_units * design_units * anchor_adjustment
+
+      type mark_class = int
+
+      (** The type for MarkRecord (page 217). *)
+      type mark_record = mark_class * anchor
+
+      (** The type for BaseRecords (page 199). Arrays of this type are indexed by [mark_class].
+          UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
+      type base_record = (anchor option) array
+
+      (** Type type for ComponentRecords (page 201). Arrays of this type are indexed by [mark_class]. *)
+      type component_record = (anchor option) array
+
+      (** Type type for LigatureAttath tables (page 201). *)
+      type ligature_attach = component_record list
+
+      (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
+      type mark2_record = anchor array
+
+      type 'a folding_single1 = 'a -> Value.glyph_id list -> value_record -> 'a
+
+      type 'a folding_single2 = 'a -> Value.glyph_id * value_record -> 'a
+
+      type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * value_record * value_record) list -> 'a
+
+      type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (class_value * (class_value * value_record * value_record) list) list -> 'a
+
+      type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * base_record) list -> 'a
+
+      type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * ligature_attach) list -> 'a
+
+      type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * mark2_record) list -> 'a
+
+      val fold_subtables :
+        ?single1:('a folding_single1) ->
+        ?single2:('a folding_single2) ->
+        ?pair1:('a folding_pair1) ->
+        ?pair2:('a folding_pair2) ->
+        ?markbase1:('a folding_markbase1) ->
+        ?marklig1:('a folding_marklig1) ->
+        ?markmark1:('a folding_markmark1) ->
+        feature -> 'a -> 'a ok
+
     end
   end
 

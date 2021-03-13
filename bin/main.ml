@@ -6,13 +6,14 @@ module DGsub = D.Intermediate.Gsub
 module V = Otfed.Value
 
 type config = {
-  cmap : bool;
-  head : bool;
-  hhea : bool;
-  maxp : bool;
-  glyf : (V.glyph_id * string) Alist.t;
-  cff  : (V.glyph_id * string) Alist.t;
-  gsub : (string * string * string) Alist.t;
+  tables : bool;
+  cmap   : bool;
+  head   : bool;
+  hhea   : bool;
+  maxp   : bool;
+  glyf   : (V.glyph_id * string) Alist.t;
+  cff    : (V.glyph_id * string) Alist.t;
+  gsub   : (string * string * string) Alist.t;
 }
 
 type error =
@@ -259,10 +260,11 @@ let parse_args () =
       return acc
     else
       match Sys.argv.(i) with
-      | "cmap" -> aux n { acc with cmap = true } (i + 1)
-      | "head" -> aux n { acc with head = true } (i + 1)
-      | "hhea" -> aux n { acc with hhea = true } (i + 1)
-      | "maxp" -> aux n { acc with maxp = true } (i + 1)
+      | "tables" -> aux n { acc with tables = true } (i + 1)
+      | "cmap"   -> aux n { acc with cmap = true } (i + 1)
+      | "head"   -> aux n { acc with head = true } (i + 1)
+      | "hhea"   -> aux n { acc with hhea = true } (i + 1)
+      | "maxp"   -> aux n { acc with maxp = true } (i + 1)
 
       | "glyf" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -288,13 +290,14 @@ let parse_args () =
     let path = Sys.argv.(1) in
     let config =
       {
-        cmap = false;
-        head = false;
-        hhea = false;
-        maxp = false;
-        glyf = Alist.empty;
-        cff  = Alist.empty;
-        gsub = Alist.empty;
+        tables = false;
+        cmap   = false;
+        head   = false;
+        hhea   = false;
+        maxp   = false;
+        glyf   = Alist.empty;
+        cff    = Alist.empty;
+        gsub   = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -322,7 +325,7 @@ let _ =
     read_file path >>= fun s ->
     D.source_of_string s |> inj >>= function
     | Single(source) ->
-        print_table_directory source;
+        if config.tables then print_table_directory source else ();
         begin
           if config.head then print_head source else return ()
         end >>= fun () ->

@@ -662,8 +662,25 @@ module Gpos = struct
     | MarkMarkPos1         of int * (glyph_id * mark_record) list * (glyph_id * mark2_record) list
 
 
-  let d_single_adjustment_subtable =
-    current >>= fun _ -> failwith "TODO"
+  let d_single_adjustment_subtable : subtable decoder =
+    (* The position is supposed to be set to the beginning of a SinglePos subtable [page 192]. *)
+    current >>= fun offset_SinglePos ->
+    d_uint16 >>= fun posFormat ->
+    d_fetch offset_SinglePos d_coverage >>= fun coverage ->
+    match posFormat with
+    | 1 ->
+        d_value_format >>= fun valueFormat ->
+        d_value_record valueFormat >>= fun valueRecord ->
+        return (SinglePosAdjustment1(coverage, valueRecord))
+
+    | 2 ->
+        d_value_format >>= fun valueFormat ->
+        d_list (d_value_record valueFormat) >>= fun singleposs ->
+        combine_coverage coverage singleposs >>= fun comb ->
+        return (SinglePosAdjustment2(comb))
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
 
 
   let d_pair_adjustment_subtable =

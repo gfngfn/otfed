@@ -11,7 +11,12 @@ See also:
 
 ## Note
 
-Some unit tests use data extracted from [IPAex明朝](https://moji.or.jp/ipafont/) (IPAex Mincho, `ipaexm.ttf`). See the license [here](https://moji.or.jp/ipafont/license/).
+Some unit tests use data extracted from the following fonts:
+
+* [IPAex明朝 (IPAex Mincho)](https://moji.or.jp/ipafont/), `ipaexm.ttf`
+  - See the license [here](https://moji.or.jp/ipafont/license/)
+* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern), `lmroman10-regular.otf`
+  - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
 
 
 ## Usage of an example CLI `otfedcli`

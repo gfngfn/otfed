@@ -466,6 +466,32 @@ module Gsub = struct
     | _ -> err @@ Error.UnknownFormatNumber(substFormat)
 
 
+  let d_ligature_table : (glyph_id list * glyph_id) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Ligature table [page 255]. *)
+    d_uint16 >>= fun ligGlyph ->
+    d_uint16 >>= fun compCount ->
+    d_repeat (compCount - 1) d_uint16 >>= fun component ->
+    return (component, ligGlyph)
+
+
+  let d_ligature_set_table : ((glyph_id list * glyph_id) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a LigatureSet table [page 254]. *)
+    current >>= fun offset_LigatureSet ->
+    d_list (d_fetch offset_LigatureSet d_ligature_table)
+
+
+  let d_ligature_substitution_subtable : ((glyph_id * (glyph_id list * glyph_id) list) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Ligature SubstFormat1 subtable [page 254]. *)
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_fetch_coverage_and_values offset_Substitution d_ligature_set_table
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
   let lookup_gsub =
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
@@ -473,13 +499,17 @@ module Gsub = struct
     match lookupType with
     | 1 ->
         d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
-        return (SingleSubtable(List.concat assocs))
+        return @@ SingleSubtable(List.concat assocs)
 
     | 3 ->
         d_list (d_fetch offset_Lookup d_alternate_substitution_subtable) >>= fun assocs ->
-        return (AlternateSubtable(List.concat assocs))
+        return @@ AlternateSubtable(List.concat assocs)
 
-    | 2 | 4 | 5 | 6 | 7 | 8 ->
+    | 4 ->
+        d_list (d_fetch offset_Lookup d_ligature_substitution_subtable) >>= fun assocs ->
+        return @@ LigatureSubtable(List.concat assocs)
+
+    | 2 | 5 | 6 | 7 | 8 ->
         err @@ Error.Unsupported(Error.UnsupportedGsubLookupType(lookupType))
 
     | _ ->

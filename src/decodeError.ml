@@ -44,6 +44,9 @@ type t =
   | UnknownLookupOrder        of int
   | InvalidFeatureIndex       of int
   | UnknownGsubLookupType     of int
+  | UnknownGposLookupType     of int
   | UnknownFormatNumber       of int
+  | LayeredExtensionPosition
+  | InvalidMarkClass          of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

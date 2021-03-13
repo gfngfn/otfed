@@ -23,13 +23,19 @@ val pick_each : offset list -> 'a decoder -> ('a list) decoder
 (** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
 val d_offset : offset -> offset decoder
 
-(** Same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
+(** [d_offset origin] reads 4 bytes as a relative offset [rel], and returns [origin + rel]. *)
+val d_long_offset : offset -> offset decoder
+
+(** Basically the same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
 val d_offset_opt : offset -> (offset option) decoder
 
 (** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
     and then reads data at [origin + rel] by using [dec].
     Here, the position advances by 2 bytes. *)
 val d_fetch : offset -> 'a decoder -> 'a decoder
+
+(** Basically the same as [d_fetch] except that [d_fetch_opt] returns [None] when it has read [0]. *)
+val d_fetch_opt : offset -> 'a decoder -> ('a option) decoder
 
 (** [d_fetch_long origin dec] reads a 4-byte relative offset [rel],
     fetches the value at the position [(origin + rel)] by using [dec],
@@ -44,6 +50,10 @@ val d_list : 'a decoder -> ('a list) decoder
 
 (** Similar to [d_list], but [d_list_filtered] is equipped with an additional predicate over 0-origin indices. *)
 val d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder
+
+(** [d_if true dec] behaves in the same way as [dec >>= fun v -> return @@ Some(v)],
+    while [d_if false dec] does as [return None]. *)
+val d_if : bool -> 'a decoder -> ('a option) decoder
 
 (** Reads a 4cc tag. *)
 val d_tag : Tag.t decoder

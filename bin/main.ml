@@ -2,8 +2,8 @@
 module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
+module DGsub = D.Intermediate.Gsub
 module V = Otfed.Value
-
 
 type config = {
   cmap : bool;
@@ -12,6 +12,7 @@ type config = {
   maxp : bool;
   glyf : (V.glyph_id * string) Alist.t;
   cff  : (V.glyph_id * string) Alist.t;
+  gsub : (string * string * string) Alist.t;
 }
 
 type error =
@@ -140,6 +141,10 @@ let pp_sep ppf () =
   Format.fprintf ppf ",@ "
 
 
+let pp_list pp =
+  Format.pp_print_list ~pp_sep pp
+
+
 let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Format.printf "CFF (glyph ID: %d):@," gid;
@@ -163,9 +168,88 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
           end;
           Format.printf "%a@," D.pp_charstring charstring;
           D.path_of_charstring charstring |> inj >>= fun paths ->
-          Format.printf "%a@," (Format.pp_print_list ~pp_sep V.pp_cubic_path) paths;
+          Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
           let data = Svg.make_cff ~units_per_em:head.V.Head.units_per_em paths in
           write_glyph_svg path ~data
+
+
+let print_gsub_feature (feature : DGsub.feature) =
+  DGsub.fold_subtables
+    ~single:(fun () (gid_from, gid_to) ->
+      Format.printf "  - single: %d --> %d@," gid_from gid_to;
+    )
+    ~alt:(fun () (gid_from, gids_to) ->
+      Format.printf "  - alt: %d --> {%a}@," gid_from (pp_list Format.pp_print_int) gids_to
+    )
+    ~lig:(fun () (gid_from, tos) ->
+      Format.printf "  - lig: %d -->@," gid_from;
+      tos |> List.iter (fun (gids_tail, gid_to) ->
+        Format.printf "    * %a --> %d@," (pp_list Format.pp_print_int) gids_tail gid_to
+      )
+    )
+    feature ()
+
+
+let print_gsub_langsys (langsys : DGsub.langsys) (feature_tag : string) =
+  let open ResultMonad in
+  DGsub.features langsys >>= fun (default_feature_opt, features) ->
+  let features =
+    match default_feature_opt with
+    | None                  -> features
+    | Some(default_feature) -> default_feature :: features
+  in
+  match
+    features |> List.find_opt (fun feature -> String.equal feature_tag (DGsub.get_feature_tag feature))
+  with
+  | None ->
+      Format.printf "  feature %s not found in:@," feature_tag;
+      features |> List.iter (fun feature -> Format.printf "  - %s@," (DGsub.get_feature_tag feature));
+      return ()
+
+  | Some(feature) ->
+      print_gsub_feature feature
+
+
+let print_gsub_script (script : DGsub.script) (langsys_tag : string) (feature_tag : string) =
+  let open ResultMonad in
+  DGsub.langsyses script >>= fun (default_langsys_opt, langsyses) ->
+  let langsyses =
+    match default_langsys_opt with
+    | None                  -> langsyses
+    | Some(default_langsys) -> default_langsys :: langsyses
+  in
+  match
+    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (DGsub.get_langsys_tag langsys))
+  with
+  | None ->
+      Format.printf "  langsys %s not found in:@," langsys_tag;
+      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (DGsub.get_langsys_tag langsys));
+      return ()
+
+  | Some(langsys) ->
+      print_gsub_langsys langsys feature_tag
+
+
+let print_gsub (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
+  let open ResultMonad in
+  Format.printf "GSUB (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
+  D.gsub common >>= function
+  | None ->
+      Format.printf "  GSUB table not found@,";
+      return ()
+
+  | Some(igsub) ->
+      DGsub.scripts igsub >>= fun scripts ->
+      match
+        scripts |> List.find_opt (fun script -> String.equal script_tag (DGsub.get_script_tag script))
+      with
+      | None ->
+          Format.printf "  script %s not found in:@," script_tag;
+          scripts |> List.iter (fun script -> Format.printf "  - %s@," (DGsub.get_script_tag script));
+          return ()
+
+      | Some(script) ->
+          print_gsub_script script langsys_tag feature_tag
 
 
 let parse_args () =
@@ -190,6 +274,12 @@ let parse_args () =
           let path = Sys.argv.(i + 2) in
           aux n { acc with cff = Alist.extend acc.cff (gid, path) } (i + 3)
 
+      | "gsub" ->
+          let script  = Sys.argv.(i + 1) in
+          let langsys = Sys.argv.(i + 2) in
+          let feature = Sys.argv.(i + 3) in
+          aux n { acc with gsub = Alist.extend acc.gsub (script, langsys, feature) } (i + 4)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -204,6 +294,7 @@ let parse_args () =
         maxp = false;
         glyf = Alist.empty;
         cff  = Alist.empty;
+        gsub = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -249,6 +340,9 @@ let _ =
         ) >>= fun _ ->
         config.cff |> Alist.to_list |> mapM (fun (gid, path) ->
           print_cff source gid path
+        ) >>= fun _ ->
+        config.gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
+          print_gsub source script langsys feature |> inj
         ) >>= fun _ ->
         return ()
 

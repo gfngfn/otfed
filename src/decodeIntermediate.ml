@@ -496,6 +496,7 @@ module Gsub = struct
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
     d_uint16 >>= fun _lookupFlag ->
+    Format.printf "!!LookupType %d@," lookupType;
     match lookupType with
     | 1 ->
         d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
@@ -530,6 +531,7 @@ module Gsub = struct
       (feature : feature) (init : 'a) : 'a ok =
     let open ResultMonad in
     subtables_scheme lookup feature >>= fun subtables ->
+    Format.printf "!! number of subtables = %d@," (List.length subtables);
     let acc =
       subtables |> List.fold_left (fun acc subtable ->
         match subtable with

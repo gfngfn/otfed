@@ -45,6 +45,10 @@ val d_list : 'a decoder -> ('a list) decoder
 (** Similar to [d_list], but [d_list_filtered] is equipped with an additional predicate over 0-origin indices. *)
 val d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder
 
+(** [d_if true dec] behaves in the same way as [dec >>= fun v -> return @@ Some(v)],
+    while [d_if false dec] does as [return None]. *)
+val d_if : bool -> 'a decoder -> ('a option) decoder
+
 (** Reads a 4cc tag. *)
 val d_tag : Tag.t decoder
 

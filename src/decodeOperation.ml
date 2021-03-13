@@ -98,6 +98,14 @@ fun dec predicate ->
   aux Alist.empty count 0
 
 
+let d_if cond dec =
+  if cond then
+    dec >>= fun res ->
+    return @@ Some(res)
+  else
+    return None
+
+
 let d_tag : Value.Tag.t decoder =
   d_uint32 >>= fun n ->
   return @@ Value.Tag.of_wide_int n

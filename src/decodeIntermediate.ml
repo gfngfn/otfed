@@ -559,4 +559,106 @@ module Gpos = struct
 
   include GxxxScheme
 
+
+  type value_format = {
+    format_x_placement  : bool;
+    format_y_placement  : bool;
+    format_x_advance    : bool;
+    format_y_advance    : bool;
+    format_x_pla_device : bool;
+    format_y_pla_device : bool;
+    format_x_adv_device : bool;
+    format_y_adv_device : bool;
+  }
+
+  type value_record = {
+    x_placement  : int option;
+    y_placement  : int option;
+    x_advance    : int option;
+    y_advance    : int option;
+    x_pla_device : int option;
+    y_pla_device : int option;
+    x_adv_device : int option;
+    y_adv_device : int option;
+  }
+
+
+  let d_value_format : value_format decoder =
+    d_uint16 >>= fun n ->
+    return @@ {
+      format_x_placement  = n land 1 > 0;
+      format_y_placement  = n land 2 > 0;
+      format_x_advance    = n land 4 > 0;
+      format_y_advance    = n land 8 > 0;
+      format_x_pla_device = n land 16 > 0;
+      format_y_pla_device = n land 32 > 0;
+      format_x_adv_device = n land 64 > 0;
+      format_y_adv_device = n land 128 > 0;
+    }
+
+
+  let d_value_record (v : value_format) : value_record decoder =
+    (* The position is supposed to be set to the beginning of a ValueRecord table [page 213]. *)
+    d_if v.format_x_placement  d_int16 >>= fun xPlacement_opt ->
+    d_if v.format_y_placement  d_int16 >>= fun yPlacement_opt ->
+    d_if v.format_x_advance    d_int16 >>= fun xAdvance_opt ->
+    d_if v.format_y_advance    d_int16 >>= fun yAdvance_opt ->
+    d_if v.format_x_pla_device d_int16 >>= fun xPlaDevice_opt ->
+    d_if v.format_y_pla_device d_int16 >>= fun yPlaDevice_opt ->
+    d_if v.format_x_adv_device d_int16 >>= fun xAdvDevice_opt ->
+    d_if v.format_y_adv_device d_int16 >>= fun yAdvDevice_opt ->
+    return {
+      x_placement  = xPlacement_opt;
+      y_placement  = yPlacement_opt;
+      x_advance    = xAdvance_opt;
+      y_advance    = yAdvance_opt;
+      x_pla_device = xPlaDevice_opt;
+      y_pla_device = yPlaDevice_opt;
+      x_adv_device = xAdvDevice_opt;
+      y_adv_device = yAdvDevice_opt;
+    }
+
+
+  type device_table = int * int * int * int
+
+  type anchor_adjustment =
+    | NoAnchorAdjustment
+    | AnchorPointAdjustment  of int
+    | DeviceAnchorAdjustment of device_table * device_table
+
+  type design_units = int
+
+  type anchor = design_units * design_units * anchor_adjustment
+
+  type mark_class = int
+
+  type mark_record = mark_class * anchor
+
+  type base_record = (anchor option) array
+    (* Indexed by `mark_class`.
+       UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables can contain NULL pointers. *)
+
+  type component_record = (anchor option) array
+    (* Indexed by `mark_class`. *)
+
+  type ligature_attach = component_record list
+
+  type mark2_record = anchor array
+    (* Indexed by `mark_class`. *)
+
+  type class_value = int
+
+  type class_definition =
+    | GlyphToClass      of glyph_id * class_value
+    | GlyphRangeToClass of glyph_id * glyph_id * class_value
+
+  type subtable =
+    | SinglePosAdjustment1 of glyph_id list * value_record
+    | SinglePosAdjustment2 of (glyph_id * value_record) list
+    | PairPosAdjustment1   of (glyph_id * (glyph_id * value_record * value_record) list) list
+    | PairPosAdjustment2   of class_definition list * class_definition list * (class_value * (class_value * value_record * value_record) list) list
+    | MarkBasePos1         of int * (glyph_id * mark_record) list * (glyph_id * base_record) list
+    | MarkLigPos1          of int * (glyph_id * mark_record) list * (glyph_id * ligature_attach) list
+    | MarkMarkPos1         of int * (glyph_id * mark_record) list * (glyph_id * mark2_record) list
+
 end

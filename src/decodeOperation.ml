@@ -191,6 +191,15 @@ fun coverage vs ->
   | Invalid_argument(_) -> err @@ Error.InvalidCoverageLength
 
 
+let d_fetch_coverage_and_values (offset : int) (dec : 'a decoder) : ((glyph_id * 'a) list) decoder =
+  (* The position is supposed to be set just before a Coverage field
+     and a subsequent offset list [page 254 etc.] *)
+  d_fetch offset d_coverage >>= fun coverage ->
+  (* The position is set just before LigSetCount field [page 254] *)
+  d_list (d_fetch offset dec) >>= fun vs ->
+  combine_coverage coverage vs
+
+
 let d_offsize : offsize decoder =
   d_uint8 >>= function
   | 1 -> return OffSize1

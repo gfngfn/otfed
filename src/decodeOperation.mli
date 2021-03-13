@@ -69,6 +69,8 @@ val d_coverage : (glyph_id list) decoder
 
 val combine_coverage : (glyph_id list) -> 'a list -> ((glyph_id * 'a) list) decoder
 
+val d_fetch_coverage_and_values : int -> 'a decoder -> ((glyph_id * 'a) list) decoder
+
 (** Reads an OffSize value. *)
 val d_offsize : offsize decoder
 

@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeBasic
 open DecodeOperation
 
@@ -413,5 +414,59 @@ module GxxxScheme = struct
       pick_each offsets lookup
     in
     dec |> run gxxx.core offset_Feature
+
+end
+
+
+module Gsub = struct
+
+  include GxxxScheme
+
+
+  type gsub_subtable =
+    | SingleSubtable    of (glyph_id * glyph_id) list
+        (* LookupType 1: Single substitution subtable [page 251] *)
+    | AlternateSubtable of (glyph_id * (glyph_id list)) list
+        (* LookupType 3: Alternate substitution subtable [page 253] *)
+    | LigatureSubtable  of (glyph_id * (glyph_id list * glyph_id) list) list
+        (* LookupType 4: Ligature substitution subtable [page 254] *)
+    | Unsupported
+
+
+  let d_single_substitution_subtable_format_1 (offset_Substitution : offset) =
+    d_fetch offset_Substitution d_coverage >>= fun coverage ->
+    d_uint16 >>= fun deltaGlyphID ->
+    return (coverage |> List.map (fun gid -> (gid, gid + deltaGlyphID)))
+
+
+  let d_single_substitution_subtable_format_2 (offset_Substitution : offset) =
+    d_fetch_coverage_and_values offset_Substitution d_uint16
+
+
+  let d_single_substitution_subtable : ((glyph_id * glyph_id) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Single SubstFormat1 or a Single SubstFormat2 subtable [page 251]. *)
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_single_substitution_subtable_format_1 offset_Substitution
+    | 2 -> d_single_substitution_subtable_format_2 offset_Substitution
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
+  let lookup_gsub =
+    current >>= fun offset_Lookup ->
+    d_uint16 >>= fun lookupType ->
+    d_uint16 >>= fun _lookupFlag ->
+    match lookupType with
+    | 1 ->
+        d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
+        return (SingleSubtable(List.concat assocs))
+
+    | 2 | 3 | 4 | 5 | 6 | 7 | 8 ->
+        err @@ Error.Unsupported(Error.UnsupportedGsubLookupType(lookupType))
+
+    | _ ->
+        err @@ Error.UnknownGsubLookupType(lookupType)
 
 end

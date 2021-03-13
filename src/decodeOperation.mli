@@ -23,6 +23,9 @@ val pick_each : offset list -> 'a decoder -> ('a list) decoder
 (** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
 val d_offset : offset -> offset decoder
 
+(** [d_offset origin] reads 4 bytes as a relative offset [rel], and returns [origin + rel]. *)
+val d_long_offset : offset -> offset decoder
+
 (** Same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
 val d_offset_opt : offset -> (offset option) decoder
 

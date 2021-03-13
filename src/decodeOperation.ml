@@ -42,6 +42,11 @@ let d_offset (offset_origin : offset) : offset decoder =
   return (offset_origin + reloffset)
 
 
+let d_long_offset (offset_origin : offset) : offset decoder =
+  d_uint32_int >>= fun reloffset ->
+  return (offset_origin + reloffset)
+
+
 let d_offset_opt (offset_origin : int) : (offset option) decoder =
   d_uint16 >>= fun reloffset ->
   if reloffset = 0 then
@@ -55,10 +60,9 @@ let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
   pick offset dec
 
 
-let d_fetch_long (origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
+let d_fetch_long (offset_origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
   current >>= fun pos_before ->
-  d_uint32_int >>= fun reloffset ->
-  let offset = origin + reloffset in
+  d_long_offset offset_origin >>= fun offset ->
   seek offset >>= fun () ->
   dec >>= fun v ->
   seek (pos_before + 4) >>= fun () ->

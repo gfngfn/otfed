@@ -514,7 +514,7 @@ module Gsub = struct
         return @@ LigatureSubtable(List.concat assocs)
 
     | 2 | 5 | 6 | 7 | 8 ->
-        return UnsupportedSubtable
+        return UnsupportedSubtable (* TODO *)
 
     | _ ->
         err @@ Error.UnknownGsubLookupType(lookupType)
@@ -660,5 +660,94 @@ module Gpos = struct
     | MarkBasePos1         of int * (glyph_id * mark_record) list * (glyph_id * base_record) list
     | MarkLigPos1          of int * (glyph_id * mark_record) list * (glyph_id * ligature_attach) list
     | MarkMarkPos1         of int * (glyph_id * mark_record) list * (glyph_id * mark2_record) list
+
+
+  let d_single_adjustment_subtable =
+    current >>= fun _ -> failwith "TODO"
+
+
+  let d_pair_adjustment_subtable =
+    current >>= fun _ -> failwith "TODO"
+
+
+  let d_mark_to_base_attachment_subtable =
+    current >>= fun _ -> failwith "TODO"
+
+
+  let d_mark_to_ligature_attachment_subtable =
+    current >>= fun _ -> failwith "TODO"
+
+
+  let d_mark_to_mark_attachment_subtable =
+    current >>= fun _ -> failwith "TODO"
+
+
+  let lookup_exact offsets lookupType : (subtable list) decoder =
+    match lookupType with
+    | 1 ->
+      (* Single adjustment *)
+        pick_each offsets d_single_adjustment_subtable
+
+    | 2 ->
+      (* Pair adjustment *)
+        pick_each offsets d_pair_adjustment_subtable
+
+    | 3 ->
+      (* Cursive attachment *)
+        return []  (* TODO *)
+
+    | 4 ->
+      (* MarkToBase attachment *)
+        pick_each offsets d_mark_to_base_attachment_subtable
+
+    | 5 ->
+      (* MarkToLigature attachment *)
+        pick_each offsets d_mark_to_ligature_attachment_subtable
+
+    | 6 ->
+      (* MarkToMark attachment *)
+        pick_each offsets d_mark_to_mark_attachment_subtable
+
+    | 7 ->
+        return []  (* TODO *)
+
+    | 8 ->
+        return []  (* TODO *)
+
+    | 9 ->
+      (* Extension positioning [page 213] cannot occur here *)
+        err Error.LayeredExtensionPosition
+
+    | _ ->
+        err @@ Error.UnknownGposLookupType(lookupType)
+
+
+  let d_extension_position : (subtable list) decoder =
+    (* The position is supposed to be set to the beginning of an ExtensionPosFormat1 subtable [page 213]. *)
+    current >>= fun offset_ExtensionPos ->
+    d_uint16 >>= fun posFormat ->
+    match posFormat with
+    | 1 ->
+        d_uint16 >>= fun extensionLookupType ->
+        d_long_offset offset_ExtensionPos >>= fun offset ->
+        lookup_exact [offset] extensionLookupType
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
+
+
+  let lookup : (subtable list) decoder =
+    (* The position is supposed to be set to the beginning of a Lookup table [page 137]. *)
+    current >>= fun offset_Lookup ->
+    d_uint16 >>= fun lookupType ->
+    d_uint16 >>= fun _lookupFlag ->
+    d_list (d_offset offset_Lookup) >>= fun offsets ->
+    match lookupType with
+    | 9 ->
+        pick_each offsets d_extension_position >>= fun subtabless ->
+        return (List.concat subtabless)
+
+    | _ ->
+        lookup_exact offsets lookupType
 
 end

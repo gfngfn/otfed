@@ -454,6 +454,18 @@ module Gsub = struct
     | _ -> err @@ Error.UnknownFormatNumber(substFormat)
 
 
+  let d_alternate_set_table =
+    d_list d_uint16
+
+
+  let d_alternate_substitution_subtable : ((glyph_id * glyph_id set) list) decoder =
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_fetch_coverage_and_values offset_Substitution d_alternate_set_table
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
   let lookup_gsub =
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
@@ -463,7 +475,11 @@ module Gsub = struct
         d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
         return (SingleSubtable(List.concat assocs))
 
-    | 2 | 3 | 4 | 5 | 6 | 7 | 8 ->
+    | 3 ->
+        d_list (d_fetch offset_Lookup d_alternate_substitution_subtable) >>= fun assocs ->
+        return (AlternateSubtable(List.concat assocs))
+
+    | 2 | 4 | 5 | 6 | 7 | 8 ->
         err @@ Error.Unsupported(Error.UnsupportedGsubLookupType(lookupType))
 
     | _ ->

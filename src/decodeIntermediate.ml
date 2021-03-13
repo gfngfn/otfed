@@ -407,8 +407,6 @@ module GxxxScheme = struct
       (* The position is set to the beginning of a Feature table. *)
       d_uint16 >>= fun _featureParams ->
       d_list d_uint16 >>= fun lookupListIndexList ->
-      let pp_sep ppf () = Format.fprintf ppf ", " in
-      Format.printf "!!lookupListIndexList = {%a}@," (Format.pp_print_list ~pp_sep Format.pp_print_int) lookupListIndexList;
       return @@ LookupListIndexSet.of_list lookupListIndexList
     in
     let decLookup lookupListIndexSet =
@@ -502,7 +500,6 @@ module Gsub = struct
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
     d_uint16 >>= fun _lookupFlag ->
-    Format.printf "!!LookupType %d@," lookupType;
     match lookupType with
     | 1 ->
         d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
@@ -537,7 +534,6 @@ module Gsub = struct
       (feature : feature) (init : 'a) : 'a ok =
     let open ResultMonad in
     subtables_scheme lookup feature >>= fun subtables ->
-    Format.printf "!! number of subtables = %d@," (List.length subtables);
     let acc =
       subtables |> List.fold_left (fun acc subtable ->
         match subtable with

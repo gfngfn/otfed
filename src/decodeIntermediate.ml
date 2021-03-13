@@ -1,6 +1,8 @@
 
 open Basic
+open Value
 open DecodeBasic
+open DecodeOperation
 
 
 module GeneralTable = struct
@@ -224,26 +226,330 @@ module GxxxScheme = struct
   include GeneralTable
 
   type script = {
-    script_source              : t;
-    script_tag                 : string;
-    script_offset_Script_table : int;
-    script_offset_FeatureList  : int;
-    script_offset_LookupList   : int;
+    script_source             : t;
+    script_tag                : string;
+    script_offset_Script      : offset;
+    script_offset_FeatureList : offset;
+    script_offset_LookupList  : offset;
   }
 
   type langsys = {
     langsys_source             : t;
     langsys_tag                : string;
-    langsys_offset_LangSys     : int;
-    langsys_offset_FeatureList : int;
-    langsys_offset_LookupList  : int;
+    langsys_offset_LangSys     : offset;
+    langsys_offset_FeatureList : offset;
+    langsys_offset_LookupList  : offset;
   }
 
   type feature = {
     feature_source            : t;
     feature_tag               : string;
-    feature_offset_Feature    : int;
-    feature_offset_LookupList : int;
+    feature_offset_Feature    : offset;
+    feature_offset_LookupList : offset;
   }
+
+
+  let get_script_tag script =
+    script.script_tag
+
+
+  let get_langsys_tag langsys =
+    langsys.langsys_tag
+
+
+  let get_feature_tag feature =
+    feature.feature_tag
+
+
+  let d_tag_and_offset_record (offset_ScriptList : offset) : (string * offset) decoder =
+    d_bytes 4 >>= fun tag ->
+    d_offset offset_ScriptList >>= fun offset ->
+    return (tag, offset)
+
+
+  let d_tag_and_offset_list : ((string * int) list) decoder =
+    current >>= fun offset_ScriptList ->
+    d_list (d_tag_and_offset_record offset_ScriptList)
+
+
+  let scripts (gxxx : t) : (script list) ok =
+    let offset_Gxxx = gxxx.offset in
+    let dec =
+      d_uint32 >>= fun version ->
+      if version <> !%% 0x00010000L then
+        err @@ Error.UnknownTableVersion(version)
+      else
+        d_fetch offset_Gxxx d_tag_and_offset_list >>= fun scriptList ->
+        d_offset offset_Gxxx >>= fun offset_FeatureList ->
+        d_offset offset_Gxxx >>= fun offset_LookupList ->
+      let scripts =
+        scriptList |> List.map (fun (scriptTag, offset_Script) ->
+          {
+            script_source             = gxxx;
+            script_tag                = scriptTag;
+            script_offset_Script      = offset_Script;
+            script_offset_FeatureList = offset_FeatureList;
+            script_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      return scripts
+    in
+    dec |> DecodeOperation.run gxxx.core offset_Gxxx
+
+
+  let langsyses (script : script) : (langsys option * langsys list) ok =
+    let gxxx               = script.script_source in
+    let offset_Script      = script.script_offset_Script in
+    let offset_FeatureList = script.script_offset_FeatureList in
+    let offset_LookupList  = script.script_offset_LookupList in
+    let dec =
+      d_offset_opt offset_Script >>= fun offset_DefaultLangSys_opt ->
+      d_list (d_tag_and_offset_record offset_Script) >>= fun langSysList ->
+      let default_langsys_opt =
+        offset_DefaultLangSys_opt |> Option.map (fun offset_DefaultLangSys ->
+          {
+            langsys_source             = gxxx;
+            langsys_tag                = "DFLT";
+            langsys_offset_LangSys     = offset_DefaultLangSys;
+            langsys_offset_FeatureList = offset_FeatureList;
+            langsys_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      let langsyses =
+        langSysList |> List.map (fun (langSysTag, offset_LangSys) ->
+          {
+            langsys_source             = gxxx;
+            langsys_tag                = langSysTag;
+            langsys_offset_LangSys     = offset_LangSys;
+            langsys_offset_FeatureList = offset_FeatureList;
+            langsys_offset_LookupList  = offset_LookupList;
+          }
+        )
+      in
+      return (default_langsys_opt, langsyses)
+    in
+    dec |> DecodeOperation.run gxxx.core offset_Script
+
+
+  module FeatureIndexSet = Set.Make(Int)
+
+
+  let features (langsys : langsys) : (feature option * feature list) ok =
+    let gxxx               = langsys.langsys_source in
+    let offset_LangSys     = langsys.langsys_offset_LangSys in
+    let offset_FeatureList = langsys.langsys_offset_FeatureList in
+    let offset_LookupList  = langsys.langsys_offset_LookupList in
+    let decLangSys =
+      (* The position is set to the beginning of a LangSys table [page 134]. *)
+      d_uint16 >>= fun lookupOrder ->
+      if lookupOrder <> 0 then
+        err @@ Error.UnknownLookupOrder(lookupOrder)
+      else
+        d_uint16 >>= fun requiredFeatureIndex ->
+        d_list d_uint16 >>= fun featureIndices ->
+        return (requiredFeatureIndex, FeatureIndexSet.of_list featureIndices)
+    in
+    let decFeature (requiredFeatureIndex, featureIndexSet) =
+      d_list_filtered
+        (d_tag_and_offset_record offset_FeatureList)
+        (fun i -> FeatureIndexSet.mem i featureIndexSet) >>= fun featureList ->
+      let features =
+        featureList |> List.map (fun (featureTag, offset_Feature) ->
+          {
+            feature_source            = gxxx;
+            feature_tag               = featureTag;
+            feature_offset_Feature    = offset_Feature;
+            feature_offset_LookupList = offset_LookupList;
+          }
+        )
+      in
+      begin
+        match requiredFeatureIndex with
+        | 0xFFFF ->
+            return None
+
+        | _ ->
+            let dec =
+              d_tag_and_offset_record offset_FeatureList >>= fun pair ->
+              return @@ Some(pair)
+            in
+            pick (offset_FeatureList + 6 * requiredFeatureIndex) dec
+            (* 6 is the size of FeatureRecord [page 135]. *)
+      end >>= fun tag_and_offset_opt ->
+      let required_feature_opt =
+        tag_and_offset_opt |> Option.map (fun (tag, offset) ->
+          {
+            feature_source            = gxxx;
+            feature_tag               = tag;
+            feature_offset_Feature    = offset;
+            feature_offset_LookupList = offset_LookupList;
+          }
+        )
+      in
+      return (required_feature_opt, features)
+    in
+    let open ResultMonad in
+    decLangSys |> run gxxx.core offset_LangSys >>= fun pair ->
+    (decFeature pair) |> run gxxx.core offset_FeatureList
+
+
+  module LookupListIndexSet = Set.Make(Int)
+
+
+  let subtables_scheme : 'a. 'a decoder -> feature -> ('a list) ok =
+  fun lookup feature ->
+    let gxxx              = feature.feature_source in
+    let offset_Feature    = feature.feature_offset_Feature in
+    let offset_LookupList = feature.feature_offset_LookupList in
+    let decFeature =
+      (* The position is set to the beginning of a Feature table. *)
+      d_uint16 >>= fun _featureParams ->
+      d_list d_uint16 >>= fun lookupListIndexList ->
+      return @@ LookupListIndexSet.of_list lookupListIndexList
+    in
+    let decLookup lookupListIndexSet =
+      d_list_filtered
+        (d_offset offset_LookupList)
+        (fun i -> LookupListIndexSet.mem i lookupListIndexSet) >>= fun offsets ->
+      pick_each offsets lookup
+    in
+    let open ResultMonad in
+    decFeature |> run gxxx.core offset_Feature >>= fun lookupListIndexSet ->
+    (decLookup lookupListIndexSet) |> run gxxx.core offset_LookupList
+
+end
+
+
+module Gsub = struct
+
+  include GxxxScheme
+
+
+  type subtable =
+    | SingleSubtable    of (glyph_id * glyph_id) list
+        (* LookupType 1: Single substitution subtable [page 251] *)
+    | AlternateSubtable of (glyph_id * (glyph_id list)) list
+        (* LookupType 3: Alternate substitution subtable [page 253] *)
+    | LigatureSubtable  of (glyph_id * (glyph_id list * glyph_id) list) list
+        (* LookupType 4: Ligature substitution subtable [page 254] *)
+    | UnsupportedSubtable
+
+
+  let d_single_substitution_subtable_format_1 (offset_Substitution : offset) =
+    d_fetch offset_Substitution d_coverage >>= fun coverage ->
+    d_uint16 >>= fun deltaGlyphID ->
+    return (coverage |> List.map (fun gid -> (gid, gid + deltaGlyphID)))
+
+
+  let d_single_substitution_subtable_format_2 (offset_Substitution : offset) =
+    d_fetch_coverage_and_values offset_Substitution d_uint16
+
+
+  let d_single_substitution_subtable : ((glyph_id * glyph_id) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Single SubstFormat1 or a Single SubstFormat2 subtable [page 251]. *)
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_single_substitution_subtable_format_1 offset_Substitution
+    | 2 -> d_single_substitution_subtable_format_2 offset_Substitution
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
+  let d_alternate_set_table =
+    d_list d_uint16
+
+
+  let d_alternate_substitution_subtable : ((glyph_id * glyph_id set) list) decoder =
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_fetch_coverage_and_values offset_Substitution d_alternate_set_table
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
+  let d_ligature_table : (glyph_id list * glyph_id) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Ligature table [page 255]. *)
+    d_uint16 >>= fun ligGlyph ->
+    d_uint16 >>= fun compCount ->
+    d_repeat (compCount - 1) d_uint16 >>= fun component ->
+    return (component, ligGlyph)
+
+
+  let d_ligature_set_table : ((glyph_id list * glyph_id) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a LigatureSet table [page 254]. *)
+    current >>= fun offset_LigatureSet ->
+    d_list (d_fetch offset_LigatureSet d_ligature_table)
+
+
+  let d_ligature_substitution_subtable : ((glyph_id * (glyph_id list * glyph_id) list) list) decoder =
+    (* The position is supposed to be set to the beginning of
+       a Ligature SubstFormat1 subtable [page 254]. *)
+    current >>= fun offset_Substitution ->
+    d_uint16 >>= fun substFormat ->
+    match substFormat with
+    | 1 -> d_fetch_coverage_and_values offset_Substitution d_ligature_set_table
+    | _ -> err @@ Error.UnknownFormatNumber(substFormat)
+
+
+  let lookup =
+    current >>= fun offset_Lookup ->
+    d_uint16 >>= fun lookupType ->
+    d_uint16 >>= fun _lookupFlag ->
+    match lookupType with
+    | 1 ->
+        d_list (d_fetch offset_Lookup d_single_substitution_subtable) >>= fun assocs ->
+        return @@ SingleSubtable(List.concat assocs)
+
+    | 3 ->
+        d_list (d_fetch offset_Lookup d_alternate_substitution_subtable) >>= fun assocs ->
+        return @@ AlternateSubtable(List.concat assocs)
+
+    | 4 ->
+        d_list (d_fetch offset_Lookup d_ligature_substitution_subtable) >>= fun assocs ->
+        return @@ LigatureSubtable(List.concat assocs)
+
+    | 2 | 5 | 6 | 7 | 8 ->
+        return UnsupportedSubtable
+
+    | _ ->
+        err @@ Error.UnknownGsubLookupType(lookupType)
+
+
+  type 'a folding_single = 'a -> glyph_id * glyph_id -> 'a
+
+  type 'a folding_alt = 'a -> glyph_id * glyph_id list -> 'a
+
+  type 'a folding_lig = 'a -> glyph_id * (glyph_id list * glyph_id) list -> 'a
+
+
+  let fold_subtables
+      ?single:(f_single = (fun acc _ -> acc))
+      ?alt:(f_alt = (fun acc _ -> acc))
+      ?lig:(f_lig = (fun acc _ -> acc))
+      (feature : feature) (init : 'a) : 'a ok =
+    let open ResultMonad in
+    subtables_scheme lookup feature >>= fun subtables ->
+    let acc =
+      subtables |> List.fold_left (fun acc subtable ->
+        match subtable with
+        | SingleSubtable(assoc) ->
+            List.fold_left f_single acc assoc
+
+        | AlternateSubtable(assoc) ->
+            List.fold_left f_alt acc assoc
+
+        | LigatureSubtable(assoc) ->
+            List.fold_left f_lig acc assoc
+
+        | UnsupportedSubtable ->
+            acc
+      ) init
+    in
+    return acc
 
 end

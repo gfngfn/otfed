@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open DecodeOperation
 
 
@@ -329,6 +330,16 @@ let maxp (common : common_source) : Value.Maxp.t ok =
       err @@ Error.UnknownTableVersion(version)
   in
   DecodeOperation.run common.core offset dec
+
+
+let gsub (common : common_source) =
+  let open ResultMonad in
+  match seek_table common.table_directory Tag.table_gsub with
+  | None ->
+      return None
+
+  | Some((offset, length)) ->
+      return @@ Some(DecodeIntermediate.Gsub.make common.core offset length)
 
 
 include DecodeTtf

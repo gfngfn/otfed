@@ -13,6 +13,7 @@ module Tag : sig
   val format_version_true : t
   val format_version_1_0 : t
   val format_version_ttcf : t
+
   val table_cmap : t
   val table_head : t
   val table_hhea : t
@@ -21,13 +22,23 @@ module Tag : sig
   val table_name : t
   val table_os2  : t
   val table_post : t
+
   val table_cvt  : t
   val table_fpgm : t
   val table_glyf : t
   val table_loca : t
   val table_prep : t
+
   val table_cff  : t
   val table_vorg : t
+
+  val table_base : t
+  val table_gdef : t
+  val table_gpos : t
+  val table_gsub : t
+  val table_jstf : t
+  val table_math : t
+
 end = struct
   type t = wint
 
@@ -77,6 +88,13 @@ end = struct
 
   let table_cff  = !%% 0x43464620L
   let table_vorg = !%% 0x564F5247L
+
+  let table_base = !%% 0x42415345L
+  let table_gdef = !%% 0x47444546L
+  let table_gpos = !%% 0x47504F53L
+  let table_gsub = !%% 0x47535542L
+  let table_jstf = !%% 0x4A535446L
+  let table_math = !%% 0x4d415448L
 
 end
 

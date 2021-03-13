@@ -17,6 +17,20 @@ val d_f2dot14 : float decoder
 (** [pick offset dec] reads data at [offset] by using [dec], and does NOT move the position. *)
 val pick : offset -> 'a decoder -> 'a decoder
 
+(** [pick_each offsets dec] repeatedly run [pick offset dec] for each [offset] in [offsets]. *)
+val pick_each : offset list -> 'a decoder -> ('a list) decoder
+
+(** [d_offset origin] reads 2 bytes as a relative offset [rel], and returns [origin + rel]. *)
+val d_offset : offset -> offset decoder
+
+(** Same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
+val d_offset_opt : offset -> (offset option) decoder
+
+(** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
+    and then reads data at [origin + rel] by using [dec].
+    Here, the position advances by 2 bytes. *)
+val d_fetch : offset -> 'a decoder -> 'a decoder
+
 (** [d_fetch_long origin dec] reads a 4-byte relative offset [rel],
     fetches the value at the position [(origin + rel)] by using [dec],
     and returns the pair of the position and the value. *)
@@ -27,6 +41,9 @@ val d_repeat : int -> 'a decoder -> ('a list) decoder
 
 (** [d_list dec] reads a 2-byte unsigned integer [count] and then behaves the same way as [d_repeat count dec]. *)
 val d_list : 'a decoder -> ('a list) decoder
+
+(** Similar to [d_list], but [d_list_filtered] is equipped with an additional predicate over 0-origin indices. *)
+val d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder
 
 (** Reads a 4cc tag. *)
 val d_tag : Tag.t decoder
@@ -51,6 +68,8 @@ val d_structure : table_directory decoder
 val d_coverage : (glyph_id list) decoder
 
 val combine_coverage : (glyph_id list) -> 'a list -> ((glyph_id * 'a) list) decoder
+
+val d_fetch_coverage_and_values : int -> 'a decoder -> ((glyph_id * 'a) list) decoder
 
 (** Reads an OffSize value. *)
 val d_offsize : offsize decoder

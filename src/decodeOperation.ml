@@ -33,6 +33,28 @@ let pick (offset : offset) (dec : 'a decoder) : 'a decoder =
   return v
 
 
+let pick_each (offsets : offset list) (dec : 'a decoder) : ('a list) decoder =
+  offsets |> mapM (fun offset -> pick offset dec)
+
+
+let d_offset (offset_origin : offset) : offset decoder =
+  d_uint16 >>= fun reloffset ->
+  return (offset_origin + reloffset)
+
+
+let d_offset_opt (offset_origin : int) : (offset option) decoder =
+  d_uint16 >>= fun reloffset ->
+  if reloffset = 0 then
+    return None
+  else
+    return @@ Some(offset_origin + reloffset)
+
+
+let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
+  d_offset offset_origin >>= fun offset ->
+  pick offset dec
+
+
 let d_fetch_long (origin : offset) (dec : 'a decoder) : (offset * 'a) decoder =
   current >>= fun pos_before ->
   d_uint32_int >>= fun reloffset ->
@@ -58,6 +80,22 @@ fun count dec ->
 let d_list dec =
   d_uint16 >>= fun count ->
   d_repeat count dec
+
+
+let d_list_filtered : 'a decoder -> (int -> bool) -> ('a list) decoder =
+fun dec predicate ->
+  let rec aux acc imax i =
+    if i >= imax then
+      return @@ Alist.to_list acc
+    else
+      dec >>= fun data ->
+      if predicate i then
+        aux (Alist.extend acc data) imax (i + 1)
+      else
+        aux acc imax (i + 1)
+  in
+  d_uint16 >>= fun count ->
+  aux Alist.empty count 0
 
 
 let d_tag : Value.Tag.t decoder =
@@ -151,6 +189,15 @@ let combine_coverage : 'a. glyph_id list -> 'a list -> ((glyph_id * 'a) list) de
 fun coverage vs ->
   try return (List.combine coverage vs) with
   | Invalid_argument(_) -> err @@ Error.InvalidCoverageLength
+
+
+let d_fetch_coverage_and_values (offset : int) (dec : 'a decoder) : ((glyph_id * 'a) list) decoder =
+  (* The position is supposed to be set just before a Coverage field
+     and a subsequent offset list [page 254 etc.] *)
+  d_fetch offset d_coverage >>= fun coverage ->
+  (* The position is set just before LigSetCount field [page 254] *)
+  d_list (d_fetch offset dec) >>= fun vs ->
+  combine_coverage coverage vs
 
 
 let d_offsize : offsize decoder =

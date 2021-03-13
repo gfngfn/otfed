@@ -842,8 +842,37 @@ module Gpos = struct
         err @@ Error.UnknownFormatNumber(posFormat)
 
 
+  let d_component_record offset_LigatureAttach classCount : component_record decoder =
+    d_repeat classCount (d_fetch_opt offset_LigatureAttach d_anchor) >>= fun anchoropts ->
+    return (Array.of_list anchoropts)
+
+
+  let d_ligature_attach classCount : ligature_attach decoder =
+    current >>= fun offset_LigatureAttach ->
+    d_list (d_component_record offset_LigatureAttach classCount)
+
+
+  let d_ligature_array classCount : (ligature_attach list) decoder =
+    current >>= fun offset_LigatureArray ->
+    d_list (d_fetch offset_LigatureArray (d_ligature_attach classCount))
+
+
   let d_mark_to_ligature_attachment_subtable =
-    current >>= fun _ -> failwith "TODO"
+    current >>= fun offset_MarkLigPos ->
+    d_uint16 >>= fun posFormat ->
+    match posFormat with
+    | 1 ->
+        d_fetch offset_MarkLigPos d_coverage >>= fun markCoverage ->
+        d_fetch offset_MarkLigPos d_coverage >>= fun ligatureCoverage ->
+        d_uint16 >>= fun classCount ->
+        d_fetch offset_MarkLigPos (d_mark_array classCount) >>= fun markArray ->
+        d_fetch offset_MarkLigPos (d_ligature_array classCount) >>= fun ligatureArray ->
+        combine_coverage markCoverage markArray >>= fun mark_assoc ->
+        combine_coverage ligatureCoverage ligatureArray >>= fun ligature_assoc ->
+        return (MarkLigPos1(classCount, mark_assoc, ligature_assoc))
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
 
 
   let d_mark_to_mark_attachment_subtable =

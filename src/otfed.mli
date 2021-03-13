@@ -363,6 +363,7 @@ module Decode : sig
       type class_definition =
         | GlyphToClass      of Value.glyph_id * class_value
         | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * class_value
+      [@@deriving show {with_path = false}]
 
       type device_table = int * int * int * int
 

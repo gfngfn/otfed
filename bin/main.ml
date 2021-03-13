@@ -3,6 +3,7 @@ module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
 module DGsub = D.Intermediate.Gsub
+module DGpos = D.Intermediate.Gpos
 module V = Otfed.Value
 
 type config = {
@@ -14,6 +15,7 @@ type config = {
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
   gsub   : (string * string * string) Alist.t;
+  gpos   : (string * string * string) Alist.t;
 }
 
 type error =
@@ -253,6 +255,111 @@ let print_gsub (common, _) (script_tag : string) (langsys_tag : string) (feature
           print_gsub_script script langsys_tag feature_tag
 
 
+let print_gpos_feature (feature : DGpos.feature) =
+  DGpos.fold_subtables
+    ~single1:(fun () gids _vr ->
+      Format.printf "  - single1: {%a} --> ...@,"
+        (pp_list Format.pp_print_int) gids
+    )
+    ~single2:(fun () (gid, _vr) ->
+      Format.printf "  - single2: %d --> ...@,"
+        gid
+    )
+    ~pair1:(fun () (gid, tos) ->
+      Format.printf "  - pair1: %d --> {%a}@,"
+        gid
+        (pp_list Format.pp_print_int) (tos |> List.map (fun (gid, _vr1, _vr) -> gid))
+    )
+    ~pair2:(fun cdef1 cdef2 () assoc ->
+      Format.printf "  - pair2: cdef1 = {%a}, cdef2 = {%a},@,"
+        (pp_list DGpos.pp_class_definition) cdef1
+        (pp_list DGpos.pp_class_definition) cdef2;
+      assoc |> List.iter (fun (cv1, tos) ->
+        Format.printf "    * %d --> {%a}@,"
+          cv1
+          (pp_list Format.pp_print_int) (tos |> List.map (fun (cv2, _, _) -> cv2))
+      )
+    )
+    ~markbase1:(fun _class_count () mark_assoc base_assoc ->
+      Format.printf "  - markbase1: mark = {%a}, base = {%a}@,"
+        (pp_list Format.pp_print_int) (mark_assoc |> List.map (fun (gid, _) -> gid))
+        (pp_list Format.pp_print_int) (base_assoc |> List.map (fun (gid, _) -> gid))
+    )
+    ~marklig1:(fun _class_count () mark_assoc lig_assoc ->
+      Format.printf "  - marklig1: mark = {%a}, lig = {%a}@,"
+        (pp_list Format.pp_print_int) (mark_assoc |> List.map (fun (gid, _) -> gid))
+        (pp_list Format.pp_print_int) (lig_assoc |> List.map (fun (gid, _) -> gid))
+    )
+    ~markmark1:(fun _class_count () mark_assoc mark2_assoc ->
+      Format.printf "  - markmark1: mark = {%a}, mark2 = {%a}@,"
+        (pp_list Format.pp_print_int) (mark_assoc |> List.map (fun (gid, _) -> gid))
+        (pp_list Format.pp_print_int) (mark2_assoc |> List.map (fun (gid, _) -> gid))
+    )
+    feature ()
+
+
+let print_gpos_langsys (langsys : DGpos.langsys) (feature_tag : string) =
+  let open ResultMonad in
+  DGpos.features langsys >>= fun (default_feature_opt, features) ->
+  let features =
+    match default_feature_opt with
+    | None                  -> features
+    | Some(default_feature) -> default_feature :: features
+  in
+  match
+    features |> List.find_opt (fun feature -> String.equal feature_tag (DGpos.get_feature_tag feature))
+  with
+  | None ->
+      Format.printf "  feature %s not found in:@," feature_tag;
+      features |> List.iter (fun feature -> Format.printf "  - %s@," (DGpos.get_feature_tag feature));
+      return ()
+
+  | Some(feature) ->
+      print_gpos_feature feature
+
+
+let print_gpos_script (script : DGpos.script) (langsys_tag : string) (feature_tag : string) =
+  let open ResultMonad in
+  DGpos.langsyses script >>= fun (default_langsys_opt, langsyses) ->
+  let langsyses =
+    match default_langsys_opt with
+    | None                  -> langsyses
+    | Some(default_langsys) -> default_langsys :: langsyses
+  in
+  match
+    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (DGpos.get_langsys_tag langsys))
+  with
+  | None ->
+      Format.printf "  langsys %s not found in:@," langsys_tag;
+      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (DGpos.get_langsys_tag langsys));
+      return ()
+
+  | Some(langsys) ->
+      print_gpos_langsys langsys feature_tag
+
+
+let print_gpos (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
+  let open ResultMonad in
+  Format.printf "GPOS (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
+  D.gpos common >>= function
+  | None ->
+      Format.printf "  GPOS table not found@,";
+      return ()
+
+  | Some(igpos) ->
+      DGpos.scripts igpos >>= fun scripts ->
+      match
+        scripts |> List.find_opt (fun script -> String.equal script_tag (DGpos.get_script_tag script))
+      with
+      | None ->
+          Format.printf "  script %s not found in:@," script_tag;
+          scripts |> List.iter (fun script -> Format.printf "  - %s@," (DGpos.get_script_tag script));
+          return ()
+
+      | Some(script) ->
+          print_gpos_script script langsys_tag feature_tag
+
+
 let parse_args () =
   let open ResultMonad in
   let rec aux n acc i =
@@ -282,6 +389,12 @@ let parse_args () =
           let feature = Sys.argv.(i + 3) in
           aux n { acc with gsub = Alist.extend acc.gsub (script, langsys, feature) } (i + 4)
 
+      | "gpos" ->
+          let script  = Sys.argv.(i + 1) in
+          let langsys = Sys.argv.(i + 2) in
+          let feature = Sys.argv.(i + 3) in
+          aux n { acc with gpos = Alist.extend acc.gpos (script, langsys, feature) } (i + 4)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -298,6 +411,7 @@ let parse_args () =
         glyf   = Alist.empty;
         cff    = Alist.empty;
         gsub   = Alist.empty;
+        gpos   = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -346,6 +460,9 @@ let _ =
         ) >>= fun _ ->
         config.gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gsub source script langsys feature |> inj
+        ) >>= fun _ ->
+        config.gpos |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
+          print_gpos source script langsys feature |> inj
         ) >>= fun _ ->
         return ()
 

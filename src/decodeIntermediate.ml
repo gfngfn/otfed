@@ -647,10 +647,12 @@ module Gpos = struct
     (* Arrays of this type are indexed by `mark_class`. *)
 
   type class_value = int
+  [@@deriving show {with_path = false}]
 
   type class_definition =
     | GlyphToClass      of glyph_id * class_value
     | GlyphRangeToClass of glyph_id * glyph_id * class_value
+  [@@deriving show {with_path = false}]
 
   type subtable =
     | SinglePosAdjustment1 of glyph_id list * value_record
@@ -1014,8 +1016,8 @@ module Gpos = struct
         | PairPosAdjustment1(assoc) ->
             List.fold_left f_pair1 acc assoc
 
-        | PairPosAdjustment2(clsdeflst1, clsdeflst2, assoc) ->
-            f_pair2 clsdeflst1 clsdeflst2 acc assoc
+        | PairPosAdjustment2(clsdefs1, clsdefs2, assoc) ->
+            f_pair2 clsdefs1 clsdefs2 acc assoc
 
         | MarkBasePos1(classCount, mark_assoc, base_assoc) ->
             f_markbase1 classCount acc mark_assoc base_assoc

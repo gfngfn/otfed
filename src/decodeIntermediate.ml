@@ -683,8 +683,92 @@ module Gpos = struct
         err @@ Error.UnknownFormatNumber(posFormat)
 
 
+  let numbering vs =
+    vs |> List.mapi (fun i v -> (i, v))
+
+
+  let d_class_2_record valfmt1 valfmt2 : (value_record * value_record) decoder =
+    d_value_record valfmt1 >>= fun valrcd1 ->
+    d_value_record valfmt2 >>= fun valrcd2 ->
+    return (valrcd1, valrcd2)
+
+
+  let d_class_1_record class2Count valfmt1 valfmt2 : ((class_value * value_record * value_record) list) decoder =
+    d_repeat class2Count (d_class_2_record valfmt1 valfmt2) >>= fun pairs ->
+    return (numbering pairs |> List.map (fun (x, (y, z)) -> (x, y, z)))
+
+
+  let d_class : class_value decoder =
+    d_uint16
+
+
+  let d_class_definition_format_1 : (class_definition list) decoder =
+    let rec aux acc gidstt lst =
+      match lst with
+      | []          -> return (Alist.to_list acc)
+      | cls :: tail -> aux (Alist.extend acc (GlyphToClass(gidstt, cls))) (gidstt + 1) tail
+    in
+    d_uint16 >>= fun startGlyph ->
+    d_list d_class >>= fun classValueArray ->
+    aux Alist.empty startGlyph classValueArray
+
+
+  let d_class_range_record : class_definition decoder =
+    d_uint16 >>= fun start_gid ->
+    d_uint16 >>= fun end_gid ->
+    d_class >>= fun cls ->
+    return (GlyphRangeToClass(start_gid, end_gid, cls))
+
+
+  let d_class_definition_format_2 : (class_definition list) decoder =
+    d_list d_class_range_record
+
+
+  let d_class_definition : (class_definition list) decoder =
+    (* The position is supposed to be set to the  beginning of a ClassDef table [page 140]. *)
+    d_uint16 >>= fun classFormat ->
+    match classFormat with
+    | 1 -> d_class_definition_format_1
+    | 2 -> d_class_definition_format_2
+    | _ -> err @@ Error.UnknownFormatNumber(classFormat)
+
+
+  let d_pair_value_record valfmt1 valfmt2 : (glyph_id * value_record * value_record) decoder =
+    d_uint16 >>= fun secondGlyph ->
+    d_value_record valfmt1 >>= fun value1 ->
+    d_value_record valfmt2 >>= fun value2 ->
+    return (secondGlyph, value1, value2)
+
+
+  let d_pair_set valfmt1 valfmt2 : ((glyph_id * value_record * value_record) list) decoder =
+    d_list (d_pair_value_record valfmt1 valfmt2)
+
+
   let d_pair_adjustment_subtable =
-    current >>= fun _ -> failwith "TODO"
+    (* The position is supposed to be set to the beginning of a PairPos subtable [page 194]. *)
+    current >>= fun offset_PairPos ->
+    d_uint16 >>= fun posFormat ->
+    d_fetch offset_PairPos d_coverage >>= fun coverage ->
+    match posFormat with
+    | 1 ->
+        d_value_format >>= fun valueFormat1 ->
+        d_value_format >>= fun valueFormat2 ->
+        d_list (d_fetch offset_PairPos (d_pair_set valueFormat1 valueFormat2)) >>= fun pairsets ->
+        combine_coverage coverage pairsets >>= fun comb ->
+        return @@ PairPosAdjustment1(comb)
+
+    | 2 ->
+        d_value_format >>= fun valueFormat1 ->
+        d_value_format >>= fun valueFormat2 ->
+        d_fetch offset_PairPos d_class_definition >>= fun classDef1 ->
+        d_fetch offset_PairPos d_class_definition >>= fun classDef2 ->
+        d_uint16 >>= fun class1Count ->
+        d_uint16 >>= fun class2Count ->
+        d_repeat class1Count (d_class_1_record class2Count valueFormat1 valueFormat2) >>= fun pairposs ->
+        return @@ PairPosAdjustment2(classDef1, classDef2, numbering pairposs)
+
+    | _ ->
+        err @@ Error.UnknownFormatNumber(posFormat)
 
 
   let d_mark_to_base_attachment_subtable =

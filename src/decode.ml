@@ -1,7 +1,7 @@
 
 open Basic
 open Value
-open DecodeOperation
+open DecodeOperation.Open
 
 
 include DecodeBasic
@@ -9,23 +9,27 @@ include DecodeBasic
 
 let fetch_loc_format core table_directory =
   let open ResultMonad in
-  seek_required_table table_directory Tag.table_head >>= fun (offset, _length) ->
-  run core (offset + 50) d_loc_format
+  DecodeOperation.seek_required_table table_directory Tag.table_head >>= fun (offset, _length) ->
+  let open DecodeOperation in
+  d_loc_format |> run core (offset + 50)
 
 
 let fetch_num_glyphs core table_directory =
   let open ResultMonad in
-  seek_required_table table_directory Tag.table_maxp >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table table_directory Tag.table_maxp >>= fun (offset, _length) ->
+  let open DecodeOperation in
   d_uint16 |> run core (offset + 4)
 
 
 let fetch_num_h_metrics core table_directory =
   let open ResultMonad in
-  seek_required_table table_directory Tag.table_hhea >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table table_directory Tag.table_hhea >>= fun (offset, _length) ->
+  let open DecodeOperation in
   d_uint16 |> run core (offset + 34)
 
 
 let d_init_ttf core =
+  let open DecodeOperation in
   d_structure >>= fun table_directory ->
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
   transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
@@ -44,6 +48,7 @@ let d_init_ttf core =
 
 
 let d_init_cff (core : common_source_core) : source decoder =
+  let open DecodeOperation in
   d_structure >>= fun table_directory ->
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
   transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
@@ -69,6 +74,7 @@ let source_of_string (s : string) : single_or_collection ok =
     }
   in
   let dec =
+    let open DecodeOperation in
     d_format_version >>= fun format ->
     match format with
     | InitTtf ->
@@ -96,7 +102,7 @@ let source_of_string (s : string) : single_or_collection ok =
         ) >>= fun srcs ->
         return @@ Collection(srcs)
   in
-  run core 0 dec
+  DecodeOperation.run core 0 dec
 
 
 let tables (common : common_source) : Value.Tag.t set =
@@ -113,13 +119,13 @@ module Intermediate = DecodeIntermediate
 
 let cmap (common : common_source) : Intermediate.Cmap.t ok =
   let open ResultMonad in
-  seek_required_table common.table_directory Value.Tag.table_cmap >>= fun (offset, length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_cmap >>= fun (offset, length) ->
   return @@ Intermediate.Cmap.make common.core ~offset ~length
 
 
 let head (common : common_source) : Value.Head.t ok =
   let open ResultMonad in
-  seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
   let dec =
     let open DecodeOperation in
     d_uint32 >>= fun version ->
@@ -158,7 +164,7 @@ let head (common : common_source) : Value.Head.t ok =
 
 let hhea (common : common_source) : Value.Hhea.t ok =
   let open ResultMonad in
-  seek_required_table common.table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
   let dec =
     let open DecodeOperation in
     d_uint32 >>= fun version ->
@@ -193,7 +199,7 @@ let hhea (common : common_source) : Value.Hhea.t ok =
 
 let os2 (common : common_source) : Value.Os2.t ok =
   let open ResultMonad in
-  seek_required_table common.table_directory Value.Tag.table_os2 >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_os2 >>= fun (offset, _length) ->
   let dec =
     let open DecodeOperation in
     d_uint16 >>= fun version ->
@@ -291,7 +297,7 @@ let os2 (common : common_source) : Value.Os2.t ok =
 
 let maxp (common : common_source) : Value.Maxp.t ok =
   let open ResultMonad in
-  seek_required_table common.table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
   let dec =
     let open DecodeOperation in
     d_uint32 >>= fun version ->
@@ -354,7 +360,7 @@ let maxp (common : common_source) : Value.Maxp.t ok =
 
 let hmtx (common : common_source) =
   let open ResultMonad in
-  seek_required_table common.table_directory Tag.table_hmtx >>= fun (offset, length) ->
+  DecodeOperation.seek_required_table common.table_directory Tag.table_hmtx >>= fun (offset, length) ->
   let num_glyphs = common.num_glyphs in
   let num_h_metrics = common.num_h_metrics in
   return @@ DecodeIntermediate.Hmtx.make common.core ~offset ~length ~num_glyphs ~num_h_metrics
@@ -362,7 +368,7 @@ let hmtx (common : common_source) =
 
 let gsub (common : common_source) =
   let open ResultMonad in
-  match seek_table common.table_directory Tag.table_gsub with
+  match DecodeOperation.seek_table common.table_directory Tag.table_gsub with
   | None ->
       return None
 
@@ -372,7 +378,7 @@ let gsub (common : common_source) =
 
 let gpos (common : common_source) =
   let open ResultMonad in
-  match seek_table common.table_directory Tag.table_gpos with
+  match DecodeOperation.seek_table common.table_directory Tag.table_gpos with
   | None ->
       return None
 
@@ -387,7 +393,7 @@ include DecodeCff
 module ForTest = struct
   type charstring_data = DecodeBasic.charstring_data
   type subroutine_index = DecodeBasic.subroutine_index
-  type 'a decoder = 'a DecodeOperation.decoder
+  type 'a decoder = 'a DecodeOperation.Open.decoder
 
   let run s d =
     DecodeOperation.run { data = s; max = String.length s } 0 d

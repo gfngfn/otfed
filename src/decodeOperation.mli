@@ -5,6 +5,8 @@ open DecodeBasic
 
 include module type of DecodeOperationCore
 
+open DecodeOperationCore.Open
+
 (** Same as [d_uint32], except that return values are of type [int].
     Strictly speaking, this function is not valid under 32-bit environments. *)
 val d_uint32_int : int decoder

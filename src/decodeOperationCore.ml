@@ -10,7 +10,11 @@ type state = {
   position : offset;
 }
 
-type 'a decoder = state -> (state * 'a) ok
+module Open = struct
+  type 'a decoder = state -> (state * 'a) ok
+end
+
+include Open
 
 
 let return v =

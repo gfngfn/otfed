@@ -6,8 +6,12 @@ open Basic
 open Value
 open DecodeBasic
 
-(** The type for decoders by running which one can gain a value of type ['a]. *)
-type 'a decoder
+module Open : sig
+  (** The type for decoders by running which one can gain a value of type ['a]. *)
+  type 'a decoder
+end
+
+open Open
 
 (** The monadic [pure] function of decoders.
     [return v] makes a decoder that always produces [v] without moving its position. *)

@@ -2,7 +2,7 @@
 open Basic
 open Value
 open DecodeBasic
-open DecodeOperation
+open DecodeOperation.Open
 
 type charstring_constant = {
   gsubr_index : subroutine_index;

@@ -2,7 +2,7 @@
 open Basic
 open Value
 open DecodeBasic
-open DecodeOperation
+open DecodeOperation.Open
 
 
 module GeneralTable(Info : sig type t end) = struct
@@ -258,7 +258,7 @@ module Hmtx = struct
         d_int16 >>= fun lsb ->
         return @@ Some((advanceWidth, lsb))
       in
-      dec |> run hmtx.core (hmtx.offset + 4 * index)
+      dec |> DecodeOperation.run hmtx.core (hmtx.offset + 4 * index)
 
 end
 
@@ -310,12 +310,14 @@ module GxxxScheme = struct
 
 
   let d_tag_and_offset_record (offset_ScriptList : offset) : (string * offset) decoder =
+    let open DecodeOperation in
     d_bytes 4 >>= fun tag ->
     d_offset offset_ScriptList >>= fun offset ->
     return (tag, offset)
 
 
   let d_tag_and_offset_list : ((string * int) list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_ScriptList ->
     d_list (d_tag_and_offset_record offset_ScriptList)
 
@@ -323,6 +325,7 @@ module GxxxScheme = struct
   let scripts (gxxx : t) : (script list) ok =
     let offset_Gxxx = gxxx.offset in
     let dec =
+      let open DecodeOperation in
       d_uint32 >>= fun version ->
       if version <> !%% 0x00010000L then
         err @@ Error.UnknownTableVersion(version)
@@ -352,6 +355,7 @@ module GxxxScheme = struct
     let offset_FeatureList = script.script_offset_FeatureList in
     let offset_LookupList  = script.script_offset_LookupList in
     let dec =
+      let open DecodeOperation in
       d_offset_opt offset_Script >>= fun offset_DefaultLangSys_opt ->
       d_list (d_tag_and_offset_record offset_Script) >>= fun langSysList ->
       let default_langsys_opt =
@@ -390,6 +394,7 @@ module GxxxScheme = struct
     let offset_FeatureList = langsys.langsys_offset_FeatureList in
     let offset_LookupList  = langsys.langsys_offset_LookupList in
     let decLangSys =
+      let open DecodeOperation in
       (* The position is set to the beginning of a LangSys table [page 134]. *)
       d_uint16 >>= fun lookupOrder ->
       if lookupOrder <> 0 then
@@ -400,6 +405,7 @@ module GxxxScheme = struct
         return (requiredFeatureIndex, FeatureIndexSet.of_list featureIndices)
     in
     let decFeature (requiredFeatureIndex, featureIndexSet) =
+      let open DecodeOperation in
       d_list_filtered
         (d_tag_and_offset_record offset_FeatureList)
         (fun i -> FeatureIndexSet.mem i featureIndexSet) >>= fun featureList ->
@@ -439,8 +445,8 @@ module GxxxScheme = struct
       return (required_feature_opt, features)
     in
     let open ResultMonad in
-    decLangSys |> run gxxx.core offset_LangSys >>= fun pair ->
-    (decFeature pair) |> run gxxx.core offset_FeatureList
+    decLangSys |> DecodeOperation.run gxxx.core offset_LangSys >>= fun pair ->
+    (decFeature pair) |> DecodeOperation.run gxxx.core offset_FeatureList
 
 
   module LookupListIndexSet = Set.Make(Int)
@@ -452,20 +458,22 @@ module GxxxScheme = struct
     let offset_Feature    = feature.feature_offset_Feature in
     let offset_LookupList = feature.feature_offset_LookupList in
     let decFeature =
+      let open DecodeOperation in
       (* The position is set to the beginning of a Feature table. *)
       d_uint16 >>= fun _featureParams ->
       d_list d_uint16 >>= fun lookupListIndexList ->
       return @@ LookupListIndexSet.of_list lookupListIndexList
     in
     let decLookup lookupListIndexSet =
+      let open DecodeOperation in
       d_list_filtered
         (d_offset offset_LookupList)
         (fun i -> LookupListIndexSet.mem i lookupListIndexSet) >>= fun offsets ->
       pick_each offsets lookup
     in
     let open ResultMonad in
-    decFeature |> run gxxx.core offset_Feature >>= fun lookupListIndexSet ->
-    (decLookup lookupListIndexSet) |> run gxxx.core offset_LookupList
+    decFeature |> DecodeOperation.run gxxx.core offset_Feature >>= fun lookupListIndexSet ->
+    (decLookup lookupListIndexSet) |> DecodeOperation.run gxxx.core offset_LookupList
 
 end
 
@@ -486,16 +494,19 @@ module Gsub = struct
 
 
   let d_single_substitution_subtable_format_1 (offset_Substitution : offset) =
+    let open DecodeOperation in
     d_fetch offset_Substitution d_coverage >>= fun coverage ->
     d_uint16 >>= fun deltaGlyphID ->
     return (coverage |> List.map (fun gid -> (gid, gid + deltaGlyphID)))
 
 
   let d_single_substitution_subtable_format_2 (offset_Substitution : offset) =
+    let open DecodeOperation in
     d_fetch_coverage_and_values offset_Substitution d_uint16
 
 
   let d_single_substitution_subtable : ((glyph_id * glyph_id) list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of
        a Single SubstFormat1 or a Single SubstFormat2 subtable [page 251]. *)
     current >>= fun offset_Substitution ->
@@ -507,10 +518,12 @@ module Gsub = struct
 
 
   let d_alternate_set_table =
+    let open DecodeOperation in
     d_list d_uint16
 
 
   let d_alternate_substitution_subtable : ((glyph_id * glyph_id set) list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_Substitution ->
     d_uint16 >>= fun substFormat ->
     match substFormat with
@@ -519,6 +532,7 @@ module Gsub = struct
 
 
   let d_ligature_table : (glyph_id list * glyph_id) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of
        a Ligature table [page 255]. *)
     d_uint16 >>= fun ligGlyph ->
@@ -528,6 +542,7 @@ module Gsub = struct
 
 
   let d_ligature_set_table : ((glyph_id list * glyph_id) list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of
        a LigatureSet table [page 254]. *)
     current >>= fun offset_LigatureSet ->
@@ -535,6 +550,7 @@ module Gsub = struct
 
 
   let d_ligature_substitution_subtable : ((glyph_id * (glyph_id list * glyph_id) list) list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of
        a Ligature SubstFormat1 subtable [page 254]. *)
     current >>= fun offset_Substitution ->
@@ -545,6 +561,7 @@ module Gsub = struct
 
 
   let lookup =
+    let open DecodeOperation in
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->
     d_uint16 >>= fun _lookupFlag ->
@@ -632,6 +649,7 @@ module Gpos = struct
 
 
   let d_value_format : value_format decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun n ->
     return @@ {
       format_x_placement  = n land 1 > 0;
@@ -646,6 +664,7 @@ module Gpos = struct
 
 
   let d_value_record (v : value_format) : value_record decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of a ValueRecord table [page 213]. *)
     d_if v.format_x_placement  d_int16 >>= fun xPlacement_opt ->
     d_if v.format_y_placement  d_int16 >>= fun yPlacement_opt ->
@@ -713,6 +732,7 @@ module Gpos = struct
 
 
   let d_single_adjustment_subtable : subtable decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of a SinglePos subtable [page 192]. *)
     current >>= fun offset_SinglePos ->
     d_uint16 >>= fun posFormat ->
@@ -738,21 +758,25 @@ module Gpos = struct
 
 
   let d_class_2_record valfmt1 valfmt2 : (value_record * value_record) decoder =
+    let open DecodeOperation in
     d_value_record valfmt1 >>= fun valrcd1 ->
     d_value_record valfmt2 >>= fun valrcd2 ->
     return (valrcd1, valrcd2)
 
 
   let d_class_1_record class2Count valfmt1 valfmt2 : ((class_value * value_record * value_record) list) decoder =
+    let open DecodeOperation in
     d_repeat class2Count (d_class_2_record valfmt1 valfmt2) >>= fun pairs ->
     return (numbering pairs |> List.map (fun (x, (y, z)) -> (x, y, z)))
 
 
   let d_class : class_value decoder =
+    let open DecodeOperation in
     d_uint16
 
 
   let d_class_definition_format_1 : (class_definition list) decoder =
+    let open DecodeOperation in
     let rec aux acc gidstt lst =
       match lst with
       | []          -> return (Alist.to_list acc)
@@ -764,6 +788,7 @@ module Gpos = struct
 
 
   let d_class_range_record : class_definition decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun start_gid ->
     d_uint16 >>= fun end_gid ->
     d_class >>= fun cls ->
@@ -771,10 +796,12 @@ module Gpos = struct
 
 
   let d_class_definition_format_2 : (class_definition list) decoder =
+    let open DecodeOperation in
     d_list d_class_range_record
 
 
   let d_class_definition : (class_definition list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the  beginning of a ClassDef table [page 140]. *)
     d_uint16 >>= fun classFormat ->
     match classFormat with
@@ -784,6 +811,7 @@ module Gpos = struct
 
 
   let d_pair_value_record valfmt1 valfmt2 : (glyph_id * value_record * value_record) decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun secondGlyph ->
     d_value_record valfmt1 >>= fun value1 ->
     d_value_record valfmt2 >>= fun value2 ->
@@ -791,10 +819,12 @@ module Gpos = struct
 
 
   let d_pair_set valfmt1 valfmt2 : ((glyph_id * value_record * value_record) list) decoder =
+    let open DecodeOperation in
     d_list (d_pair_value_record valfmt1 valfmt2)
 
 
   let d_pair_adjustment_subtable =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of a PairPos subtable [page 194]. *)
     current >>= fun offset_PairPos ->
     d_uint16 >>= fun posFormat ->
@@ -822,6 +852,7 @@ module Gpos = struct
 
 
   let d_device_table : device_table decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun startSize ->
     d_uint16 >>= fun endSize ->
     d_uint16 >>= fun deltaFormat ->
@@ -830,6 +861,7 @@ module Gpos = struct
 
 
   let d_anchor : anchor decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun anchorFormat ->
     d_int16 >>= fun xcoord ->
     d_int16 >>= fun ycoord ->
@@ -851,6 +883,7 @@ module Gpos = struct
 
 
   let d_mark_record offset_MarkArray classCount : mark_record decoder =
+    let open DecodeOperation in
     d_uint16 >>= fun classId ->
     if classId > classCount then
       err @@ Error.InvalidMarkClass(classId)
@@ -860,21 +893,25 @@ module Gpos = struct
 
 
   let d_mark_array classCount : (mark_record list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_MarkArray ->
     d_list (d_mark_record offset_MarkArray classCount)
 
 
   let d_base_record offset_BaseArray classCount : base_record decoder =
+    let open DecodeOperation in
     d_repeat classCount (d_fetch_opt offset_BaseArray d_anchor) >>= fun anchors ->
     return (Array.of_list anchors)
 
 
   let d_base_array classCount : (base_record list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_BaseArray ->
     d_list (d_base_record offset_BaseArray classCount)
 
 
   let d_mark_to_base_attachment_subtable =
+    let open DecodeOperation in
     current >>= fun offset_MarkBasePos ->
     d_uint16 >>= fun posFormat ->
     match posFormat with
@@ -893,21 +930,25 @@ module Gpos = struct
 
 
   let d_component_record offset_LigatureAttach classCount : component_record decoder =
+    let open DecodeOperation in
     d_repeat classCount (d_fetch_opt offset_LigatureAttach d_anchor) >>= fun anchoropts ->
     return (Array.of_list anchoropts)
 
 
   let d_ligature_attach classCount : ligature_attach decoder =
+    let open DecodeOperation in
     current >>= fun offset_LigatureAttach ->
     d_list (d_component_record offset_LigatureAttach classCount)
 
 
   let d_ligature_array classCount : (ligature_attach list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_LigatureArray ->
     d_list (d_fetch offset_LigatureArray (d_ligature_attach classCount))
 
 
   let d_mark_to_ligature_attachment_subtable =
+    let open DecodeOperation in
     current >>= fun offset_MarkLigPos ->
     d_uint16 >>= fun posFormat ->
     match posFormat with
@@ -926,16 +967,19 @@ module Gpos = struct
 
 
   let d_mark2_record offset_Mark2Array classCount : mark2_record decoder =
+    let open DecodeOperation in
     d_repeat classCount (d_fetch offset_Mark2Array d_anchor) >>= fun anchors ->
     return (Array.of_list anchors)
 
 
   let d_mark2_array  classCount : (mark2_record list) decoder =
+    let open DecodeOperation in
     current >>= fun offset_Mark2Array ->
     d_list (d_mark2_record offset_Mark2Array classCount)
 
 
   let d_mark_to_mark_attachment_subtable =
+    let open DecodeOperation in
     current >>= fun offset_MarkToMarkPos ->
     d_uint16 >>= fun posFormat ->
     match posFormat with
@@ -954,6 +998,7 @@ module Gpos = struct
 
 
   let lookup_exact offsets lookupType : (subtable list) decoder =
+    let open DecodeOperation in
     match lookupType with
     | 1 ->
       (* Single adjustment positioning [page 192] *)
@@ -996,6 +1041,7 @@ module Gpos = struct
 
 
   let d_extension_position : (subtable list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of an ExtensionPosFormat1 subtable [page 213]. *)
     current >>= fun offset_ExtensionPos ->
     d_uint16 >>= fun posFormat ->
@@ -1010,6 +1056,7 @@ module Gpos = struct
 
 
   let lookup : (subtable list) decoder =
+    let open DecodeOperation in
     (* The position is supposed to be set to the beginning of a Lookup table [page 137]. *)
     current >>= fun offset_Lookup ->
     d_uint16 >>= fun lookupType ->

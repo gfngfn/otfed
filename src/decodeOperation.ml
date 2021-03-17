@@ -6,6 +6,8 @@ open DecodeBasic
 
 include DecodeOperationCore
 
+open Open
+
 
 let d_uint32_int : int decoder =
   d_uint32 >>= fun n ->

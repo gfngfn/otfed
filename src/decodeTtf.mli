@@ -1,7 +1,7 @@
 
 open Value
 open DecodeBasic
-open DecodeOperation
+open DecodeOperation.Open
 
 val loca : ttf_source -> glyph_id -> (ttf_glyph_location option) ok
 

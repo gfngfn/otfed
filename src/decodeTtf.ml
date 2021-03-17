@@ -2,7 +2,7 @@
 open Basic
 open Value
 open DecodeBasic
-open DecodeOperation
+open DecodeOperation.Open
 
 
 let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
@@ -47,7 +47,7 @@ let d_loca (loc_format : loc_format) (gid : glyph_id) : (ttf_glyph_location opti
 let loca (ttf : ttf_source) (gid : glyph_id) : (ttf_glyph_location option) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
-  seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
   DecodeOperation.run common.core offset (d_loca common.loc_format gid)
 
 
@@ -202,6 +202,7 @@ type component_flag = {
 
 
 let d_component_flag : (bool * component_flag) decoder =
+  let open DecodeOperation in
   d_uint16 >>= fun twobytes ->
   let more_components = (twobytes land 32 > 0) in
   let cflag =
@@ -281,7 +282,7 @@ let d_glyf =
 let glyf (ttf : ttf_source) (TtfGlyphLocation(reloffset) : ttf_glyph_location) : (ttf_glyph_description * bounding_box) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
-  seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 

@@ -2,10 +2,11 @@
 open Basic
 open Value
 open DecodeBasic
-open DecodeOperation
+open DecodeOperation.Open
 
 
 let d_cff_header : cff_header decoder =
+  let open DecodeOperation in
   d_uint8              >>= fun major ->
   d_uint8              >>= fun minor ->
   d_uint8              >>= fun hdrSize ->
@@ -28,7 +29,7 @@ let d_charstring_data (length : int) : charstring_data decoder =
 
 let fetch_cff_first (cff : cff_source) : cff_first ok =
   let open ResultMonad in
-  seek_required_table cff.cff_common.table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
+  DecodeOperation.seek_required_table cff.cff_common.table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
   let dec =
     let open DecodeOperation in
     (* Header *)
@@ -133,7 +134,8 @@ let get_string string_index sid =
 
 
 let fetch_number_of_glyphs (cff : cff_source) (offset_CharString_INDEX : offset) : int ok =
-  d_uint16 |> DecodeOperation.run cff.cff_common.core offset_CharString_INDEX
+  let open DecodeOperation in
+  d_uint16 |> run cff.cff_common.core offset_CharString_INDEX
 
 
 let d_single_private (size_private : int) : single_private decoder =
@@ -296,8 +298,9 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
 
 
 let fetch_charstring_data (cff : cff_source) (offset_CharString_INDEX : offset) (gid : glyph_id) =
+  let open DecodeOperation in
   let dec = d_index_access d_charstring_data gid in
-  dec |> DecodeOperation.run cff.cff_common.core offset_CharString_INDEX
+  dec |> run cff.cff_common.core offset_CharString_INDEX
 
 
 let select_fd_index (fdselect : fdselect) (gid : glyph_id) : fdindex ok =
@@ -371,6 +374,7 @@ type charstring_state = {
 
 
 let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
+  let open DecodeOperation in
   let arglen =
     if num_stems mod 8 = 0 then
       num_stems / 8
@@ -382,6 +386,7 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
 
 
 let d_charstring_element (cstate : charstring_state) : (charstring_state * charstring_element) decoder =
+  let open DecodeOperation in
   let num_args = cstate.num_args in
   let num_stems = cstate.num_stems in
   let return_simple (step, cselem) =

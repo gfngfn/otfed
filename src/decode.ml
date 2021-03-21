@@ -386,7 +386,7 @@ let gpos (common : common_source) =
       return @@ Some(DecodeIntermediate.Gpos.make common.core ~offset ~length)
 
 
-let d_device_table : device_table decoder =
+let d_device_table : Math.device_table decoder =
   let open DecodeOperation in
   d_uint16 >>= fun startSize ->
   d_uint16 >>= fun endSize ->
@@ -395,14 +395,14 @@ let d_device_table : device_table decoder =
   return (startSize, endSize, deltaFormat, deltaValue)
 
 
-let d_math_value_record (offset_origin : offset) : math_value_record decoder =
+let d_math_value_record (offset_origin : offset) : Math.math_value_record decoder =
   let open DecodeOperation in
   d_int16 >>= fun value ->
   d_fetch_opt offset_origin d_device_table >>= fun device_table_opt ->
   return (value, device_table_opt)
 
 
-let d_math_constants : math_constants decoder =
+let d_math_constants : Math.math_constants decoder =
   let open DecodeOperation in
   current >>= fun offset_origin ->
   let dm = d_math_value_record offset_origin in
@@ -462,7 +462,7 @@ let d_math_constants : math_constants decoder =
   dm       >>= fun radical_kern_before_degree ->
   dm       >>= fun radical_kern_after_degree ->
   d_int16  >>= fun radical_degree_bottom_raise_percent ->
-  return {
+  return Math.{
     script_percent_scale_down;
     script_script_percent_scale_down;
     delimited_sub_formula_min_height;
@@ -522,7 +522,7 @@ let d_math_constants : math_constants decoder =
   }
 
 
-let d_math_italics_correction_info : ((glyph_id * math_value_record) list) decoder =
+let d_math_italics_correction_info : ((glyph_id * Math.math_value_record) list) decoder =
   let open DecodeOperation in
   current >>= fun offset_MathItalicCollectionInfo ->
   d_fetch offset_MathItalicCollectionInfo d_coverage >>= fun coverage ->
@@ -530,7 +530,7 @@ let d_math_italics_correction_info : ((glyph_id * math_value_record) list) decod
   combine_coverage coverage vs
 
 
-let d_math_top_accent_attachment : ((glyph_id * math_value_record) list) decoder =
+let d_math_top_accent_attachment : ((glyph_id * Math.math_value_record) list) decoder =
   let open DecodeOperation in
   current >>= fun offset_MathTopAccentAttachment ->
   d_fetch offset_MathTopAccentAttachment d_coverage >>= fun coverage ->
@@ -538,7 +538,7 @@ let d_math_top_accent_attachment : ((glyph_id * math_value_record) list) decoder
   combine_coverage coverage vs
 
 
-let d_math_kern : math_kern decoder =
+let d_math_kern : Math.math_kern decoder =
   let open DecodeOperation in
   current >>= fun offset_MathKern ->
   d_uint16 >>= fun heightCount ->
@@ -547,13 +547,13 @@ let d_math_kern : math_kern decoder =
   return (correctionHeights, kernValues)
 
 
-let d_math_kern_info_record (offset_MathKernInfo : offset) : math_kern_info_record decoder =
+let d_math_kern_info_record (offset_MathKernInfo : offset) : Math.math_kern_info_record decoder =
   let open DecodeOperation in
   d_fetch_opt offset_MathKernInfo d_math_kern >>= fun top_right_math_kern ->
   d_fetch_opt offset_MathKernInfo d_math_kern >>= fun top_left_math_kern ->
   d_fetch_opt offset_MathKernInfo d_math_kern >>= fun bottom_right_math_kern ->
   d_fetch_opt offset_MathKernInfo d_math_kern >>= fun bottom_left_math_kern ->
-  return {
+  return Math.{
     top_right_math_kern;
     top_left_math_kern;
     bottom_right_math_kern;
@@ -561,7 +561,7 @@ let d_math_kern_info_record (offset_MathKernInfo : offset) : math_kern_info_reco
   }
 
 
-let d_math_kern_info : ((glyph_id * math_kern_info_record) list) decoder =
+let d_math_kern_info : ((glyph_id * Math.math_kern_info_record) list) decoder =
   let open DecodeOperation in
   current >>= fun offset_MathKernInfo ->
   d_fetch offset_MathKernInfo d_coverage >>= fun coverage ->
@@ -569,7 +569,7 @@ let d_math_kern_info : ((glyph_id * math_kern_info_record) list) decoder =
   combine_coverage coverage vs
 
 
-let d_math_glyph_info : math_glyph_info decoder =
+let d_math_glyph_info : Math.math_glyph_info decoder =
   let open DecodeOperation in
   current >>= fun offset_MathGlyphInfo ->
   d_fetch offset_MathGlyphInfo d_math_italics_correction_info >>= fun math_italics_correction ->
@@ -584,21 +584,21 @@ let d_math_glyph_info : math_glyph_info decoder =
     | Some(math_kern_info) ->
         return math_kern_info
   end >>= fun math_kern_info ->
-  return {
+  return Math.{
     math_italics_correction;
     math_top_accent_attachment;
     math_kern_info;
   }
 
 
-let d_glyph_part_record : glyph_part_record decoder =
+let d_glyph_part_record : Math.glyph_part_record decoder =
   let open DecodeOperation in
   d_uint16 >>= fun glyph_id_for_part ->
   d_uint16 >>= fun start_connector_length ->
   d_uint16 >>= fun end_connector_length ->
   d_uint16 >>= fun full_advance ->
   d_uint16 >>= fun part_flags ->
-  return {
+  return Math.{
     glyph_id_for_part;
     start_connector_length;
     end_connector_length;
@@ -607,7 +607,7 @@ let d_glyph_part_record : glyph_part_record decoder =
   }
 
 
-let d_glyph_assembly : (math_value_record * glyph_part_record list) decoder =
+let d_glyph_assembly : (Math.math_value_record * Math.glyph_part_record list) decoder =
   let open DecodeOperation in
   current >>= fun offset_GlyphAssembly ->
   d_math_value_record offset_GlyphAssembly >>= fun italicsCorrection ->
@@ -622,18 +622,18 @@ let d_math_glyph_variant_record : (glyph_id * int) decoder =
   return (variantGlyph, advanceMeasurement)
 
 
-let d_math_glyph_construction : math_glyph_construction decoder =
+let d_math_glyph_construction : Math.math_glyph_construction decoder =
   let open DecodeOperation in
   current >>= fun offset_MathGlyphConstruction ->
   d_fetch_opt offset_MathGlyphConstruction d_glyph_assembly >>= fun glyph_assembly ->
   d_list d_math_glyph_variant_record >>= fun math_glyph_variant_record_list ->
-  return {
+  return Math.{
     glyph_assembly;
     math_glyph_variant_record_list;
   }
 
 
-let d_math_variants : math_variants decoder =
+let d_math_variants : Math.math_variants decoder =
   let open DecodeOperation in
   current >>= fun offset_MathVariants ->
   d_uint16 >>= fun min_connector_overlap ->
@@ -646,7 +646,7 @@ let d_math_variants : math_variants decoder =
   d_repeat horizGlyphCount df >>= fun horizGlyphConstructions ->
   combine_coverage vertGlyphCoverage vertGlyphConstructions >>= fun vert_glyph_assoc ->
   combine_coverage horizGlyphCoverage horizGlyphConstructions >>= fun horiz_glyph_assoc ->
-  return {
+  return Math.{
     min_connector_overlap;
     vert_glyph_assoc;
     horiz_glyph_assoc;
@@ -664,16 +664,16 @@ let math (common : common_source) =
         let open DecodeOperation in
         d_uint32 >>= fun version ->
         if version <> !%% 0x00010000L then
+          err @@ Error.UnknownTableVersion(version)
+        else
           d_fetch offset d_math_constants  >>= fun math_constants ->
           d_fetch offset d_math_glyph_info >>= fun math_glyph_info ->
           d_fetch offset d_math_variants   >>= fun math_variants ->
-          return {
+          return Math.{
             math_constants;
             math_glyph_info;
             math_variants;
           }
-        else
-          err @@ Error.UnknownTableVersion(version)
       in
       dec |> DecodeOperation.run common.core offset >>= fun math ->
       return @@ Some(math)

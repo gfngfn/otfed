@@ -195,6 +195,8 @@ module Value : sig
     }
     [@@deriving show { with_path = false }]
   end
+
+  module Math : (module type of Value.Math)
 end
 
 module Decode : sig
@@ -443,6 +445,8 @@ module Decode : sig
   val gsub : common_source -> (Intermediate.Gsub.t option) ok
 
   val gpos : common_source -> (Intermediate.Gpos.t option) ok
+
+  val math : common_source -> (Value.Math.t option) ok
 
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 

@@ -32,6 +32,7 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | head                               # Prints the contents of `head` table.
   | hhea                               # Prints the contents of `hhea` table.
   | maxp                               # Prints the contents of `maxp` table.
+  | hmtx <glyph-id>                    # Consults the `hmtx` table by the glyph of ID <glyph-id>.
   | glyf <glyph-id> <output-svg-file>  # Outputs the glyph of ID <glyph-id> that has TrueType outlines.
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
   | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
@@ -74,7 +75,7 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
       <td>cmap</td><td>-</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
   <tr><td>head</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>hhea</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>hmtx</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>hmtx</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>maxp</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>OS/2</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>

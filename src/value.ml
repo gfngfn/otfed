@@ -272,3 +272,113 @@ module Maxp = struct
   }
   [@@deriving show {with_path = false}]
 end
+
+type device_table = int * int * int * int
+
+type math_value_record = int * device_table option
+
+type math_constants =
+  {
+    script_percent_scale_down                     : int;
+    script_script_percent_scale_down              : int;
+    delimited_sub_formula_min_height              : int;
+    display_operator_min_height                   : int;
+    math_leading                                  : math_value_record;
+    axis_height                                   : math_value_record;
+    accent_base_height                            : math_value_record;
+    flattened_accent_base_height                  : math_value_record;
+    subscript_shift_down                          : math_value_record;
+    subscript_top_max                             : math_value_record;
+    subscript_baseline_drop_min                   : math_value_record;
+    superscript_shift_up                          : math_value_record;
+    superscript_shift_up_cramped                  : math_value_record;
+    superscript_bottom_min                        : math_value_record;
+    superscript_baseline_drop_max                 : math_value_record;
+    sub_superscript_gap_min                       : math_value_record;
+    superscript_bottom_max_with_subscript         : math_value_record;
+    space_after_script                            : math_value_record;
+    upper_limit_gap_min                           : math_value_record;
+    upper_limit_baseline_rise_min                 : math_value_record;
+    lower_limit_gap_min                           : math_value_record;
+    lower_limit_baseline_drop_min                 : math_value_record;
+    stack_top_shift_up                            : math_value_record;
+    stack_top_display_style_shift_up              : math_value_record;
+    stack_bottom_shift_down                       : math_value_record;
+    stack_bottom_display_style_shift_down         : math_value_record;
+    stack_gap_min                                 : math_value_record;
+    stack_display_style_gap_min                   : math_value_record;
+    stretch_stack_top_shift_up                    : math_value_record;
+    stretch_stack_bottom_shift_down               : math_value_record;
+    stretch_stack_gap_above_min                   : math_value_record;
+    stretch_stack_gap_below_min                   : math_value_record;
+    fraction_numerator_shift_up                   : math_value_record;
+    fraction_numerator_display_style_shift_up     : math_value_record;
+    fraction_denominator_shift_down               : math_value_record;
+    fraction_denominator_display_style_shift_down : math_value_record;
+    fraction_numerator_gap_min                    : math_value_record;
+    fraction_num_display_style_gap_min            : math_value_record;
+    fraction_rule_thickness                       : math_value_record;
+    fraction_denominator_gap_min                  : math_value_record;
+    fraction_denom_display_style_gap_min          : math_value_record;
+    skewed_fraction_horizontal_gap                : math_value_record;
+    skewed_fraction_vertical_gap                  : math_value_record;
+    overbar_vertical_gap                          : math_value_record;
+    overbar_rule_thickness                        : math_value_record;
+    overbar_extra_ascender                        : math_value_record;
+    underbar_vertical_gap                         : math_value_record;
+    underbar_rule_thickness                       : math_value_record;
+    underbar_extra_descender                      : math_value_record;
+    radical_vertical_gap                          : math_value_record;
+    radical_display_style_vertical_gap            : math_value_record;
+    radical_rule_thickness                        : math_value_record;
+    radical_extra_ascender                        : math_value_record;
+    radical_kern_before_degree                    : math_value_record;
+    radical_kern_after_degree                     : math_value_record;
+    radical_degree_bottom_raise_percent           : int;
+  }
+
+type math_kern = math_value_record list * math_value_record list
+
+type math_kern_info_record =
+  {
+    top_right_math_kern    : math_kern option;
+    top_left_math_kern     : math_kern option;
+    bottom_right_math_kern : math_kern option;
+    bottom_left_math_kern  : math_kern option;
+  }
+
+type math_glyph_info =
+  {
+    math_italics_correction    : (glyph_id * math_value_record) list;
+    math_top_accent_attachment : (glyph_id * math_value_record) list;
+    math_kern_info             : (glyph_id * math_kern_info_record) list;
+  }
+
+type glyph_part_record =
+  {
+    glyph_id_for_part      : glyph_id;
+    start_connector_length : int;
+    end_connector_length   : int;
+    full_advance           : int;
+    part_flags             : int;
+  }
+
+type math_glyph_construction =
+  {
+    glyph_assembly                 : (math_value_record * glyph_part_record list) option;
+    math_glyph_variant_record_list : (glyph_id * int) list;
+  }
+
+type math_variants =
+  {
+    min_connector_overlap : int;
+    vert_glyph_assoc      : (glyph_id * math_glyph_construction) list;
+    horiz_glyph_assoc     : (glyph_id * math_glyph_construction) list;
+  }
+
+type math =
+  {
+    math_constants  : math_constants;
+    math_glyph_info : math_glyph_info;
+    math_variants   : math_variants;
+  }

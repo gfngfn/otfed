@@ -12,6 +12,7 @@ type config = {
   head   : bool;
   hhea   : bool;
   maxp   : bool;
+  math   : bool;
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
@@ -111,13 +112,28 @@ let print_hhea (common, _) =
 
 
 let print_maxp (common, _) =
-  let open D in
   let res =
     let open ResultMonad in
     Format.printf "maxp:@,";
-    maxp common >>= fun maxp ->
+    D.maxp common >>= fun maxp ->
     Format.printf "%a@," V.Maxp.pp maxp;
     return ()
+  in
+  res |> inj
+
+
+let print_math (common, _) =
+  let res =
+    let open ResultMonad in
+    Format.printf "MATH:@,";
+    D.math common >>= function
+    | None ->
+        Format.printf "  MATH table not found@,";
+        return ()
+
+    | Some(math) ->
+        Format.printf "  %a@," V.Math.pp math;
+        return ()
   in
   res |> inj
 
@@ -405,6 +421,7 @@ let parse_args () =
       | "head"   -> aux n { acc with head = true } (i + 1)
       | "hhea"   -> aux n { acc with hhea = true } (i + 1)
       | "maxp"   -> aux n { acc with maxp = true } (i + 1)
+      | "math"   -> aux n { acc with math = true } (i + 1)
 
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -445,6 +462,7 @@ let parse_args () =
         head   = false;
         hhea   = false;
         maxp   = false;
+        math   = false;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -486,6 +504,9 @@ let _ =
         end >>= fun () ->
         begin
           if config.maxp then print_maxp source else return ()
+        end >>= fun () ->
+        begin
+          if config.math then print_math source else return ()
         end >>= fun () ->
         config.hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid

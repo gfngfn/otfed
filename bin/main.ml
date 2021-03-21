@@ -147,17 +147,22 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           return ()
 
       | Some(loc) ->
-          let res =
-            D.head common >>= fun head ->
-            D.glyf ttf loc >>= fun (descr, bbox) ->
-            Svg.make_ttf descr ~bbox ~units_per_em:head.V.Head.units_per_em >>= fun data ->
-            Format.printf "  (%a, %a)@,"
-              V.pp_ttf_glyph_description descr
-              V.pp_bounding_box bbox;
-            return data
-          in
-          res |> inj >>= fun data ->
-          write_glyph_svg path ~data
+          D.head common |> inj >>= fun head ->
+          let units_per_em = head.V.Head.units_per_em in
+          D.hmtx common |> inj >>= fun ihmtx ->
+          D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
+          | None ->
+              Format.printf "  no hmtx entry@,";
+              return ()
+
+          | Some(aw, _lsb) ->
+              D.glyf ttf loc |> inj >>= fun (descr, bbox) ->
+              Svg.make_ttf descr ~bbox ~units_per_em ~aw |> inj >>= fun data ->
+              Format.printf "  (%a, %a)@,"
+                V.pp_ttf_glyph_description descr
+                V.pp_bounding_box bbox;
+              write_glyph_svg path ~data
+
 
 
 let pp_sep ppf () =
@@ -177,7 +182,6 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
       return ()
 
   | D.Cff(cff) ->
-      D.head common |> inj >>= fun head ->
       D.charstring cff gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";
@@ -189,11 +193,20 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
             | None    -> Format.printf "  width: not defined@,";
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
-          Format.printf "%a@," D.pp_charstring charstring;
-          D.path_of_charstring charstring |> inj >>= fun paths ->
-          Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
-          let data = Svg.make_cff ~units_per_em:head.V.Head.units_per_em paths in
-          write_glyph_svg path ~data
+          D.head common |> inj >>= fun head ->
+          let units_per_em = head.V.Head.units_per_em in
+          D.hmtx common |> inj >>= fun ihmtx ->
+          D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
+          | None ->
+              Format.printf "  no hmtx entry@,";
+              return ()
+
+          | Some(aw, _lsb) ->
+              Format.printf "%a@," D.pp_charstring charstring;
+              D.path_of_charstring charstring |> inj >>= fun paths ->
+              Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
+              let data = Svg.make_cff ~units_per_em paths ~aw in
+              write_glyph_svg path ~data
 
 
 let print_gsub_feature (feature : DGsub.feature) =

@@ -107,12 +107,12 @@ let svg_prefix_and_suffix ~height ~width ~view_box:(x_min, y_min, x_max, y_max) 
   (prefix, suffix)
 
 
-let frame_em ~units_per_em ~y_max ~y_min =
+let frame_aw ~units_per_em ~y_max ~y_min ~aw =
   [
     Printf.sprintf "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"none\" stroke=\"purple\" stroke-width=\"5\" />"
       (display_x_scheme units_per_em 0)
       (display_y_scheme units_per_em y_max)
-      units_per_em
+      aw
       (y_max - y_min);
   ]
 
@@ -131,7 +131,7 @@ let frame_bbox ~units_per_em ~bbox =
   ]
 
 
-let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bounding_box) (units_per_em : int) =
+let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bounding_box) (units_per_em : int) (aw : int) =
   let open ResultMonad in
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
@@ -159,7 +159,7 @@ let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bou
           y_max - y_min + 2 * dpoffset
         )
     in
-    let frame1 = frame_em ~units_per_em ~y_min ~y_max in
+    let frame1 = frame_aw ~units_per_em ~y_min ~y_max ~aw in
     let frame2 = frame_bbox ~units_per_em ~bbox in
     List.concat [
       prefix;
@@ -173,14 +173,14 @@ let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bou
   return @@ String.concat "" ss
 
 
-let make_ttf (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) =
+let make_ttf (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
   let open ResultMonad in
   match descr with
-  | V.TtfSimpleGlyph(simple) -> make_ttf_simple simple bbox units_per_em
+  | V.TtfSimpleGlyph(simple) -> make_ttf_simple simple bbox units_per_em aw
   | V.TtfCompositeGlyph(_)   -> return ""
 
 
-let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) =
+let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
   let (_, pathacc, circacc) =
@@ -205,7 +205,7 @@ let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) =
           y_max - y_min + 2 * dpoffset
         )
     in
-    let frame1 = frame_em ~units_per_em ~y_min ~y_max in
+    let frame1 = frame_aw ~units_per_em ~y_min ~y_max ~aw in
     let frame2 = frame_bbox ~units_per_em ~bbox:{ x_min = 0; y_min; x_max = units_per_em; y_max } in
     List.concat [
       prefix;

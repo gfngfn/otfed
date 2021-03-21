@@ -12,6 +12,7 @@ type config = {
   head   : bool;
   hhea   : bool;
   maxp   : bool;
+  hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
   gsub   : (string * string * string) Alist.t;
@@ -25,6 +26,7 @@ type error =
   | CannotWriteFile    of string
   | DecodingError      of D.Error.t
 [@@deriving show { with_path = false }]
+
 
 let inj = function
   | Ok(v)    -> Ok(v)
@@ -64,6 +66,24 @@ let print_cmap (common, _) =
       ) () |> ignore;
     );
     return ()
+  in
+  res |> inj
+
+
+let print_hmtx (common, _) (gid : V.glyph_id) =
+  Format.printf "hmtx (gid: %d):@," gid;
+  let res =
+    let open ResultMonad in
+    D.hmtx common >>= fun ihmtx ->
+    D.Intermediate.Hmtx.get ihmtx gid >>= function
+    | None ->
+        Format.printf "- none@,";
+        return ()
+
+    | Some((aw, lsb)) ->
+        Format.printf "- aw: %d, lsb: %d@,"
+          aw lsb;
+        return ()
   in
   res |> inj
 
@@ -373,6 +393,10 @@ let parse_args () =
       | "hhea"   -> aux n { acc with hhea = true } (i + 1)
       | "maxp"   -> aux n { acc with maxp = true } (i + 1)
 
+      | "hmtx" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with hmtx = Alist.extend acc.hmtx gid } (i + 2)
+
       | "glyf" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
           let path = Sys.argv.(i + 2) in
@@ -408,6 +432,7 @@ let parse_args () =
         head   = false;
         hhea   = false;
         maxp   = false;
+        hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
         gsub   = Alist.empty;
@@ -449,6 +474,9 @@ let _ =
         begin
           if config.maxp then print_maxp source else return ()
         end >>= fun () ->
+        config.hmtx |> Alist.to_list |> mapM (fun gid ->
+          print_hmtx source gid
+        ) >>= fun _ ->
         begin
           if config.cmap then print_cmap source else return ()
         end >>= fun () ->

@@ -1127,3 +1127,12 @@ module Gpos = struct
     return acc
 
 end
+
+module Kern = struct
+
+  include GeneralTable(struct type t = unit end)
+
+  let make core ~offset ~length =
+    make_scheme core offset length ()
+
+end

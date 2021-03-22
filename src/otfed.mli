@@ -426,8 +426,12 @@ module Decode : sig
         ?marklig1:('a folding_marklig1) ->
         ?markmark1:('a folding_markmark1) ->
         feature -> 'a -> 'a ok
-
     end
+
+    module Kern : sig
+      type t
+    end
+
   end
 
   val cmap : common_source -> Intermediate.Cmap.t ok

@@ -386,6 +386,16 @@ let gpos (common : common_source) =
       return @@ Some(DecodeIntermediate.Gpos.make common.core ~offset ~length)
 
 
+let kern (common : common_source) =
+  let open ResultMonad in
+  match DecodeOperation.seek_table common.table_directory Tag.table_kern with
+  | None ->
+      return None
+
+  | Some((offset, length)) ->
+      return @@ Some(DecodeIntermediate.Kern.make common.core ~offset ~length)
+
+
 let d_device_table : Math.device_table decoder =
   let open DecodeOperation in
   d_uint16 >>= fun startSize ->

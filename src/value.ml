@@ -39,6 +39,8 @@ module Tag : sig
   val table_jstf : t
   val table_math : t
 
+  val table_kern : t
+
 end = struct
   type t = wint
 
@@ -95,6 +97,8 @@ end = struct
   let table_gsub = !%% 0x47535542L
   let table_jstf = !%% 0x4A535446L
   let table_math = !%% 0x4d415448L
+
+  let table_kern = !%% 0x6B65726EL
 
 end
 

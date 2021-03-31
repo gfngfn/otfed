@@ -426,8 +426,21 @@ module Decode : sig
         ?marklig1:('a folding_marklig1) ->
         ?markmark1:('a folding_markmark1) ->
         feature -> 'a -> 'a ok
-
     end
+
+    module Kern : sig
+      type t
+
+      type kern_info = {
+        horizontal   : bool;
+        minimum      : bool;
+        cross_stream : bool;
+      }
+      [@@deriving show {with_path = false}]
+
+      val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
+    end
+
   end
 
   val cmap : common_source -> Intermediate.Cmap.t ok
@@ -445,6 +458,8 @@ module Decode : sig
   val gsub : common_source -> (Intermediate.Gsub.t option) ok
 
   val gpos : common_source -> (Intermediate.Gpos.t option) ok
+
+  val kern : common_source -> (Intermediate.Kern.t option) ok
 
   val math : common_source -> (Value.Math.t option) ok
 

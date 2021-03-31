@@ -13,6 +13,7 @@ type config = {
   hhea   : bool;
   maxp   : bool;
   math   : bool;
+  kern   : bool;
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
@@ -134,6 +135,32 @@ let print_math (common, _) =
     | Some(math) ->
         Format.printf "  %a@," V.Math.pp math;
         return ()
+  in
+  res |> inj
+
+
+let print_kern (common, _) =
+  let res =
+    let open ResultMonad in
+    Format.printf "kern:@,";
+    D.kern common >>= function
+    | None ->
+        Format.printf "  kern table not found@,";
+        return ()
+
+    | Some(ikern) ->
+        ikern |> D.Intermediate.Kern.fold
+          (fun () kern_info ->
+            Format.printf "  kern_info: %a@,"
+              D.Intermediate.Kern.pp_kern_info kern_info;
+            (true, ())
+          )
+          (fun () gid_left gid_right value ->
+            Format.printf "  - (%d, %d): %d@,"
+              gid_left gid_right value;
+            ()
+          )
+          ()
   in
   res |> inj
 
@@ -422,6 +449,7 @@ let parse_args () =
       | "hhea"   -> aux n { acc with hhea = true } (i + 1)
       | "maxp"   -> aux n { acc with maxp = true } (i + 1)
       | "math"   -> aux n { acc with math = true } (i + 1)
+      | "kern"   -> aux n { acc with kern = true } (i + 1)
 
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -463,6 +491,7 @@ let parse_args () =
         hhea   = false;
         maxp   = false;
         math   = false;
+        kern   = false;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -507,6 +536,9 @@ let _ =
         end >>= fun () ->
         begin
           if config.math then print_math source else return ()
+        end >>= fun () ->
+        begin
+          if config.kern then print_kern source else return ()
         end >>= fun () ->
         config.hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid

@@ -436,6 +436,7 @@ module Decode : sig
         minimum      : bool;
         cross_stream : bool;
       }
+      [@@deriving show {with_path = false}]
 
       val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
     end

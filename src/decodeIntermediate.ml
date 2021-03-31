@@ -1141,6 +1141,7 @@ module Kern = struct
     minimum      : bool;
     cross_stream : bool;
   }
+  [@@deriving show {with_path = false}]
 
 
   let d_kern_info =

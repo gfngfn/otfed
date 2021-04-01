@@ -117,7 +117,7 @@ let print_maxp (common, _) =
     let open ResultMonad in
     Format.printf "maxp:@,";
     D.maxp common >>= fun maxp ->
-    Format.printf "%a@," V.Maxp.pp maxp;
+    Format.printf "%a@," D.Intermediate.Maxp.pp maxp;
     return ()
   in
   res |> inj

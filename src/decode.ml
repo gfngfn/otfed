@@ -303,7 +303,7 @@ let os2 (common : common_source) : Value.Os2.t ok =
   DecodeOperation.run common.core offset dec
 
 
-let maxp (common : common_source) : Value.Maxp.t ok =
+let maxp (common : common_source) : Intermediate.Maxp.t ok =
   let open ResultMonad in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
   let dec =
@@ -312,7 +312,7 @@ let maxp (common : common_source) : Value.Maxp.t ok =
     if version = !%% 0x00005000L then
     (* If the font is based on CFF *)
       d_uint16 >>= fun num_glyphs ->
-      return Value.Maxp.{
+      return Intermediate.Maxp.{
         num_glyphs               = num_glyphs;
         max_points               = 0;
         max_contours             = 0;
@@ -344,7 +344,7 @@ let maxp (common : common_source) : Value.Maxp.t ok =
       d_uint16 >>= fun max_size_of_instructions ->
       d_uint16 >>= fun max_component_elements ->
       d_uint16 >>= fun max_component_depth ->
-      return Value.Maxp.{
+      return Intermediate.Maxp.{
         num_glyphs;
         max_points;
         max_contours;

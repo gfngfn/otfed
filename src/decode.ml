@@ -166,7 +166,7 @@ let head (common : common_source) : Intermediate.Head.t ok =
   DecodeOperation.run common.core offset dec
 
 
-let hhea (common : common_source) : Value.Hhea.t ok =
+let hhea (common : common_source) : Intermediate.Hhea.t ok =
   let open ResultMonad in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
   let dec =
@@ -185,17 +185,21 @@ let hhea (common : common_source) : Value.Hhea.t ok =
       d_int16  >>= fun caret_slope_rise ->
       d_int16  >>= fun caret_slope_run ->
       d_int16  >>= fun caret_offset ->
-      return Value.Hhea.{
-        ascender;
-        descender;
-        line_gap;
-        advance_width_max;
-        min_left_side_bearing;
-        min_right_side_bearing;
-        xmax_extent;
-        caret_slope_rise;
-        caret_slope_run;
-        caret_offset;
+      return Intermediate.Hhea.{
+        value = Value.Hhea.{
+          ascender;
+          descender;
+          line_gap;
+          caret_slope_rise;
+          caret_slope_run;
+          caret_offset;
+        };
+        derived = {
+          advance_width_max;
+          min_left_side_bearing;
+          min_right_side_bearing;
+          xmax_extent;
+        };
       }
   in
   DecodeOperation.run common.core offset dec

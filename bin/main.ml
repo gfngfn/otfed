@@ -106,7 +106,7 @@ let print_hhea (common, _) =
     let open ResultMonad in
     Format.printf "hhea:@,";
     D.hhea common >>= fun hhea ->
-    Format.printf "%a@," V.Hhea.pp hhea;
+    Format.printf "%a@," D.Intermediate.Hhea.pp hhea;
     return ()
   in
   res |> inj

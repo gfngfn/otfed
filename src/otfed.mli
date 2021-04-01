@@ -101,29 +101,25 @@ module Value : sig
 
   module Head : sig
     type t = {
-      font_revision       : wint;
-      flags               : int;
-      units_per_em        : int;
-      created             : timestamp;
-      modified            : timestamp;
-      mac_style           : int;
-      lowest_rec_ppem     : int;
+      font_revision   : wint;
+      flags           : int;
+      units_per_em    : int;
+      created         : timestamp;
+      modified        : timestamp;
+      mac_style       : int;
+      lowest_rec_ppem : int;
     }
     [@@deriving show {with_path = false}]
   end
 
   module Hhea : sig
     type t = {
-      ascender               : int;
-      descender              : int;
-      line_gap               : int;
-      advance_width_max      : int;
-      min_left_side_bearing  : int;
-      min_right_side_bearing : int;
-      xmax_extent            : int;
-      caret_slope_rise       : int;
-      caret_slope_run        : int;
-      caret_offset           : int;
+      ascender         : int;
+      descender        : int;
+      line_gap         : int;
+      caret_slope_rise : int;
+      caret_slope_run  : int;
+      caret_offset     : int;
     }
     [@@deriving show {with_path = false}]
   end
@@ -288,6 +284,22 @@ module Decode : sig
 
       type t = {
         value   : Value.Head.t;
+        derived : derived;
+      }
+      [@@deriving show { with_path = false }]
+    end
+
+    module Hhea : sig
+      type derived = {
+        advance_width_max      : int;
+        min_left_side_bearing  : int;
+        min_right_side_bearing : int;
+        xmax_extent            : int;
+      }
+      [@@deriving show { with_path = false }]
+
+      type t = {
+        value   : Value.Hhea.t;
         derived : derived;
       }
       [@@deriving show { with_path = false }]
@@ -459,7 +471,7 @@ module Decode : sig
 
   val head : common_source -> Intermediate.Head.t ok
 
-  val hhea : common_source -> Value.Hhea.t ok
+  val hhea : common_source -> Intermediate.Hhea.t ok
 
   val os2 : common_source -> Value.Os2.t ok
 

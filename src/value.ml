@@ -103,10 +103,10 @@ end = struct
 end
 
 type glyph_id = int
-[@@deriving show {with_path = false}]
+[@@deriving show { with_path = false }]
 
 type timestamp = wint
-[@@deriving show {with_path = false}]
+[@@deriving show { with_path = false }]
 
 type x_coordinate = int
 [@@deriving show { with_path = false }]
@@ -190,7 +190,7 @@ module Head = struct
     mac_style           : int;
     lowest_rec_ppem     : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end
 
 module Hhea = struct
@@ -198,15 +198,11 @@ module Hhea = struct
     ascender               : int;
     descender              : int;
     line_gap               : int;
-    advance_width_max      : int;
-    min_left_side_bearing  : int;
-    min_right_side_bearing : int;
-    xmax_extent            : int;
     caret_slope_rise       : int;
     caret_slope_run        : int;
     caret_offset           : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end
 
 module Os2 = struct
@@ -270,15 +266,15 @@ module Maxp = struct
     max_component_elements   : int;
     max_component_depth      : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end
 
 module Math = struct
   type device_table = int * int * int * int
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_value_record = int * device_table option
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_constants = {
     script_percent_scale_down                     : int;
@@ -338,10 +334,10 @@ module Math = struct
     radical_kern_after_degree                     : math_value_record;
     radical_degree_bottom_raise_percent           : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_kern = math_value_record list * math_value_record list
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_kern_info_record = {
     top_right_math_kern    : math_kern option;
@@ -349,14 +345,14 @@ module Math = struct
     bottom_right_math_kern : math_kern option;
     bottom_left_math_kern  : math_kern option;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_glyph_info = {
     math_italics_correction    : (glyph_id * math_value_record) list;
     math_top_accent_attachment : (glyph_id * math_value_record) list;
     math_kern_info             : (glyph_id * math_kern_info_record) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type glyph_part_record = {
     glyph_id_for_part      : glyph_id;
@@ -365,25 +361,25 @@ module Math = struct
     full_advance           : int;
     part_flags             : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_glyph_construction = {
     glyph_assembly                 : (math_value_record * glyph_part_record list) option;
     math_glyph_variant_record_list : (glyph_id * int) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_variants = {
     min_connector_overlap : int;
     vert_glyph_assoc      : (glyph_id * math_glyph_construction) list;
     horiz_glyph_assoc     : (glyph_id * math_glyph_construction) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type t = {
     math_constants  : math_constants;
     math_glyph_info : math_glyph_info;
     math_variants   : math_variants;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end

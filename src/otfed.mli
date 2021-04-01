@@ -106,10 +106,6 @@ module Value : sig
       units_per_em        : int;
       created             : timestamp;
       modified            : timestamp;
-      xmin                : int;
-      ymin                : int;
-      xmax                : int;
-      ymax                : int;
       mac_style           : int;
       lowest_rec_ppem     : int;
     }
@@ -281,6 +277,22 @@ module Decode : sig
       do NOT allocate so much additional memory for the representation,
       it is likely to be efficient in space and NOT to be in time. *)
   module Intermediate : sig
+    module Head : sig
+      type derived = {
+        xmin : int;
+        ymin : int;
+        xmax : int;
+        ymax : int;
+      }
+      [@@deriving show { with_path = false }]
+
+      type t = {
+        value   : Value.Head.t;
+        derived : derived;
+      }
+      [@@deriving show { with_path = false }]
+    end
+
     module Cmap : sig
       type t
 
@@ -445,7 +457,7 @@ module Decode : sig
 
   val cmap : common_source -> Intermediate.Cmap.t ok
 
-  val head : common_source -> Value.Head.t ok
+  val head : common_source -> Intermediate.Head.t ok
 
   val hhea : common_source -> Value.Hhea.t ok
 

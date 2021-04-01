@@ -95,7 +95,7 @@ let print_head (common, _) =
     let open ResultMonad in
     Format.printf "head:@,";
     D.head common >>= fun head ->
-    Format.printf "%a@," V.Head.pp head;
+    Format.printf "%a@," D.Intermediate.Head.pp head;
     return ()
   in
   res |> inj
@@ -191,7 +191,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
 
       | Some(loc) ->
           D.head common |> inj >>= fun head ->
-          let units_per_em = head.V.Head.units_per_em in
+          let units_per_em = head.D.Intermediate.Head.value.V.Head.units_per_em in
           D.hmtx common |> inj >>= fun ihmtx ->
           D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
           | None ->
@@ -237,7 +237,7 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
           D.head common |> inj >>= fun head ->
-          let units_per_em = head.V.Head.units_per_em in
+          let units_per_em = head.D.Intermediate.Head.value.V.Head.units_per_em in
           D.hmtx common |> inj >>= fun ihmtx ->
           D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
           | None ->

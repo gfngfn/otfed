@@ -187,10 +187,6 @@ module Head = struct
     units_per_em        : int;
     created             : timestamp;
     modified            : timestamp;
-    xmin                : int;
-    ymin                : int;
-    xmax                : int;
-    ymax                : int;
     mac_style           : int;
     lowest_rec_ppem     : int;
   }

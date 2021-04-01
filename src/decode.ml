@@ -123,7 +123,7 @@ let cmap (common : common_source) : Intermediate.Cmap.t ok =
   return @@ Intermediate.Cmap.make common.core ~offset ~length
 
 
-let head (common : common_source) : Value.Head.t ok =
+let head (common : common_source) : Intermediate.Head.t ok =
   let open ResultMonad in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
   let dec =
@@ -145,18 +145,22 @@ let head (common : common_source) : Value.Head.t ok =
       d_uint16     >>= fun mac_style ->
       d_uint16     >>= fun lowest_rec_ppem ->
       (* Skips `fontDirectionHint` and `indexToLocFormat`. *)
-      return Value.Head.{
-        font_revision;
-        flags;
-        units_per_em;
-        created;
-        modified;
-        xmin;
-        ymin;
-        xmax;
-        ymax;
-        mac_style;
-        lowest_rec_ppem;
+      return Intermediate.Head.{
+        value = Value.Head.{
+          font_revision;
+          flags;
+          units_per_em;
+          created;
+          modified;
+          mac_style;
+          lowest_rec_ppem;
+        };
+        derived = {
+          xmin;
+          ymin;
+          xmax;
+          ymax;
+        };
       }
   in
   DecodeOperation.run common.core offset dec

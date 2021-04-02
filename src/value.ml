@@ -108,10 +108,13 @@ type glyph_id = int
 type timestamp = wint
 [@@deriving show { with_path = false }]
 
-type x_coordinate = int
+type design_units = int
 [@@deriving show { with_path = false }]
 
-type y_coordinate = int
+type x_coordinate = design_units
+[@@deriving show { with_path = false }]
+
+type y_coordinate = design_units
 [@@deriving show { with_path = false }]
 
 type point = x_coordinate * y_coordinate
@@ -166,6 +169,34 @@ type quadratic_path_element =
 [@@deriving show { with_path = false }]
 
 type quadratic_path = point * quadratic_path_element list
+[@@deriving show { with_path = false }]
+
+type device_table = int * int * int * int
+
+type anchor_adjustment =
+  | NoAnchorAdjustment
+  | AnchorPointAdjustment  of int
+  | DeviceAnchorAdjustment of device_table * device_table
+
+type anchor = design_units * design_units * anchor_adjustment
+
+type mark_class = int
+
+type mark_record = mark_class * anchor
+
+type base_record = (anchor option) array
+  (* Arrays of this type are indexed by `mark_class`.
+     UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
+
+type component_record = (anchor option) array
+  (* Arrays of this type are indexed by `mark_class`. *)
+
+type ligature_attach = component_record list
+
+type mark2_record = anchor array
+  (* Arrays of this type are indexed by `mark_class`. *)
+
+type class_value = int
 [@@deriving show { with_path = false }]
 
 module Cmap = struct

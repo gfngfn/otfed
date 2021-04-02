@@ -747,36 +747,6 @@ module Gpos = struct
     }
 
 
-  type device_table = int * int * int * int
-
-  type anchor_adjustment =
-    | NoAnchorAdjustment
-    | AnchorPointAdjustment  of int
-    | DeviceAnchorAdjustment of device_table * device_table
-
-  type design_units = int
-
-  type anchor = design_units * design_units * anchor_adjustment
-
-  type mark_class = int
-
-  type mark_record = mark_class * anchor
-
-  type base_record = (anchor option) array
-    (* Arrays of this type are indexed by `mark_class`.
-       UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
-
-  type component_record = (anchor option) array
-    (* Arrays of this type are indexed by `mark_class`. *)
-
-  type ligature_attach = component_record list
-
-  type mark2_record = anchor array
-    (* Arrays of this type are indexed by `mark_class`. *)
-
-  type class_value = int
-  [@@deriving show {with_path = false}]
-
   type class_definition =
     | GlyphToClass      of glyph_id * class_value
     | GlyphRangeToClass of glyph_id * glyph_id * class_value

@@ -42,15 +42,17 @@ module Value : sig
     | TtfCompositeGlyph of ttf_composite_glyph_description
   [@@deriving show { with_path = false }]
 
+  type design_units = int
+
   (** Represents an absolute X-coordinate.
       The unit of measurement is [units_per_em],
       and thus differs for each font in general. *)
-  type x_coordinate = int
+  type x_coordinate = design_units
 
   (** Represents an absolute Y-coordinate.
       The unit of measurement is [units_per_em],
       and thus differs for each font in general. *)
-  type y_coordinate = int
+  type y_coordinate = design_units
 
   (** Represents an absolute coordinate on the XY-plane.
       The unit of measurement is [units_per_em],
@@ -86,6 +88,36 @@ module Value : sig
     y_max : y_coordinate;
   }
   [@@deriving show { with_path = false }]
+
+  type class_value = int
+
+  type device_table = int * int * int * int
+
+  (** The type for Anchor tables (page 215). *)
+  type anchor_adjustment =
+    | NoAnchorAdjustment
+    | AnchorPointAdjustment  of int
+    | DeviceAnchorAdjustment of device_table * device_table
+
+  type anchor = design_units * design_units * anchor_adjustment
+
+  type mark_class = int
+
+  (** The type for MarkRecord (page 217). *)
+  type mark_record = mark_class * anchor
+
+  (** The type for BaseRecords (page 199). Arrays of this type are indexed by [mark_class].
+      UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
+  type base_record = (anchor option) array
+
+  (** Type type for ComponentRecords (page 201). Arrays of this type are indexed by [mark_class]. *)
+  type component_record = (anchor option) array
+
+  (** Type type for LigatureAttath tables (page 201). *)
+  type ligature_attach = component_record list
+
+  (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
+  type mark2_record = anchor array
 
   module Cmap : sig
     type t
@@ -211,10 +243,10 @@ module Decode : sig
   type stem_argument = string
 
   (** Represents a relative advancement in the direction of the X-axis. *)
-  type cs_x = int
+  type cs_x = Value.design_units
 
   (** Represents a relative advancement in the direction of the Y-axis. *)
-  type cs_y = int
+  type cs_y = Value.design_units
 
   (** Represents a relative vector. *)
   type cs_point = cs_x * cs_y
@@ -390,42 +422,10 @@ module Decode : sig
         y_adv_device : int option;
       }
 
-      type class_value = int
-
       type class_definition =
-        | GlyphToClass      of Value.glyph_id * class_value
-        | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * class_value
+        | GlyphToClass      of Value.glyph_id * Value.class_value
+        | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
       [@@deriving show {with_path = false}]
-
-      type device_table = int * int * int * int
-
-      (** The type for Anchor tables (page 215). *)
-      type anchor_adjustment =
-        | NoAnchorAdjustment
-        | AnchorPointAdjustment  of int
-        | DeviceAnchorAdjustment of device_table * device_table
-
-      type design_units = int
-
-      type anchor = design_units * design_units * anchor_adjustment
-
-      type mark_class = int
-
-      (** The type for MarkRecord (page 217). *)
-      type mark_record = mark_class * anchor
-
-      (** The type for BaseRecords (page 199). Arrays of this type are indexed by [mark_class].
-          UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
-      type base_record = (anchor option) array
-
-      (** Type type for ComponentRecords (page 201). Arrays of this type are indexed by [mark_class]. *)
-      type component_record = (anchor option) array
-
-      (** Type type for LigatureAttath tables (page 201). *)
-      type ligature_attach = component_record list
-
-      (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
-      type mark2_record = anchor array
 
       type 'a folding_single1 = 'a -> Value.glyph_id list -> value_record -> 'a
 
@@ -433,13 +433,13 @@ module Decode : sig
 
       type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * value_record * value_record) list -> 'a
 
-      type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (class_value * (class_value * value_record * value_record) list) list -> 'a
+      type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * value_record * value_record) list) list -> 'a
 
-      type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * base_record) list -> 'a
+      type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 
-      type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * ligature_attach) list -> 'a
+      type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
 
-      type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * mark_record) list -> (Value.glyph_id * mark2_record) list -> 'a
+      type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
 
       val fold_subtables :
         ?single1:('a folding_single1) ->

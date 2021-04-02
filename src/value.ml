@@ -173,6 +173,17 @@ type quadratic_path = point * quadratic_path_element list
 
 type device_table = int * int * int * int
 
+type value_record = {
+  x_placement  : design_units option;
+  y_placement  : design_units option;
+  x_advance    : design_units option;
+  y_advance    : design_units option;
+  x_pla_device : int option;
+  y_pla_device : int option;
+  x_adv_device : int option;
+  y_adv_device : int option;
+}
+
 type anchor_adjustment =
   | NoAnchorAdjustment
   | AnchorPointAdjustment  of int

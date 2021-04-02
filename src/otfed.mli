@@ -89,6 +89,18 @@ module Value : sig
   }
   [@@deriving show { with_path = false }]
 
+  (** The type for ValueRecords (page 214). *)
+  type value_record = {
+    x_placement  : design_units option;
+    y_placement  : design_units option;
+    x_advance    : design_units option;
+    y_advance    : design_units option;
+    x_pla_device : int option;
+    y_pla_device : int option;
+    x_adv_device : int option;
+    y_adv_device : int option;
+  }
+
   type class_value = int
 
   type device_table = int * int * int * int
@@ -462,30 +474,18 @@ module Decode : sig
 
     val features : langsys -> (feature option * feature set) ok
 
-    (** The type for ValueRecords (page 214). *)
-    type value_record = {
-      x_placement  : int option;
-      y_placement  : int option;
-      x_advance    : int option;
-      y_advance    : int option;
-      x_pla_device : int option;
-      y_pla_device : int option;
-      x_adv_device : int option;
-      y_adv_device : int option;
-    }
-
     type class_definition =
       | GlyphToClass      of Value.glyph_id * Value.class_value
       | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
     [@@deriving show {with_path = false}]
 
-    type 'a folding_single1 = 'a -> Value.glyph_id list -> value_record -> 'a
+    type 'a folding_single1 = 'a -> Value.glyph_id list -> Value.value_record -> 'a
 
-    type 'a folding_single2 = 'a -> Value.glyph_id * value_record -> 'a
+    type 'a folding_single2 = 'a -> Value.glyph_id * Value.value_record -> 'a
 
-    type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * value_record * value_record) list -> 'a
+    type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * Value.value_record * Value.value_record) list -> 'a
 
-    type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * value_record * value_record) list) list -> 'a
+    type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
     type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 

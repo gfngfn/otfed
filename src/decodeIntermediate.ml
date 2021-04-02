@@ -993,17 +993,6 @@ module Gpos = struct
     format_y_adv_device : bool;
   }
 
-  type value_record = {
-    x_placement  : int option;
-    y_placement  : int option;
-    x_advance    : int option;
-    y_advance    : int option;
-    x_pla_device : int option;
-    y_pla_device : int option;
-    x_adv_device : int option;
-    y_adv_device : int option;
-  }
-
 
   let d_value_format : value_format decoder =
     let open DecodeOperation in

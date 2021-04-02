@@ -182,7 +182,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
       return ()
 
   | D.Ttf(ttf) ->
-      D.loca ttf gid |> inj >>= function
+      D.Ttf.loca ttf gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";
           return ()
@@ -197,7 +197,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
               return ()
 
           | Some(aw, _lsb) ->
-              D.glyf ttf loc |> inj >>= fun (descr, bbox) ->
+              D.Ttf.glyf ttf loc |> inj >>= fun (descr, bbox) ->
               Svg.make_ttf descr ~bbox ~units_per_em ~aw |> inj >>= fun data ->
               Format.printf "  (%a, %a)@,"
                 V.pp_ttf_glyph_description descr
@@ -223,7 +223,7 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
       return ()
 
   | D.Cff(cff) ->
-      D.charstring cff gid |> inj >>= function
+      D.Cff.charstring cff gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";
           return ()
@@ -244,7 +244,7 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
 
           | Some(aw, _lsb) ->
               Format.printf "%a@," D.pp_charstring charstring;
-              D.path_of_charstring charstring |> inj >>= fun paths ->
+              D.Cff.path_of_charstring charstring |> inj >>= fun paths ->
               Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
               let data = Svg.make_cff ~units_per_em paths ~aw in
               write_glyph_svg path ~data

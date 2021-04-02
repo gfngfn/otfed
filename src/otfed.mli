@@ -530,15 +530,19 @@ module Decode : sig
     val get : common_source -> (Value.Math.t option) ok
   end
 
-  val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
+  module Ttf : sig
+    val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
-  val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
+    val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
 
-  val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
+    val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
+  end
 
-  val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
+  module Cff : sig
+    val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
 
-  val path_of_charstring : charstring -> (Value.cubic_path list) ok
+    val path_of_charstring : charstring -> (Value.cubic_path list) ok
+  end
 
   type charstring_data = CharStringData of int * int
   type subroutine_index = charstring_data array

@@ -116,9 +116,9 @@ let tables (common : common_source) : Value.Tag.t set =
 
 include DecodeIntermediate
 
-include DecodeTtf
+module Ttf = DecodeTtf
 
-include DecodeCff
+module Cff = DecodeCff
 
 
 module ForTest = struct
@@ -130,16 +130,16 @@ module ForTest = struct
     DecodeOperation.run { data = s; max = String.length s } 0 d
 
   let d_glyf =
-    d_glyf
+    Ttf.d_glyf
 
   let chop_two_bytes =
     DecodeOperation.ForTest.chop_two_bytes
 
   let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
-    let cstate = initial_charstring_state charstring_length in
+    let cstate = Cff.initial_charstring_state charstring_length in
     let dec =
       let open DecodeOperation in
-      d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
+      Cff.d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
       return @@ Alist.to_list opacc
     in
     dec |> DecodeOperation.run { data = data; max = String.length data } start

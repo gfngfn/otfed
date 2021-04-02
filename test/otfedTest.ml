@@ -24,6 +24,27 @@ let assert_match ~pp ~message:msg expected = function
 
 
 let () =
+  let cases =
+    [
+      (0b01_01_01_01_01_00_00_00, 2, 5, [1; 1; 1; 1; 1]);
+      (0b00_01_10_11_00_00_00_00, 2, 4, [0; 1; -2; -1]);
+      (0b0101_0101_0001_0000, 4, 3, [5; 5; 1]);
+      (0b0101_0101_0001_0000, 4, 4, [5; 5; 1; 0]);
+      (0b1111_1101_0001_0000, 4, 4, [-1; -3; 1; 0]);
+      (0b11111111_00010000, 8, 2, [-1; 16]);
+    ]
+  in
+  let pp ppf ds =
+    let pp_sep ppf () = Format.fprintf ppf ", " in
+    Format.fprintf ppf "%a" (Format.pp_print_list ~pp_sep Format.pp_print_int) ds
+  in
+  cases |> List.iter (fun (data, unit_size, repeat, expected) ->
+    let got = T.chop_two_bytes ~data ~unit_size ~repeat in
+    assert_match ~pp ~message:"chop_two_bytes" expected (Ok(got))
+  )
+
+
+let () =
   let pp ppf (descr, bbox) =
     Format.fprintf ppf "(%a, %a)" V.pp_ttf_glyph_description descr V.pp_bounding_box bbox
   in

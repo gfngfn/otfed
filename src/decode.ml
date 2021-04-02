@@ -132,6 +132,9 @@ module ForTest = struct
   let d_glyf =
     d_glyf
 
+  let chop_two_bytes =
+    Gpos.chop_two_bytes
+
   let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
     let cstate = initial_charstring_state charstring_length in
     let dec =

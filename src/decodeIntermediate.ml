@@ -1167,13 +1167,58 @@ module Gpos = struct
         err @@ Error.UnknownFormatNumber(posFormat)
 
 
-  let d_device_table : device_table decoder =
+  let chop_two_bytes ~data ~unit_size ~repeat =
+    let mask = 1 lsl unit_size in
+    let half_mask = 1 lsl (unit_size - 1) in
+    let max = 16 / unit_size in
+    let rec aux ds i data =
+      if i >= max then
+        ds
+      else
+        let d =
+          let u = data land (mask - 1) in
+          if u >= half_mask then u - mask else u
+        in
+        let data = data lsr unit_size in
+        aux (d :: ds) (i + 1) data
+    in
+    let ds = aux [] 0 data in
+    ds |> List.mapi (fun i d -> (i, d)) |> List.filter_map (fun (i, d) -> if i < repeat then Some(d) else None)
+
+
+  let rec d_device_table_entries ~unit_size (i : int) (acc : int Alist.t) =
     let open DecodeOperation in
-    d_uint16 >>= fun startSize ->
-    d_uint16 >>= fun endSize ->
+    let num_entries_per_16 = 16 / unit_size in
+    if i <= 0 then
+      return @@ Alist.to_list acc
+    else
+      d_uint16 >>= fun v ->
+      if i < num_entries_per_16 then
+        let ds = chop_two_bytes ~data:v ~unit_size ~repeat:i in
+        return @@ Alist.to_list (Alist.append acc ds)
+      else
+        let ds = chop_two_bytes ~data:v ~unit_size ~repeat:num_entries_per_16 in
+        d_device_table_entries ~unit_size (i - num_entries_per_16) (Alist.append acc ds)
+
+
+
+  let d_device_table : device decoder =
+    let open DecodeOperation in
+    d_uint16 >>= fun start_size ->
+    d_uint16 >>= fun end_size ->
     d_uint16 >>= fun deltaFormat ->
-    d_uint16 >>= fun deltaValue ->
-    return (startSize, endSize, deltaFormat, deltaValue)
+    let n = end_size - start_size + 1 in
+    begin
+      match deltaFormat with
+      | 1 -> d_device_table_entries ~unit_size:2 n Alist.empty
+      | 2 -> d_device_table_entries ~unit_size:4 n Alist.empty
+      | 3 -> d_device_table_entries ~unit_size:8 n Alist.empty
+      | _ -> err @@ Error.UnknownFormatNumber(deltaFormat)
+    end >>= fun delta_values ->
+    return {
+      start_size;
+      delta_values;
+    }
 
 
   let d_anchor : anchor decoder =

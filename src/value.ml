@@ -171,7 +171,10 @@ type quadratic_path_element =
 type quadratic_path = point * quadratic_path_element list
 [@@deriving show { with_path = false }]
 
-type device_table = int * int * int * int
+type device = {
+  start_size   : int;
+  delta_values : int list;
+}
 
 type value_record = {
   x_placement  : design_units option;
@@ -187,7 +190,7 @@ type value_record = {
 type anchor_adjustment =
   | NoAnchorAdjustment
   | AnchorPointAdjustment  of int
-  | DeviceAnchorAdjustment of device_table * device_table
+  | DeviceAnchorAdjustment of device * device
 
 type anchor = design_units * design_units * anchor_adjustment
 

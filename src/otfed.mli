@@ -103,14 +103,18 @@ module Value : sig
 
   type class_value = int
 
-  type device_table = int * int * int * int
+  (** The Type for Device tables (page 142). *)
+  type device = {
+    start_size   : int;
+    delta_values : int list;
+  }
 
-  (** The type for Anchor tables (page 215). *)
   type anchor_adjustment =
     | NoAnchorAdjustment
     | AnchorPointAdjustment  of int
-    | DeviceAnchorAdjustment of device_table * device_table
+    | DeviceAnchorAdjustment of device * device
 
+  (** The type for Anchor tables (page 215). *)
   type anchor = design_units * design_units * anchor_adjustment
 
   type mark_class = int
@@ -542,6 +546,7 @@ module Decode : sig
     type 'a decoder
     val run : string -> 'a decoder -> 'a ok
     val d_glyf : (Value.ttf_glyph_description * Value.bounding_box) decoder
+    val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
     val run_d_charstring :
       gsubr_index:subroutine_index ->
       lsubr_index:subroutine_index ->

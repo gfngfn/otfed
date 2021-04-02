@@ -76,12 +76,15 @@ val d_ttc_header_offset_list : (offset list) decoder
 (** Reads the table directory. *)
 val d_structure : table_directory decoder
 
-(** Reads a Coverage table [page 139]. *)
+(** Reads a Coverage table (page 139). *)
 val d_coverage : (glyph_id list) decoder
 
 val combine_coverage : (glyph_id list) -> 'a list -> ((glyph_id * 'a) list) decoder
 
 val d_fetch_coverage_and_values : int -> 'a decoder -> ((glyph_id * 'a) list) decoder
+
+(** Reads a Device table (page 142). *)
+val d_device : device decoder
 
 (** Reads an OffSize value. *)
 val d_offsize : offsize decoder
@@ -108,3 +111,7 @@ val d_dict : int -> dict decoder
 val seek_required_table : table_directory -> Tag.t -> (offset * int) ok
 
 val seek_table : table_directory -> Tag.t -> (offset * int) option
+
+module ForTest : sig
+  val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
+end

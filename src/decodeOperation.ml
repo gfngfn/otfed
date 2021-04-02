@@ -224,6 +224,57 @@ let d_fetch_coverage_and_values (offset : int) (dec : 'a decoder) : ((glyph_id *
   combine_coverage coverage vs
 
 
+let chop_two_bytes ~data ~unit_size ~repeat =
+  let mask = 1 lsl unit_size in
+  let half_mask = 1 lsl (unit_size - 1) in
+  let max = 16 / unit_size in
+  let rec aux ds i data =
+    if i >= max then
+      ds
+    else
+      let d =
+        let u = data land (mask - 1) in
+        if u >= half_mask then u - mask else u
+      in
+      let data = data lsr unit_size in
+      aux (d :: ds) (i + 1) data
+  in
+  let ds = aux [] 0 data in
+  ds |> List.mapi (fun i d -> (i, d)) |> List.filter_map (fun (i, d) -> if i < repeat then Some(d) else None)
+
+
+let rec d_device_table_entries ~unit_size (i : int) (acc : int Alist.t) =
+  let num_entries_per_16 = 16 / unit_size in
+  if i <= 0 then
+    return @@ Alist.to_list acc
+  else
+    d_uint16 >>= fun v ->
+    if i < num_entries_per_16 then
+      let ds = chop_two_bytes ~data:v ~unit_size ~repeat:i in
+      return @@ Alist.to_list (Alist.append acc ds)
+    else
+      let ds = chop_two_bytes ~data:v ~unit_size ~repeat:num_entries_per_16 in
+      d_device_table_entries ~unit_size (i - num_entries_per_16) (Alist.append acc ds)
+
+
+let d_device : device decoder =
+  d_uint16 >>= fun start_size ->
+  d_uint16 >>= fun end_size ->
+  d_uint16 >>= fun deltaFormat ->
+  let n = end_size - start_size + 1 in
+  begin
+    match deltaFormat with
+    | 1 -> d_device_table_entries ~unit_size:2 n Alist.empty
+    | 2 -> d_device_table_entries ~unit_size:4 n Alist.empty
+    | 3 -> d_device_table_entries ~unit_size:8 n Alist.empty
+    | _ -> err @@ Error.UnknownFormatNumber(deltaFormat)
+  end >>= fun delta_values ->
+  return {
+    start_size;
+    delta_values;
+  }
+
+
 let d_offsize : offsize decoder =
   d_uint8 >>= function
   | 1 -> return OffSize1
@@ -459,3 +510,8 @@ let seek_required_table table_directory tag =
 
 let seek_table table_directory tag =
   table_directory |> TableDirectory.find_opt tag
+
+
+module ForTest = struct
+  let chop_two_bytes = chop_two_bytes
+end

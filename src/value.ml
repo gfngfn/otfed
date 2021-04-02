@@ -175,6 +175,7 @@ type device = {
   start_size   : int;
   delta_values : int list;
 }
+[@@deriving show { with_path = false }]
 
 type value_record = {
   x_placement  : design_units option;
@@ -287,10 +288,7 @@ module Os2 = struct
 end
 
 module Math = struct
-  type device_table = int * int * int * int
-  [@@deriving show { with_path = false }]
-
-  type math_value_record = int * device_table option
+  type math_value_record = int * device option
   [@@deriving show { with_path = false }]
 
   type math_constants = {

@@ -13,35 +13,6 @@ module Value : sig
 
   type glyph_id = int
 
-  type timestamp = wint
-
-  type ttf_contour = (bool * int * int) list
-  [@@deriving show { with_path = false }]
-
-  type linear_transform = {
-    a : float;
-    b : float;
-    c : float;
-    d : float;
-  }
-  [@@deriving show { with_path = false }]
-
-  type composition =
-    | Vector   of int * int
-    | Matching of int * int
-  [@@deriving show { with_path = false }]
-
-  type ttf_simple_glyph_description = ttf_contour list
-  [@@deriving show { with_path = false }]
-
-  type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-  [@@deriving show { with_path = false }]
-
-  type ttf_glyph_description =
-    | TtfSimpleGlyph    of ttf_simple_glyph_description
-    | TtfCompositeGlyph of ttf_composite_glyph_description
-  [@@deriving show { with_path = false }]
-
   type design_units = int
 
   (** Represents an absolute X-coordinate.
@@ -58,6 +29,35 @@ module Value : sig
       The unit of measurement is [units_per_em],
       and thus differs for each font in general. *)
   type point = x_coordinate * y_coordinate
+
+  type timestamp = wint
+
+  type ttf_contour = (bool * x_coordinate * y_coordinate) list
+  [@@deriving show { with_path = false }]
+
+  type linear_transform = {
+    a : float;
+    b : float;
+    c : float;
+    d : float;
+  }
+  [@@deriving show { with_path = false }]
+
+  type composition =
+    | Vector   of x_coordinate * y_coordinate
+    | Matching of int * int
+  [@@deriving show { with_path = false }]
+
+  type ttf_simple_glyph_description = ttf_contour list
+  [@@deriving show { with_path = false }]
+
+  type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
+  [@@deriving show { with_path = false }]
+
+  type ttf_glyph_description =
+    | TtfSimpleGlyph    of ttf_simple_glyph_description
+    | TtfCompositeGlyph of ttf_composite_glyph_description
+  [@@deriving show { with_path = false }]
 
   type cubic_path_element =
     | CubicLineTo  of point

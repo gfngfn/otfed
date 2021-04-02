@@ -114,12 +114,12 @@ let tables (common : common_source) : Value.Tag.t set =
   acc |> Alist.to_list
 
 
-module Intermediate = DecodeIntermediate
-
+include DecodeIntermediate
 
 include DecodeTtf
 
 include DecodeCff
+
 
 module ForTest = struct
   type charstring_data = DecodeBasic.charstring_data

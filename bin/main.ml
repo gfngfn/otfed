@@ -2,7 +2,7 @@
 module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
-module DI = D.Intermediate
+module DI = D
 module V = Otfed.Value
 
 type config = {

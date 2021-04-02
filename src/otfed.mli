@@ -276,219 +276,241 @@ module Decode : sig
     | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
   [@@deriving show { with_path = false }]
 
+  (** Represents CharStrings. *)
   type charstring = charstring_operation list
   [@@deriving show { with_path = false }]
 
-  (** Handles intermediate representation of tables for decoding.
-      Since the operations provided by this module
-      use only sequential sources and
+  (** Handles intermediate representation of [head] tables for decoding. *)
+  module Head : sig
+    (** The type for data contained in a single [head] table that are derivable
+        from glyph descriptions or metadata in other tables in the font the [head] table belongs to. *)
+    type derived = {
+      xmin : int;
+      ymin : int;
+      xmax : int;
+      ymax : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [head] tables. *)
+    type t = {
+      value   : Value.Head.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+
+    val get : common_source -> t ok
+
+  end
+
+  (** Handles intermediate representation of [hhea] tables for decoding. *)
+  module Hhea : sig
+    (** The type for data contained in a single [hhea] table that are derivable
+        from glyph descriptions or metadata in other tables in the font the [hhea] table belongs to. *)
+    type derived = {
+      advance_width_max      : int;
+      min_left_side_bearing  : int;
+      min_right_side_bearing : int;
+      xmax_extent            : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [hhea] tables. *)
+    type t = {
+      value   : Value.Hhea.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+
+    val get : common_source -> t ok
+  end
+
+  (** Contains decoding operations for [maxp] tables. *)
+  module Maxp : sig
+    (** The type for representing [maxp] tables. *)
+    type t = {
+      num_glyphs               : int;
+      max_points               : int;
+      max_contours             : int;
+      max_composite_points     : int;
+      max_composite_contours   : int;
+      max_zones                : int;
+      max_twilight_points      : int;
+      max_storage              : int;
+      max_function_defs        : int;
+      max_instruction_defs     : int;
+      max_stack_elements       : int;
+      max_size_of_instructions : int;
+      max_component_elements   : int;
+      max_component_depth      : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    val get : common_source -> t ok
+  end
+
+  (** Handles intermediate representation of [cmap] tables for decoding.
+      Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
-      it is likely to be efficient in space and NOT to be in time. *)
-  module Intermediate : sig
-    module Head : sig
-      type derived = {
-        xmin : int;
-        ymin : int;
-        xmax : int;
-        ymax : int;
-      }
-      [@@deriving show { with_path = false }]
+      it is likely to be efficient in space. *)
+  module Cmap : sig
+    (** The type for representing [cmap] tables. *)
+    type t
 
-      type t = {
-        value   : Value.Head.t;
-        derived : derived;
-      }
-      [@@deriving show { with_path = false }]
+    val get : common_source -> t ok
 
-      val get : common_source -> t ok
+    type subtable
 
-    end
+    val get_subtables : t -> (subtable set) ok
 
-    module Hhea : sig
-      type derived = {
-        advance_width_max      : int;
-        min_left_side_bearing  : int;
-        min_right_side_bearing : int;
-        xmax_extent            : int;
-      }
-      [@@deriving show { with_path = false }]
+    val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
 
-      type t = {
-        value   : Value.Hhea.t;
-        derived : derived;
-      }
-      [@@deriving show { with_path = false }]
+    val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
+  end
 
-      val get : common_source -> t ok
-    end
+  (** Handles intermediate representation of [hmtx] tables for decoding.
+      Since the operations provided by this module use only sequential sources and
+      do NOT allocate so much additional memory for the representation,
+      it is likely to be efficient in space. *)
+  module Hmtx : sig
+    (** The type for representing [hmtx] tables. *)
+    type t
 
-    module Maxp : sig
-      type t = {
-        num_glyphs               : int;
-        max_points               : int;
-        max_contours             : int;
-        max_composite_points     : int;
-        max_composite_contours   : int;
-        max_zones                : int;
-        max_twilight_points      : int;
-        max_storage              : int;
-        max_function_defs        : int;
-        max_instruction_defs     : int;
-        max_stack_elements       : int;
-        max_size_of_instructions : int;
-        max_component_elements   : int;
-        max_component_depth      : int;
-      }
-      [@@deriving show { with_path = false }]
+    val get : common_source -> t ok
 
-      val get : common_source -> t ok
-    end
+    val access : t -> Value.glyph_id -> ((int * int) option) ok
+  end
 
-    module Cmap : sig
-      type t
+  (** Contains decoding operations for [OS/2] tables. *)
+  module Os2 : sig
+    val get : common_source -> Value.Os2.t ok
+  end
 
-      val get : common_source -> t ok
+  (** Handles intermediate representation of [GSUB] tables for decoding. *)
+  module Gsub : sig
+    (** The type for representing [GSUB] tables. *)
+    type t
 
-      type subtable
+    val get : common_source -> (t option) ok
 
-      val get_subtables : t -> (subtable set) ok
+    type script
 
-      val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
+    type langsys
 
-      val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
-    end
+    type feature
 
-    module Hmtx : sig
-      type t
+    val get_script_tag : script -> string
 
-      val get : common_source -> t ok
+    val get_langsys_tag : langsys -> string
 
-      val access : t -> Value.glyph_id -> ((int * int) option) ok
-    end
+    val get_feature_tag : feature -> string
 
-    module Os2 : sig
-      val get : common_source -> Value.Os2.t ok
-    end
+    val scripts : t -> (script set) ok
 
-    module Gsub : sig
-      type t
+    val langsyses : script -> (langsys option * langsys set) ok
 
-      val get : common_source -> (t option) ok
+    val features : langsys -> (feature option * feature set) ok
 
-      type script
+    type 'a folding_single = 'a -> Value.glyph_id * Value.glyph_id -> 'a
 
-      type langsys
+    type 'a folding_alt = 'a -> Value.glyph_id * Value.glyph_id list -> 'a
 
-      type feature
+    type 'a folding_lig = 'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
 
-      val get_script_tag : script -> string
+    val fold_subtables :
+      ?single:('a folding_single) ->
+      ?alt:('a folding_alt) ->
+      ?lig:('a folding_lig) ->
+      feature -> 'a -> 'a ok
+  end
 
-      val get_langsys_tag : langsys -> string
+  (** Handles intermediate representation of [GPOS] tables for decoding. *)
+  module Gpos : sig
+    (** The type for representing [GPOS] tables. *)
+    type t
 
-      val get_feature_tag : feature -> string
+    val get : common_source -> (t option) ok
 
-      val scripts : t -> (script set) ok
+    type script
 
-      val langsyses : script -> (langsys option * langsys set) ok
+    type langsys
 
-      val features : langsys -> (feature option * feature set) ok
+    type feature
 
-      type 'a folding_single = 'a -> Value.glyph_id * Value.glyph_id -> 'a
+    val get_script_tag : script -> string
 
-      type 'a folding_alt = 'a -> Value.glyph_id * Value.glyph_id list -> 'a
+    val get_langsys_tag : langsys -> string
 
-      type 'a folding_lig = 'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
+    val get_feature_tag : feature -> string
 
-      val fold_subtables :
-        ?single:('a folding_single) ->
-        ?alt:('a folding_alt) ->
-        ?lig:('a folding_lig) ->
-        feature -> 'a -> 'a ok
-    end
+    val scripts : t -> (script set) ok
 
-    module Gpos : sig
-      type t
+    val langsyses : script -> (langsys option * langsys set) ok
 
-      val get : common_source -> (t option) ok
+    val features : langsys -> (feature option * feature set) ok
 
-      type script
+    (** The type for ValueRecords (page 214). *)
+    type value_record = {
+      x_placement  : int option;
+      y_placement  : int option;
+      x_advance    : int option;
+      y_advance    : int option;
+      x_pla_device : int option;
+      y_pla_device : int option;
+      x_adv_device : int option;
+      y_adv_device : int option;
+    }
 
-      type langsys
+    type class_definition =
+      | GlyphToClass      of Value.glyph_id * Value.class_value
+      | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
+    [@@deriving show {with_path = false}]
 
-      type feature
+    type 'a folding_single1 = 'a -> Value.glyph_id list -> value_record -> 'a
 
-      val get_script_tag : script -> string
+    type 'a folding_single2 = 'a -> Value.glyph_id * value_record -> 'a
 
-      val get_langsys_tag : langsys -> string
+    type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * value_record * value_record) list -> 'a
 
-      val get_feature_tag : feature -> string
+    type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * value_record * value_record) list) list -> 'a
 
-      val scripts : t -> (script set) ok
+    type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 
-      val langsyses : script -> (langsys option * langsys set) ok
+    type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
 
-      val features : langsys -> (feature option * feature set) ok
+    type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
 
-      (** The type for ValueRecords (page 214). *)
-      type value_record = {
-        x_placement  : int option;
-        y_placement  : int option;
-        x_advance    : int option;
-        y_advance    : int option;
-        x_pla_device : int option;
-        y_pla_device : int option;
-        x_adv_device : int option;
-        y_adv_device : int option;
-      }
+    val fold_subtables :
+      ?single1:('a folding_single1) ->
+      ?single2:('a folding_single2) ->
+      ?pair1:('a folding_pair1) ->
+      ?pair2:('a folding_pair2) ->
+      ?markbase1:('a folding_markbase1) ->
+      ?marklig1:('a folding_marklig1) ->
+      ?markmark1:('a folding_markmark1) ->
+      feature -> 'a -> 'a ok
+  end
 
-      type class_definition =
-        | GlyphToClass      of Value.glyph_id * Value.class_value
-        | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
-      [@@deriving show {with_path = false}]
+  (** Handles intermediate representation of [kern] tables for decoding. *)
+  module Kern : sig
+    (** The type for representing [kern] tables. *)
+    type t
 
-      type 'a folding_single1 = 'a -> Value.glyph_id list -> value_record -> 'a
+    val get : common_source -> (t option) ok
 
-      type 'a folding_single2 = 'a -> Value.glyph_id * value_record -> 'a
+    type kern_info = {
+      horizontal   : bool;
+      minimum      : bool;
+      cross_stream : bool;
+    }
+    [@@deriving show {with_path = false}]
 
-      type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * value_record * value_record) list -> 'a
+    val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
+  end
 
-      type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * value_record * value_record) list) list -> 'a
-
-      type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
-
-      type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
-
-      type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
-
-      val fold_subtables :
-        ?single1:('a folding_single1) ->
-        ?single2:('a folding_single2) ->
-        ?pair1:('a folding_pair1) ->
-        ?pair2:('a folding_pair2) ->
-        ?markbase1:('a folding_markbase1) ->
-        ?marklig1:('a folding_marklig1) ->
-        ?markmark1:('a folding_markmark1) ->
-        feature -> 'a -> 'a ok
-    end
-
-    module Kern : sig
-      type t
-
-      val get : common_source -> (t option) ok
-
-      type kern_info = {
-        horizontal   : bool;
-        minimum      : bool;
-        cross_stream : bool;
-      }
-      [@@deriving show {with_path = false}]
-
-      val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
-    end
-
-    module Math : sig
-      val get : common_source -> (Value.Math.t option) ok
-    end
+  (** Contains decoding operations for [MATH] tables. *)
+  module Math : sig
+    val get : common_source -> (Value.Math.t option) ok
   end
 
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok

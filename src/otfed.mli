@@ -352,7 +352,7 @@ module Decode : sig
     module Hmtx : sig
       type t
 
-      val get : t -> Value.glyph_id -> ((int * int) option) ok
+      val access : t -> Value.glyph_id -> ((int * int) option) ok
     end
 
     module Gsub : sig

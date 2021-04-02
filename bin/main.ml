@@ -77,7 +77,7 @@ let print_hmtx (common, _) (gid : V.glyph_id) =
   let res =
     let open ResultMonad in
     D.hmtx common >>= fun ihmtx ->
-    D.Intermediate.Hmtx.get ihmtx gid >>= function
+    D.Intermediate.Hmtx.access ihmtx gid >>= function
     | None ->
         Format.printf "- none@,";
         return ()
@@ -193,7 +193,7 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           D.head common |> inj >>= fun head ->
           let units_per_em = head.D.Intermediate.Head.value.V.Head.units_per_em in
           D.hmtx common |> inj >>= fun ihmtx ->
-          D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
+          D.Intermediate.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
               return ()
@@ -239,7 +239,7 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
           D.head common |> inj >>= fun head ->
           let units_per_em = head.D.Intermediate.Head.value.V.Head.units_per_em in
           D.hmtx common |> inj >>= fun ihmtx ->
-          D.Intermediate.Hmtx.get ihmtx gid |> inj >>= function
+          D.Intermediate.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
               return ()

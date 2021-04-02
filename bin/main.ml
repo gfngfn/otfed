@@ -2,7 +2,6 @@
 module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
-module DI = D
 module V = Otfed.Value
 
 type config = {
@@ -46,15 +45,15 @@ let print_cmap (common, _) =
   Format.printf "cmap:@,";
   let res =
     let open ResultMonad in
-    DI.Cmap.get common >>= fun icmap ->
-    DI.Cmap.get_subtables icmap >>= fun subtables ->
+    D.Cmap.get common >>= fun icmap ->
+    D.Cmap.get_subtables icmap >>= fun subtables ->
     subtables |> List.iter (fun subtable ->
-      let ids = DI.Cmap.get_subtable_ids subtable in
+      let ids = D.Cmap.get_subtable_ids subtable in
       Format.printf "- subtable (platform: %d, encoding: %d, format: %d)@,"
         ids.platform_id
         ids.encoding_id
         ids.format;
-      DI.Cmap.fold_subtable subtable (fun () seg ->
+      D.Cmap.fold_subtable subtable (fun () seg ->
         match seg with
         | D.Incremental(uch1, uch2, gid) ->
             if Uchar.equal uch1 uch2 then
@@ -75,8 +74,8 @@ let print_hmtx (common, _) (gid : V.glyph_id) =
   Format.printf "hmtx (gid: %d):@," gid;
   let res =
     let open ResultMonad in
-    DI.Hmtx.get common >>= fun ihmtx ->
-    DI.Hmtx.access ihmtx gid >>= function
+    D.Hmtx.get common >>= fun ihmtx ->
+    D.Hmtx.access ihmtx gid >>= function
     | None ->
         Format.printf "- none@,";
         return ()
@@ -93,8 +92,8 @@ let print_head (common, _) =
   let res =
     let open ResultMonad in
     Format.printf "head:@,";
-    DI.Head.get common >>= fun head ->
-    Format.printf "%a@," DI.Head.pp head;
+    D.Head.get common >>= fun head ->
+    Format.printf "%a@," D.Head.pp head;
     return ()
   in
   res |> inj
@@ -104,8 +103,8 @@ let print_hhea (common, _) =
   let res =
     let open ResultMonad in
     Format.printf "hhea:@,";
-    DI.Hhea.get common >>= fun hhea ->
-    Format.printf "%a@," DI.Hhea.pp hhea;
+    D.Hhea.get common >>= fun hhea ->
+    Format.printf "%a@," D.Hhea.pp hhea;
     return ()
   in
   res |> inj
@@ -115,8 +114,8 @@ let print_maxp (common, _) =
   let res =
     let open ResultMonad in
     Format.printf "maxp:@,";
-    DI.Maxp.get common >>= fun maxp ->
-    Format.printf "%a@," DI.Maxp.pp maxp;
+    D.Maxp.get common >>= fun maxp ->
+    Format.printf "%a@," D.Maxp.pp maxp;
     return ()
   in
   res |> inj
@@ -126,7 +125,7 @@ let print_math (common, _) =
   let res =
     let open ResultMonad in
     Format.printf "MATH:@,";
-    DI.Math.get common >>= function
+    D.Math.get common >>= function
     | None ->
         Format.printf "  MATH table not found@,";
         return ()
@@ -142,16 +141,16 @@ let print_kern (common, _) =
   let res =
     let open ResultMonad in
     Format.printf "kern:@,";
-    DI.Kern.get common >>= function
+    D.Kern.get common >>= function
     | None ->
         Format.printf "  kern table not found@,";
         return ()
 
     | Some(ikern) ->
-        ikern |> DI.Kern.fold
+        ikern |> D.Kern.fold
           (fun () kern_info ->
             Format.printf "  kern_info: %a@,"
-              DI.Kern.pp_kern_info kern_info;
+              D.Kern.pp_kern_info kern_info;
             (true, ())
           )
           (fun () gid_left gid_right value ->
@@ -189,10 +188,10 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           return ()
 
       | Some(loc) ->
-          DI.Head.get common |> inj >>= fun head ->
-          let units_per_em = head.DI.Head.value.V.Head.units_per_em in
-          DI.Hmtx.get common |> inj >>= fun ihmtx ->
-          DI.Hmtx.access ihmtx gid |> inj >>= function
+          D.Head.get common |> inj >>= fun head ->
+          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          D.Hmtx.get common |> inj >>= fun ihmtx ->
+          D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
               return ()
@@ -235,10 +234,10 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
             | None    -> Format.printf "  width: not defined@,";
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
-          DI.Head.get common |> inj >>= fun head ->
-          let units_per_em = head.DI.Head.value.V.Head.units_per_em in
-          DI.Hmtx.get common |> inj >>= fun ihmtx ->
-          DI.Hmtx.access ihmtx gid |> inj >>= function
+          D.Head.get common |> inj >>= fun head ->
+          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          D.Hmtx.get common |> inj >>= fun ihmtx ->
+          D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
               return ()
@@ -251,8 +250,8 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
               write_glyph_svg path ~data
 
 
-let print_gsub_feature (feature : DI.Gsub.feature) =
-  DI.Gsub.fold_subtables
+let print_gsub_feature (feature : D.Gsub.feature) =
+  D.Gsub.fold_subtables
     ~single:(fun () (gid_from, gid_to) ->
       Format.printf "  - single: %d --> %d@," gid_from gid_to;
     )
@@ -268,40 +267,40 @@ let print_gsub_feature (feature : DI.Gsub.feature) =
     feature ()
 
 
-let print_gsub_langsys (langsys : DI.Gsub.langsys) (feature_tag : string) =
+let print_gsub_langsys (langsys : D.Gsub.langsys) (feature_tag : string) =
   let open ResultMonad in
-  DI.Gsub.features langsys >>= fun (default_feature_opt, features) ->
+  D.Gsub.features langsys >>= fun (default_feature_opt, features) ->
   let features =
     match default_feature_opt with
     | None                  -> features
     | Some(default_feature) -> default_feature :: features
   in
   match
-    features |> List.find_opt (fun feature -> String.equal feature_tag (DI.Gsub.get_feature_tag feature))
+    features |> List.find_opt (fun feature -> String.equal feature_tag (D.Gsub.get_feature_tag feature))
   with
   | None ->
       Format.printf "  feature %s not found in:@," feature_tag;
-      features |> List.iter (fun feature -> Format.printf "  - %s@," (DI.Gsub.get_feature_tag feature));
+      features |> List.iter (fun feature -> Format.printf "  - %s@," (D.Gsub.get_feature_tag feature));
       return ()
 
   | Some(feature) ->
       print_gsub_feature feature
 
 
-let print_gsub_script (script : DI.Gsub.script) (langsys_tag : string) (feature_tag : string) =
+let print_gsub_script (script : D.Gsub.script) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
-  DI.Gsub.langsyses script >>= fun (default_langsys_opt, langsyses) ->
+  D.Gsub.langsyses script >>= fun (default_langsys_opt, langsyses) ->
   let langsyses =
     match default_langsys_opt with
     | None                  -> langsyses
     | Some(default_langsys) -> default_langsys :: langsyses
   in
   match
-    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (DI.Gsub.get_langsys_tag langsys))
+    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (D.Gsub.get_langsys_tag langsys))
   with
   | None ->
       Format.printf "  langsys %s not found in:@," langsys_tag;
-      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (DI.Gsub.get_langsys_tag langsys));
+      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (D.Gsub.get_langsys_tag langsys));
       return ()
 
   | Some(langsys) ->
@@ -311,27 +310,27 @@ let print_gsub_script (script : DI.Gsub.script) (langsys_tag : string) (feature_
 let print_gsub (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
   Format.printf "GSUB (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
-  DI.Gsub.get common >>= function
+  D.Gsub.get common >>= function
   | None ->
       Format.printf "  GSUB table not found@,";
       return ()
 
   | Some(igsub) ->
-      DI.Gsub.scripts igsub >>= fun scripts ->
+      D.Gsub.scripts igsub >>= fun scripts ->
       match
-        scripts |> List.find_opt (fun script -> String.equal script_tag (DI.Gsub.get_script_tag script))
+        scripts |> List.find_opt (fun script -> String.equal script_tag (D.Gsub.get_script_tag script))
       with
       | None ->
           Format.printf "  script %s not found in:@," script_tag;
-          scripts |> List.iter (fun script -> Format.printf "  - %s@," (DI.Gsub.get_script_tag script));
+          scripts |> List.iter (fun script -> Format.printf "  - %s@," (D.Gsub.get_script_tag script));
           return ()
 
       | Some(script) ->
           print_gsub_script script langsys_tag feature_tag
 
 
-let print_gpos_feature (feature : DI.Gpos.feature) =
-  DI.Gpos.fold_subtables
+let print_gpos_feature (feature : D.Gpos.feature) =
+  D.Gpos.fold_subtables
     ~single1:(fun () gids _vr ->
       Format.printf "  - single1: {%a} --> ...@,"
         (pp_list Format.pp_print_int) gids
@@ -347,8 +346,8 @@ let print_gpos_feature (feature : DI.Gpos.feature) =
     )
     ~pair2:(fun cdef1 cdef2 () assoc ->
       Format.printf "  - pair2: cdef1 = {%a}, cdef2 = {%a},@,"
-        (pp_list DI.Gpos.pp_class_definition) cdef1
-        (pp_list DI.Gpos.pp_class_definition) cdef2;
+        (pp_list D.Gpos.pp_class_definition) cdef1
+        (pp_list D.Gpos.pp_class_definition) cdef2;
       assoc |> List.iter (fun (cv1, tos) ->
         Format.printf "    * %d --> {%a}@,"
           cv1
@@ -373,40 +372,40 @@ let print_gpos_feature (feature : DI.Gpos.feature) =
     feature ()
 
 
-let print_gpos_langsys (langsys : DI.Gpos.langsys) (feature_tag : string) =
+let print_gpos_langsys (langsys : D.Gpos.langsys) (feature_tag : string) =
   let open ResultMonad in
-  DI.Gpos.features langsys >>= fun (default_feature_opt, features) ->
+  D.Gpos.features langsys >>= fun (default_feature_opt, features) ->
   let features =
     match default_feature_opt with
     | None                  -> features
     | Some(default_feature) -> default_feature :: features
   in
   match
-    features |> List.find_opt (fun feature -> String.equal feature_tag (DI.Gpos.get_feature_tag feature))
+    features |> List.find_opt (fun feature -> String.equal feature_tag (D.Gpos.get_feature_tag feature))
   with
   | None ->
       Format.printf "  feature %s not found in:@," feature_tag;
-      features |> List.iter (fun feature -> Format.printf "  - %s@," (DI.Gpos.get_feature_tag feature));
+      features |> List.iter (fun feature -> Format.printf "  - %s@," (D.Gpos.get_feature_tag feature));
       return ()
 
   | Some(feature) ->
       print_gpos_feature feature
 
 
-let print_gpos_script (script : DI.Gpos.script) (langsys_tag : string) (feature_tag : string) =
+let print_gpos_script (script : D.Gpos.script) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
-  DI.Gpos.langsyses script >>= fun (default_langsys_opt, langsyses) ->
+  D.Gpos.langsyses script >>= fun (default_langsys_opt, langsyses) ->
   let langsyses =
     match default_langsys_opt with
     | None                  -> langsyses
     | Some(default_langsys) -> default_langsys :: langsyses
   in
   match
-    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (DI.Gpos.get_langsys_tag langsys))
+    langsyses |> List.find_opt (fun langsys -> String.equal langsys_tag (D.Gpos.get_langsys_tag langsys))
   with
   | None ->
       Format.printf "  langsys %s not found in:@," langsys_tag;
-      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (DI.Gpos.get_langsys_tag langsys));
+      langsyses |> List.iter (fun langsys -> Format.printf "  - %s@," (D.Gpos.get_langsys_tag langsys));
       return ()
 
   | Some(langsys) ->
@@ -416,19 +415,19 @@ let print_gpos_script (script : DI.Gpos.script) (langsys_tag : string) (feature_
 let print_gpos (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
   Format.printf "GPOS (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
-  DI.Gpos.get common >>= function
+  D.Gpos.get common >>= function
   | None ->
       Format.printf "  GPOS table not found@,";
       return ()
 
   | Some(igpos) ->
-      DI.Gpos.scripts igpos >>= fun scripts ->
+      D.Gpos.scripts igpos >>= fun scripts ->
       match
-        scripts |> List.find_opt (fun script -> String.equal script_tag (DI.Gpos.get_script_tag script))
+        scripts |> List.find_opt (fun script -> String.equal script_tag (D.Gpos.get_script_tag script))
       with
       | None ->
           Format.printf "  script %s not found in:@," script_tag;
-          scripts |> List.iter (fun script -> Format.printf "  - %s@," (DI.Gpos.get_script_tag script));
+          scripts |> List.iter (fun script -> Format.printf "  - %s@," (D.Gpos.get_script_tag script));
           return ()
 
       | Some(script) ->

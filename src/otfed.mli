@@ -158,7 +158,6 @@ module Value : sig
 
   module Os2 : sig
     type t = {
-      x_avg_char_width            : int;
       us_weight_class             : int;
       us_width_class              : int;
       fs_type                     : int;
@@ -174,14 +173,8 @@ module Value : sig
       y_strikeout_position        : int;
       s_family_class              : int;
       panose                      : string;  (* 10 bytes. *)
-      ul_unicode_range1           : wint;
-      ul_unicode_range2           : wint;
-      ul_unicode_range3           : wint;
-      ul_unicode_range4           : wint;
       ach_vend_id                 : string;  (* 4 bytes. *)
       fs_selection                : int;
-      us_first_char_index         : int;
-      us_last_char_index          : int;
       s_typo_ascender             : int;
       s_type_descender            : int;
       s_typo_linegap              : int;
@@ -193,7 +186,6 @@ module Value : sig
       s_cap_height                : int option;
       us_default_char             : int option;
       us_break_char               : int option;
-      us_max_context              : int option;
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
@@ -283,7 +275,7 @@ module Decode : sig
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
     (** The type for data contained in a single [head] table that are derivable
-        from glyph descriptions or metadata in other tables in the font the [head] table belongs to. *)
+        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
     type derived = {
       xmin : int;
       ymin : int;
@@ -306,7 +298,7 @@ module Decode : sig
   (** Handles intermediate representation of [hhea] tables for decoding. *)
   module Hhea : sig
     (** The type for data contained in a single [hhea] table that are derivable
-        from glyph descriptions or metadata in other tables in the font the [hhea] table belongs to. *)
+        from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
     type derived = {
       advance_width_max      : int;
       min_left_side_bearing  : int;
@@ -381,9 +373,30 @@ module Decode : sig
     val access : t -> Value.glyph_id -> ((int * int) option) ok
   end
 
-  (** Contains decoding operations for [OS/2] tables. *)
+  (** Handles intermediate representation of [OS/2] tables for decoding. *)
   module Os2 : sig
-    val get : common_source -> Value.Os2.t ok
+    (** The type for data contained in a single [OS/2] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
+    type derived = {
+      x_avg_char_width    : int;
+      ul_unicode_range1   : wint;
+      ul_unicode_range2   : wint;
+      ul_unicode_range3   : wint;
+      ul_unicode_range4   : wint;
+      us_first_char_index : int;
+      us_last_char_index  : int;
+      us_max_context      : int option;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [OS/2] tables. *)
+    type t = {
+      value   : Value.Os2.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+
+    val get : common_source -> t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)

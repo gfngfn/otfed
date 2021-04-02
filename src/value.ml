@@ -238,7 +238,6 @@ end
 
 module Os2 = struct
   type t = {
-    x_avg_char_width            : int;
     us_weight_class             : int;
     us_width_class              : int;
     fs_type                     : int;
@@ -254,14 +253,8 @@ module Os2 = struct
     y_strikeout_position        : int;
     s_family_class              : int;
     panose                      : string;  (* 10 bytes. *)
-    ul_unicode_range1           : wint;
-    ul_unicode_range2           : wint;
-    ul_unicode_range3           : wint;
-    ul_unicode_range4           : wint;
     ach_vend_id                 : string;  (* 4 bytes. *)
     fs_selection                : int;
-    us_first_char_index         : int;
-    us_last_char_index          : int;
     s_typo_ascender             : int;
     s_type_descender            : int;
     s_typo_linegap              : int;
@@ -273,7 +266,6 @@ module Os2 = struct
     s_cap_height                : int option;
     us_default_char             : int option;
     us_break_char               : int option;
-    us_max_context              : int option;
     us_lower_optical_point_size : int option;
     us_upper_optical_point_size : int option;
   }

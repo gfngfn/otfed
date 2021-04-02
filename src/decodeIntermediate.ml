@@ -152,7 +152,26 @@ end
 
 module Os2 = struct
 
-  let get (common : common_source) : Value.Os2.t ok =
+  type derived = {
+    x_avg_char_width    : int;
+    ul_unicode_range1   : wint;
+    ul_unicode_range2   : wint;
+    ul_unicode_range3   : wint;
+    ul_unicode_range4   : wint;
+    us_first_char_index : int;
+    us_last_char_index  : int;
+    us_max_context      : int option;
+  }
+  [@@deriving show { with_path = false }]
+
+  type t = {
+    value   : Value.Os2.t;
+    derived : derived;
+  }
+  [@@deriving show { with_path = false }]
+
+
+  let get (common : common_source) : t ok =
     let open ResultMonad in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_os2 >>= fun (offset, _length) ->
     let dec =
@@ -206,45 +225,49 @@ module Os2 = struct
       opt 0x0002 d_uint16 >>= fun us_max_context ->
       opt 0x0005 d_uint16 >>= fun us_lower_optical_point_size ->
       opt 0x0005 d_uint16 >>= fun us_upper_optical_point_size ->
-      return Value.Os2.{
-        x_avg_char_width;
-        us_weight_class;
-        us_width_class;
-        fs_type;
-        y_subscript_x_size;
-        y_subscript_y_size;
-        y_subscript_x_offset;
-        y_subscript_y_offset;
-        y_superscript_x_size;
-        y_superscript_y_size;
-        y_superscript_x_offset;
-        y_superscript_y_offset;
-        y_strikeout_size;
-        y_strikeout_position;
-        s_family_class;
-        panose;
-        ul_unicode_range1;
-        ul_unicode_range2;
-        ul_unicode_range3;
-        ul_unicode_range4;
-        ach_vend_id;
-        fs_selection;
-        us_first_char_index;
-        us_last_char_index;
-        s_typo_ascender;
-        s_type_descender;
-        s_typo_linegap;
-        us_win_ascent;
-        us_win_descent;
-        ul_code_page_range_1;
-        ul_code_page_range_2;
-        s_x_height;
-        s_cap_height;
-        us_default_char;
-        us_break_char;
-        us_max_context;
-        us_lower_optical_point_size;
-        us_upper_optical_point_size;
+      return {
+        value = Value.Os2.{
+          us_weight_class;
+          us_width_class;
+          fs_type;
+          y_subscript_x_size;
+          y_subscript_y_size;
+          y_subscript_x_offset;
+          y_subscript_y_offset;
+          y_superscript_x_size;
+          y_superscript_y_size;
+          y_superscript_x_offset;
+          y_superscript_y_offset;
+          y_strikeout_size;
+          y_strikeout_position;
+          s_family_class;
+          panose;
+          ach_vend_id;
+          fs_selection;
+          s_typo_ascender;
+          s_type_descender;
+          s_typo_linegap;
+          us_win_ascent;
+          us_win_descent;
+          ul_code_page_range_1;
+          ul_code_page_range_2;
+          s_x_height;
+          s_cap_height;
+          us_default_char;
+          us_break_char;
+          us_lower_optical_point_size;
+          us_upper_optical_point_size;
+        };
+        derived = {
+          x_avg_char_width;
+          ul_unicode_range1;
+          ul_unicode_range2;
+          ul_unicode_range3;
+          ul_unicode_range4;
+          us_first_char_index;
+          us_last_char_index;
+          us_max_context;
+        };
       }
     in
     DecodeOperation.run common.core offset dec

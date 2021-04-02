@@ -117,18 +117,6 @@ let tables (common : common_source) : Value.Tag.t set =
 module Intermediate = DecodeIntermediate
 
 
-let cmap = Intermediate.Cmap.get
-let head = Intermediate.Head.get
-let hhea = Intermediate.Hhea.get
-let os2 = Intermediate.Os2.get
-let maxp = Intermediate.Maxp.get
-let hmtx = Intermediate.Hmtx.get
-let gsub = Intermediate.Gsub.get
-let gpos = Intermediate.Gpos.get
-let kern = Intermediate.Kern.get
-let math = Intermediate.Math.get
-
-
 include DecodeTtf
 
 include DecodeCff

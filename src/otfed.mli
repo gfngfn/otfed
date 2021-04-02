@@ -299,6 +299,9 @@ module Decode : sig
         derived : derived;
       }
       [@@deriving show { with_path = false }]
+
+      val get : common_source -> t ok
+
     end
 
     module Hhea : sig
@@ -315,6 +318,8 @@ module Decode : sig
         derived : derived;
       }
       [@@deriving show { with_path = false }]
+
+      val get : common_source -> t ok
     end
 
     module Maxp : sig
@@ -335,10 +340,14 @@ module Decode : sig
         max_component_depth      : int;
       }
       [@@deriving show { with_path = false }]
+
+      val get : common_source -> t ok
     end
 
     module Cmap : sig
       type t
+
+      val get : common_source -> t ok
 
       type subtable
 
@@ -352,11 +361,19 @@ module Decode : sig
     module Hmtx : sig
       type t
 
+      val get : common_source -> t ok
+
       val access : t -> Value.glyph_id -> ((int * int) option) ok
+    end
+
+    module Os2 : sig
+      val get : common_source -> Value.Os2.t ok
     end
 
     module Gsub : sig
       type t
+
+      val get : common_source -> (t option) ok
 
       type script
 
@@ -391,6 +408,8 @@ module Decode : sig
 
     module Gpos : sig
       type t
+
+      val get : common_source -> (t option) ok
 
       type script
 
@@ -455,6 +474,8 @@ module Decode : sig
     module Kern : sig
       type t
 
+      val get : common_source -> (t option) ok
+
       type kern_info = {
         horizontal   : bool;
         minimum      : bool;
@@ -465,27 +486,10 @@ module Decode : sig
       val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
     end
 
+    module Math : sig
+      val get : common_source -> (Value.Math.t option) ok
+    end
   end
-
-  val cmap : common_source -> Intermediate.Cmap.t ok
-
-  val head : common_source -> Intermediate.Head.t ok
-
-  val hhea : common_source -> Intermediate.Hhea.t ok
-
-  val os2 : common_source -> Value.Os2.t ok
-
-  val maxp : common_source -> Intermediate.Maxp.t ok
-
-  val hmtx : common_source -> Intermediate.Hmtx.t ok
-
-  val gsub : common_source -> (Intermediate.Gsub.t option) ok
-
-  val gpos : common_source -> (Intermediate.Gpos.t option) ok
-
-  val kern : common_source -> (Intermediate.Kern.t option) ok
-
-  val math : common_source -> (Value.Math.t option) ok
 
   val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 

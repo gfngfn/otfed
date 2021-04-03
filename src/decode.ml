@@ -4,6 +4,20 @@ open Value
 open DecodeOperation.Open
 
 
+module Head = DecodeHead
+module Hhea = DecodeHhea
+module Os2 = DecodeOs2
+module Maxp = DecodeMaxp
+module Cmap = DecodeCmap
+module Hmtx = DecodeHmtx
+module Gsub = DecodeGsub
+module Gpos = DecodeGpos
+module Kern = DecodeKern
+module Math = DecodeMath
+module Ttf = DecodeTtf
+module Cff = DecodeCff
+
+
 include DecodeBasic
 
 
@@ -113,13 +127,6 @@ let tables (src : source) : Value.Tag.t set =
     ) common.table_directory Alist.empty
   in
   acc |> Alist.to_list
-
-
-include DecodeIntermediate
-
-module Ttf = DecodeTtf
-
-module Cff = DecodeCff
 
 
 module ForTest = struct

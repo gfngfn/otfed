@@ -105,7 +105,7 @@ let print_hhea (source : D.source) =
     let open ResultMonad in
     Format.printf "hhea:@,";
     D.Hhea.get source >>= fun hhea ->
-    Format.printf "%a@," D.Hhea.pp hhea;
+    Format.printf "%a@," I.Hhea.pp hhea;
     return ()
   in
   res |> inj

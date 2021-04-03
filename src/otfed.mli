@@ -229,6 +229,25 @@ module Intermediate : sig
     }
     [@@deriving show { with_path = false }]
   end
+
+  module Hhea : sig
+    (** The type for data contained in a single [hhea] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
+    type derived = {
+      advance_width_max      : int;
+      min_left_side_bearing  : int;
+      min_right_side_bearing : int;
+      xmax_extent            : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [hhea] tables. *)
+    type t = {
+      value   : Value.Hhea.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
 end
 
 module Decode : sig
@@ -311,24 +330,7 @@ module Decode : sig
 
   (** Handles intermediate representation of [hhea] tables for decoding. *)
   module Hhea : sig
-    (** The type for data contained in a single [hhea] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
-    type derived = {
-      advance_width_max      : int;
-      min_left_side_bearing  : int;
-      min_right_side_bearing : int;
-      xmax_extent            : int;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [hhea] tables. *)
-    type t = {
-      value   : Value.Hhea.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
+    val get : source -> Intermediate.Hhea.t ok
   end
 
   (** Handles intermediate representation of [cmap] tables for decoding.

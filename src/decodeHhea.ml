@@ -3,22 +3,7 @@ open Basic
 open DecodeBasic
 
 
-type derived = {
-  advance_width_max      : int;
-  min_left_side_bearing  : int;
-  min_right_side_bearing : int;
-  xmax_extent            : int;
-}
-[@@deriving show { with_path = false }]
-
-type t = {
-  value   : Value.Hhea.t;
-  derived : derived;
-}
-[@@deriving show { with_path = false }]
-
-
-let get (src : source) : t ok =
+let get (src : source) : Intermediate.Hhea.t ok =
   let open ResultMonad in
   let common = get_common_source src in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
@@ -38,7 +23,7 @@ let get (src : source) : t ok =
       d_int16  >>= fun caret_slope_rise ->
       d_int16  >>= fun caret_slope_run ->
       d_int16  >>= fun caret_offset ->
-      return {
+      return Intermediate.Hhea.{
         value = Value.Hhea.{
           ascender;
           descender;

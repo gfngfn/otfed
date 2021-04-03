@@ -103,15 +103,18 @@ end = struct
 end
 
 type glyph_id = int
-[@@deriving show {with_path = false}]
-
-type timestamp = wint
-[@@deriving show {with_path = false}]
-
-type x_coordinate = int
 [@@deriving show { with_path = false }]
 
-type y_coordinate = int
+type timestamp = wint
+[@@deriving show { with_path = false }]
+
+type design_units = int
+[@@deriving show { with_path = false }]
+
+type x_coordinate = design_units
+[@@deriving show { with_path = false }]
+
+type y_coordinate = design_units
 [@@deriving show { with_path = false }]
 
 type point = x_coordinate * y_coordinate
@@ -168,6 +171,49 @@ type quadratic_path_element =
 type quadratic_path = point * quadratic_path_element list
 [@@deriving show { with_path = false }]
 
+type device = {
+  start_size   : int;
+  delta_values : int list;
+}
+[@@deriving show { with_path = false }]
+
+type value_record = {
+  x_placement  : design_units option;
+  y_placement  : design_units option;
+  x_advance    : design_units option;
+  y_advance    : design_units option;
+  x_pla_device : int option;
+  y_pla_device : int option;
+  x_adv_device : int option;
+  y_adv_device : int option;
+}
+
+type anchor_adjustment =
+  | NoAnchorAdjustment
+  | AnchorPointAdjustment  of int
+  | DeviceAnchorAdjustment of device * device
+
+type anchor = design_units * design_units * anchor_adjustment
+
+type mark_class = int
+
+type mark_record = mark_class * anchor
+
+type base_record = (anchor option) array
+  (* Arrays of this type are indexed by `mark_class`.
+     UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
+
+type component_record = (anchor option) array
+  (* Arrays of this type are indexed by `mark_class`. *)
+
+type ligature_attach = component_record list
+
+type mark2_record = anchor array
+  (* Arrays of this type are indexed by `mark_class`. *)
+
+type class_value = int
+[@@deriving show { with_path = false }]
+
 module Cmap = struct
   type t
 
@@ -187,14 +233,10 @@ module Head = struct
     units_per_em        : int;
     created             : timestamp;
     modified            : timestamp;
-    xmin                : int;
-    ymin                : int;
-    xmax                : int;
-    ymax                : int;
     mac_style           : int;
     lowest_rec_ppem     : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end
 
 module Hhea = struct
@@ -202,20 +244,15 @@ module Hhea = struct
     ascender               : int;
     descender              : int;
     line_gap               : int;
-    advance_width_max      : int;
-    min_left_side_bearing  : int;
-    min_right_side_bearing : int;
-    xmax_extent            : int;
     caret_slope_rise       : int;
     caret_slope_run        : int;
     caret_offset           : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end
 
 module Os2 = struct
   type t = {
-    x_avg_char_width            : int;
     us_weight_class             : int;
     us_width_class              : int;
     fs_type                     : int;
@@ -231,14 +268,8 @@ module Os2 = struct
     y_strikeout_position        : int;
     s_family_class              : int;
     panose                      : string;  (* 10 bytes. *)
-    ul_unicode_range1           : wint;
-    ul_unicode_range2           : wint;
-    ul_unicode_range3           : wint;
-    ul_unicode_range4           : wint;
     ach_vend_id                 : string;  (* 4 bytes. *)
     fs_selection                : int;
-    us_first_char_index         : int;
-    us_last_char_index          : int;
     s_typo_ascender             : int;
     s_type_descender            : int;
     s_typo_linegap              : int;
@@ -250,39 +281,15 @@ module Os2 = struct
     s_cap_height                : int option;
     us_default_char             : int option;
     us_break_char               : int option;
-    us_max_context              : int option;
     us_lower_optical_point_size : int option;
     us_upper_optical_point_size : int option;
   }
   [@@deriving show {with_path = false}]
 end
 
-module Maxp = struct
-  type t = {
-    num_glyphs               : int;
-    max_points               : int;
-    max_contours             : int;
-    max_composite_points     : int;
-    max_composite_contours   : int;
-    max_zones                : int;
-    max_twilight_points      : int;
-    max_storage              : int;
-    max_function_defs        : int;
-    max_instruction_defs     : int;
-    max_stack_elements       : int;
-    max_size_of_instructions : int;
-    max_component_elements   : int;
-    max_component_depth      : int;
-  }
-  [@@deriving show {with_path = false}]
-end
-
 module Math = struct
-  type device_table = int * int * int * int
-  [@@deriving show {with_path = false}]
-
-  type math_value_record = int * device_table option
-  [@@deriving show {with_path = false}]
+  type math_value_record = int * device option
+  [@@deriving show { with_path = false }]
 
   type math_constants = {
     script_percent_scale_down                     : int;
@@ -342,10 +349,10 @@ module Math = struct
     radical_kern_after_degree                     : math_value_record;
     radical_degree_bottom_raise_percent           : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_kern = math_value_record list * math_value_record list
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_kern_info_record = {
     top_right_math_kern    : math_kern option;
@@ -353,14 +360,14 @@ module Math = struct
     bottom_right_math_kern : math_kern option;
     bottom_left_math_kern  : math_kern option;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_glyph_info = {
     math_italics_correction    : (glyph_id * math_value_record) list;
     math_top_accent_attachment : (glyph_id * math_value_record) list;
     math_kern_info             : (glyph_id * math_kern_info_record) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type glyph_part_record = {
     glyph_id_for_part      : glyph_id;
@@ -369,25 +376,25 @@ module Math = struct
     full_advance           : int;
     part_flags             : int;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_glyph_construction = {
     glyph_assembly                 : (math_value_record * glyph_part_record list) option;
     math_glyph_variant_record_list : (glyph_id * int) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type math_variants = {
     min_connector_overlap : int;
     vert_glyph_assoc      : (glyph_id * math_glyph_construction) list;
     horiz_glyph_assoc     : (glyph_id * math_glyph_construction) list;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 
   type t = {
     math_constants  : math_constants;
     math_glyph_info : math_glyph_info;
     math_variants   : math_variants;
   }
-  [@@deriving show {with_path = false}]
+  [@@deriving show { with_path = false }]
 end

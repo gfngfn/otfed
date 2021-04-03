@@ -135,7 +135,7 @@ let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bou
   let open ResultMonad in
   let display_x = display_x_scheme units_per_em in
   let display_y = display_y_scheme units_per_em in
-  ttfcontours |> mapM D.path_of_ttf_contour >>= fun qpaths ->
+  ttfcontours |> mapM D.Ttf.path_of_ttf_contour >>= fun qpaths ->
   let y_min = bbox.V.y_min in
   let y_max = bbox.V.y_max in
 

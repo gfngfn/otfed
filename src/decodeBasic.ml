@@ -212,3 +212,27 @@ type charstring_operation =
 
 type charstring = charstring_operation list
 [@@deriving show { with_path = false }]
+
+module GeneralTable(Info : sig type t end) = struct
+
+  type t = {
+    core   : common_source_core;
+    offset : offset;
+    length : int;
+    info   : Info.t;
+  }
+
+
+  let make_scheme (core : common_source_core) (offset : offset) (length : int) (info : Info.t) : t =
+    {
+      core   = core;
+      offset = offset;
+      length = length;
+      info   = info;
+    }
+
+
+  let get_info (general_table : t) : Info.t =
+    general_table.info
+
+end

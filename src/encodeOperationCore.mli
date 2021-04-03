@@ -1,4 +1,5 @@
 
+open Basic
 open EncodeBasic
 
 module Open : sig
@@ -32,3 +33,9 @@ val e_int8 : int -> encoder
 val e_uint16 : int -> encoder
 
 val e_int16 : int -> encoder
+
+val e_uint24 : int -> encoder
+
+val e_uint32 : wint -> encoder
+
+val e_int32 : wint -> encoder

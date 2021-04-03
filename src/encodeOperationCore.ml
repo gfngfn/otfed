@@ -66,6 +66,34 @@ let encode_uint16_unsafe buf u =
   return ()
 
 
+let encode_uint24_unsafe buf u =
+  let open ResultMonad in
+  let b0 = u lsr 16 in
+  let r0 = u - (b0 lsl 16) in
+  let b1 = r0 lsr 8 in
+  let b2 = r0 - (b1 lsl 8) in
+  Buffer.add_char buf (Char.chr b0);
+  Buffer.add_char buf (Char.chr b1);
+  Buffer.add_char buf (Char.chr b2);
+  return ()
+
+
+let encode_uint32_unsafe buf u =
+  let open ResultMonad in
+  let open WideInt in
+  let b0 = u lsr 24 in
+  let r0 = u -% (b0 lsl 24) in
+  let b1 = r0 lsr 16 in
+  let r1 = r0 -% (b1 lsl 16) in
+  let b2 = r1 lsr 8 in
+  let b3 = r1 -% (b2 lsl 8) in
+  Buffer.add_char buf (to_byte b0);
+  Buffer.add_char buf (to_byte b1);
+  Buffer.add_char buf (to_byte b2);
+  Buffer.add_char buf (to_byte b3);
+  return ()
+
+
 let e_uint8 (n : int) : encoder =
 fun buf ->
   let open ResultMonad in
@@ -102,3 +130,34 @@ fun buf ->
     encode_uint16_unsafe buf u
   else
     err @@ Error.NotEncodableAsInt16(n)
+
+
+let e_uint24 (n : int) : encoder =
+fun buf ->
+  let open ResultMonad in
+  if 0 <= n && n < 0x1000000 then
+    encode_uint24_unsafe buf n
+  else
+    err @@ Error.NotEncodableAsUint24(n)
+
+
+let e_uint32 (n : wint) : encoder =
+fun buf ->
+  let open ResultMonad in
+  if WideInt.is_in_uint32 n then
+    encode_uint32_unsafe buf n
+  else
+    err @@ Error.NotEncodableAsUint32(n)
+
+
+let e_int32 (n : wint) : encoder =
+fun buf ->
+  let open ResultMonad in
+  if WideInt.is_in_int32 n then
+    let u =
+      let open WideInt in
+      if is_neg n then n +% (!%% 0x10000000L) else n
+    in
+    encode_uint32_unsafe buf u
+  else
+    err @@ Error.NotEncodableAsInt32(n)

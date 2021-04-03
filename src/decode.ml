@@ -28,7 +28,7 @@ let fetch_num_h_metrics core table_directory =
   d_uint16 |> run core (offset + 34)
 
 
-let d_init_ttf core =
+let d_init_ttf (core : common_source_core) : source decoder =
   let open DecodeOperation in
   d_structure >>= fun table_directory ->
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
@@ -44,7 +44,7 @@ let d_init_ttf core =
     }
   in
   let ttf = {ttf_common = common} in
-  return @@ (common, Ttf(ttf))
+  return @@ Ttf(ttf)
 
 
 let d_init_cff (core : common_source_core) : source decoder =
@@ -63,7 +63,7 @@ let d_init_cff (core : common_source_core) : source decoder =
     }
   in
   let cff = {cff_common = common} in
-  return @@ (common, Cff(cff))
+  return @@ Cff(cff)
 
 
 let source_of_string (s : string) : single_or_collection ok =
@@ -105,7 +105,8 @@ let source_of_string (s : string) : single_or_collection ok =
   DecodeOperation.run core 0 dec
 
 
-let tables (common : common_source) : Value.Tag.t set =
+let tables (src : source) : Value.Tag.t set =
+  let common = get_common_source src in
   let acc =
     TableDirectory.fold (fun tag _ acc ->
       Alist.extend acc tag

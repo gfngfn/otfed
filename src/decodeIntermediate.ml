@@ -47,8 +47,9 @@ module Head = struct
   [@@deriving show { with_path = false }]
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
     let dec =
       let open DecodeOperation in
@@ -109,8 +110,9 @@ module Hhea = struct
   [@@deriving show { with_path = false }]
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
     let dec =
       let open DecodeOperation in
@@ -171,8 +173,9 @@ module Os2 = struct
   [@@deriving show { with_path = false }]
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_os2 >>= fun (offset, _length) ->
     let dec =
       let open DecodeOperation in
@@ -296,8 +299,9 @@ module Os2 = struct
     [@@deriving show { with_path = false }]
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
     let dec =
       let open DecodeOperation in
@@ -366,8 +370,9 @@ module Cmap = struct
   include GeneralTable(struct type t = unit end)
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Value.Tag.table_cmap >>= fun (offset, length) ->
     return @@ make_scheme common.core offset length ()
 
@@ -574,8 +579,9 @@ module Hmtx = struct
   include GeneralTable(struct type t = info end)
 
 
-  let get (common : common_source) : t ok =
+  let get (src : source) : t ok =
     let open ResultMonad in
+    let common = get_common_source src in
     DecodeOperation.seek_required_table common.table_directory Tag.table_hmtx >>= fun (offset, length) ->
     let num_glyphs = common.num_glyphs in
     let num_h_metrics = common.num_h_metrics in
@@ -820,8 +826,9 @@ module Gsub = struct
   include GxxxScheme
 
 
-  let get (common : common_source) : (t option) ok =
+  let get (src : source) : (t option) ok =
     let open ResultMonad in
+    let common = get_common_source src in
     match DecodeOperation.seek_table common.table_directory Tag.table_gsub with
     | None ->
         return None
@@ -972,8 +979,9 @@ module Gpos = struct
   include GxxxScheme
 
 
-  let get (common : common_source) : (t option) ok =
+  let get (src : source) : (t option) ok =
     let open ResultMonad in
+    let common = get_common_source src in
     match DecodeOperation.seek_table common.table_directory Tag.table_gpos with
     | None ->
         return None
@@ -1440,8 +1448,9 @@ module Kern = struct
   include GeneralTable(struct type t = unit end)
 
 
-  let get (common : common_source) =
+  let get (src : source) : (t option) ok =
     let open ResultMonad in
+    let common = get_common_source src in
     match DecodeOperation.seek_table common.table_directory Tag.table_kern with
     | None ->
         return None
@@ -1797,8 +1806,9 @@ module Math = struct
     }
 
 
-  let get (common : common_source) : (Math.t option) ok =
+  let get (src : source) : (Math.t option) ok =
     let open ResultMonad in
+    let common = get_common_source src in
     match DecodeOperation.seek_table common.table_directory Tag.table_math with
     | None ->
         return None

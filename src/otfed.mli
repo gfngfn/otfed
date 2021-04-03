@@ -218,17 +218,13 @@ module Decode : sig
 
   type 'a ok = ('a, Error.t) result
 
-  type common_source
-
   type ttf_source
 
   type cff_source
 
-  type specific_source =
+  type source =
     | Ttf of ttf_source
     | Cff of cff_source
-
-  type source = common_source * specific_source
 
   type single_or_collection =
     | Single     of source
@@ -240,7 +236,7 @@ module Decode : sig
   val source_of_string : string -> single_or_collection ok
 
   (** Returns the list of tags for the tables contained in the source. *)
-  val tables : common_source -> Value.Tag.t set
+  val tables : source -> Value.Tag.t set
 
   (** Used in [Intermediate.Cmap.fold_subtable]. *)
   type cmap_segment =
@@ -307,7 +303,7 @@ module Decode : sig
     }
     [@@deriving show { with_path = false }]
 
-    val get : common_source -> t ok
+    val get : source -> t ok
 
   end
 
@@ -330,7 +326,7 @@ module Decode : sig
     }
     [@@deriving show { with_path = false }]
 
-    val get : common_source -> t ok
+    val get : source -> t ok
   end
 
   (** Contains decoding operations for [maxp] tables. *)
@@ -354,7 +350,7 @@ module Decode : sig
     }
     [@@deriving show { with_path = false }]
 
-    val get : common_source -> t ok
+    val get : source -> t ok
   end
 
   (** Handles intermediate representation of [cmap] tables for decoding.
@@ -365,7 +361,7 @@ module Decode : sig
     (** The type for representing [cmap] tables. *)
     type t
 
-    val get : common_source -> t ok
+    val get : source -> t ok
 
     type subtable
 
@@ -384,7 +380,7 @@ module Decode : sig
     (** The type for representing [hmtx] tables. *)
     type t
 
-    val get : common_source -> t ok
+    val get : source -> t ok
 
     val access : t -> Value.glyph_id -> ((int * int) option) ok
   end
@@ -412,7 +408,7 @@ module Decode : sig
     }
     [@@deriving show { with_path = false }]
 
-    val get : common_source -> t ok
+    val get : source -> t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)
@@ -420,7 +416,7 @@ module Decode : sig
     (** The type for representing [GSUB] tables. *)
     type t
 
-    val get : common_source -> (t option) ok
+    val get : source -> (t option) ok
 
     type script
 
@@ -458,7 +454,7 @@ module Decode : sig
     (** The type for representing [GPOS] tables. *)
     type t
 
-    val get : common_source -> (t option) ok
+    val get : source -> (t option) ok
 
     type script
 
@@ -513,7 +509,7 @@ module Decode : sig
     (** The type for representing [kern] tables. *)
     type t
 
-    val get : common_source -> (t option) ok
+    val get : source -> (t option) ok
 
     type kern_info = {
       horizontal   : bool;
@@ -527,7 +523,7 @@ module Decode : sig
 
   (** Contains decoding operations for [MATH] tables. *)
   module Math : sig
-    val get : common_source -> (Value.Math.t option) ok
+    val get : source -> (Value.Math.t option) ok
   end
 
   module Ttf : sig

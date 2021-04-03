@@ -33,19 +33,19 @@ let inj = function
   | Error(e) -> Error(DecodingError(e))
 
 
-let print_table_directory (common, _) =
-  let tables = D.tables common in
+let print_table_directory (source : D.source) =
+  let tables = D.tables source in
   Format.printf "tables:@,";
   tables |> List.iter (fun tag ->
     Format.printf "- %s@," (V.Tag.to_string tag)
   )
 
 
-let print_cmap (common, _) =
+let print_cmap (source : D.source) =
   Format.printf "cmap:@,";
   let res =
     let open ResultMonad in
-    D.Cmap.get common >>= fun icmap ->
+    D.Cmap.get source >>= fun icmap ->
     D.Cmap.get_subtables icmap >>= fun subtables ->
     subtables |> List.iter (fun subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
@@ -70,11 +70,11 @@ let print_cmap (common, _) =
   res |> inj
 
 
-let print_hmtx (common, _) (gid : V.glyph_id) =
+let print_hmtx (source : D.source) (gid : V.glyph_id) =
   Format.printf "hmtx (gid: %d):@," gid;
   let res =
     let open ResultMonad in
-    D.Hmtx.get common >>= fun ihmtx ->
+    D.Hmtx.get source >>= fun ihmtx ->
     D.Hmtx.access ihmtx gid >>= function
     | None ->
         Format.printf "- none@,";
@@ -88,44 +88,44 @@ let print_hmtx (common, _) (gid : V.glyph_id) =
   res |> inj
 
 
-let print_head (common, _) =
+let print_head (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "head:@,";
-    D.Head.get common >>= fun head ->
+    D.Head.get source >>= fun head ->
     Format.printf "%a@," D.Head.pp head;
     return ()
   in
   res |> inj
 
 
-let print_hhea (common, _) =
+let print_hhea (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "hhea:@,";
-    D.Hhea.get common >>= fun hhea ->
+    D.Hhea.get source >>= fun hhea ->
     Format.printf "%a@," D.Hhea.pp hhea;
     return ()
   in
   res |> inj
 
 
-let print_maxp (common, _) =
+let print_maxp (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "maxp:@,";
-    D.Maxp.get common >>= fun maxp ->
+    D.Maxp.get source >>= fun maxp ->
     Format.printf "%a@," D.Maxp.pp maxp;
     return ()
   in
   res |> inj
 
 
-let print_math (common, _) =
+let print_math (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "MATH:@,";
-    D.Math.get common >>= function
+    D.Math.get source >>= function
     | None ->
         Format.printf "  MATH table not found@,";
         return ()
@@ -137,11 +137,11 @@ let print_math (common, _) =
   res |> inj
 
 
-let print_kern (common, _) =
+let print_kern (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "kern:@,";
-    D.Kern.get common >>= function
+    D.Kern.get source >>= function
     | None ->
         Format.printf "  kern table not found@,";
         return ()
@@ -173,10 +173,10 @@ let write_glyph_svg path ~data =
       err @@ CannotWriteFile(path)
 
 
-let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
+let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Format.printf "glyf (glyph ID: %d):@," gid;
-  match specific with
+  match source with
   | D.Cff(_) ->
       Format.printf "  not a TTF@,";
       return ()
@@ -188,9 +188,9 @@ let print_glyf (common, specific) (gid : V.glyph_id) (path : string) =
           return ()
 
       | Some(loc) ->
-          D.Head.get common |> inj >>= fun head ->
+          D.Head.get source |> inj >>= fun head ->
           let units_per_em = head.D.Head.value.V.Head.units_per_em in
-          D.Hmtx.get common |> inj >>= fun ihmtx ->
+          D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
@@ -214,10 +214,10 @@ let pp_list pp =
   Format.pp_print_list ~pp_sep pp
 
 
-let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
+let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Format.printf "CFF (glyph ID: %d):@," gid;
-  match specific with
+  match source with
   | D.Ttf(_) ->
       Format.printf "  not a CFF@,";
       return ()
@@ -234,9 +234,9 @@ let print_cff (common, specific) (gid : V.glyph_id) (path : string) =
             | None    -> Format.printf "  width: not defined@,";
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
-          D.Head.get common |> inj >>= fun head ->
+          D.Head.get source |> inj >>= fun head ->
           let units_per_em = head.D.Head.value.V.Head.units_per_em in
-          D.Hmtx.get common |> inj >>= fun ihmtx ->
+          D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
               Format.printf "  no hmtx entry@,";
@@ -307,10 +307,10 @@ let print_gsub_script (script : D.Gsub.script) (langsys_tag : string) (feature_t
       print_gsub_langsys langsys feature_tag
 
 
-let print_gsub (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
+let print_gsub (source : D.source) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
   Format.printf "GSUB (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
-  D.Gsub.get common >>= function
+  D.Gsub.get source >>= function
   | None ->
       Format.printf "  GSUB table not found@,";
       return ()
@@ -412,10 +412,10 @@ let print_gpos_script (script : D.Gpos.script) (langsys_tag : string) (feature_t
       print_gpos_langsys langsys feature_tag
 
 
-let print_gpos (common, _) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
+let print_gpos (source : D.source) (script_tag : string) (langsys_tag : string) (feature_tag : string) =
   let open ResultMonad in
   Format.printf "GPOS (script: %s, langsys: %s, feature: %s)@," script_tag langsys_tag feature_tag;
-  D.Gpos.get common >>= function
+  D.Gpos.get source >>= function
   | None ->
       Format.printf "  GPOS table not found@,";
       return ()

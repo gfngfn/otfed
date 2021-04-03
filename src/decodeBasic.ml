@@ -40,11 +40,15 @@ type cff_source = {
   cff_common : common_source;
 }
 
-type specific_source =
+type source =
   | Ttf of ttf_source
   | Cff of cff_source
 
-type source = common_source * specific_source
+
+let get_common_source = function
+  | Ttf(ttf) -> ttf.ttf_common
+  | Cff(cff) -> cff.cff_common
+
 
 type single_or_collection =
   | Single     of source

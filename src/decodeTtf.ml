@@ -5,6 +5,9 @@ open DecodeBasic
 open DecodeOperation.Open
 
 
+module Maxp = DecodeTtfMaxp
+
+
 let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
   let open DecodeOperation in
   (* The position is set to the begging of `loca` table. *)

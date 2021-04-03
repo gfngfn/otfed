@@ -114,9 +114,16 @@ let print_maxp (source : D.source) =
   let res =
     let open ResultMonad in
     Format.printf "maxp:@,";
-    D.Maxp.get source >>= fun maxp ->
-    Format.printf "%a@," D.Maxp.pp maxp;
-    return ()
+    match source with
+    | Ttf(ttf) ->
+        D.Ttf.Maxp.get ttf >>= fun maxp ->
+        Format.printf "%a@," D.Ttf.Maxp.pp maxp;
+        return ()
+
+    | Cff(cff) ->
+        D.Cff.Maxp.get cff >>= fun maxp ->
+        Format.printf "%a@," D.Cff.Maxp.pp maxp;
+        return ()
   in
   res |> inj
 

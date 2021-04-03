@@ -48,5 +48,7 @@ type t =
   | UnknownFormatNumber       of int
   | LayeredExtensionPosition
   | InvalidMarkClass          of int
+  | CffContainsTtfMaxpTable
+  | TtfContainsCffMaxpTable
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

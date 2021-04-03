@@ -3,6 +3,8 @@ open Value
 open DecodeBasic
 open DecodeOperation.Open
 
+module Maxp : (module type of DecodeTtfMaxp)
+
 val loca : ttf_source -> glyph_id -> (ttf_glyph_location option) ok
 
 val d_glyf : (ttf_glyph_description * bounding_box) decoder

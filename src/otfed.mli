@@ -329,30 +329,6 @@ module Decode : sig
     val get : source -> t ok
   end
 
-  (** Contains decoding operations for [maxp] tables. *)
-  module Maxp : sig
-    (** The type for representing [maxp] tables. *)
-    type t = {
-      num_glyphs               : int;
-      max_points               : int;
-      max_contours             : int;
-      max_composite_points     : int;
-      max_composite_contours   : int;
-      max_zones                : int;
-      max_twilight_points      : int;
-      max_storage              : int;
-      max_function_defs        : int;
-      max_instruction_defs     : int;
-      max_stack_elements       : int;
-      max_size_of_instructions : int;
-      max_component_elements   : int;
-      max_component_depth      : int;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
-  end
-
   (** Handles intermediate representation of [cmap] tables for decoding.
       Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
@@ -527,6 +503,29 @@ module Decode : sig
   end
 
   module Ttf : sig
+    module Maxp : sig
+      (** The type for representing [maxp] tables in fonts that has TrueType-based outlines. *)
+      type t = {
+        num_glyphs               : int;
+        max_points               : int;
+        max_contours             : int;
+        max_composite_points     : int;
+        max_composite_contours   : int;
+        max_zones                : int;
+        max_twilight_points      : int;
+        max_storage              : int;
+        max_function_defs        : int;
+        max_instruction_defs     : int;
+        max_stack_elements       : int;
+        max_size_of_instructions : int;
+        max_component_elements   : int;
+        max_component_depth      : int;
+      }
+      [@@deriving show { with_path = false }]
+
+      val get : ttf_source -> t ok
+    end
+
     val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
     val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
@@ -535,6 +534,16 @@ module Decode : sig
   end
 
   module Cff : sig
+    (** The type for representing [maxp] tables in fonts that has CFF-based outlines. *)
+    module Maxp : sig
+      type t = {
+        num_glyphs : int;
+      }
+      [@@deriving show { with_path = false }]
+
+      val get : cff_source -> t ok
+    end
+
     val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
 
     val path_of_charstring : charstring -> (Value.cubic_path list) ok

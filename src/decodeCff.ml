@@ -5,6 +5,9 @@ open DecodeBasic
 open DecodeOperation.Open
 
 
+module Maxp = DecodeCffMaxp
+
+
 let d_cff_header : cff_header decoder =
   let open DecodeOperation in
   d_uint8              >>= fun major ->

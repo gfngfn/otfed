@@ -1,4 +1,3 @@
-val message : string
 
 include module type of Basic
 
@@ -560,5 +559,18 @@ module Decode : sig
       gsubr_index:subroutine_index ->
       lsubr_index:subroutine_index ->
       string -> start:int -> charstring_length:int -> (charstring_operation list) ok
+  end
+end
+
+
+module Encode : sig
+  module Error : sig
+    type t
+  end
+
+  type 'a ok = ('a, Error.t) result
+
+  module Subset : sig
+    val make : Decode.source -> Value.glyph_id list -> (string option) ok
   end
 end

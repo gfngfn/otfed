@@ -118,12 +118,12 @@ let print_maxp (source : D.source) =
     match source with
     | Ttf(ttf) ->
         D.Ttf.Maxp.get ttf >>= fun maxp ->
-        Format.printf "%a@," D.Ttf.Maxp.pp maxp;
+        Format.printf "%a@," I.Ttf.Maxp.pp maxp;
         return ()
 
     | Cff(cff) ->
         D.Cff.Maxp.get cff >>= fun maxp ->
-        Format.printf "%a@," D.Cff.Maxp.pp maxp;
+        Format.printf "%a@," I.Cff.Maxp.pp maxp;
         return ()
   in
   res |> inj

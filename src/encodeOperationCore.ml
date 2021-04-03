@@ -4,47 +4,63 @@ open EncodeBasic
 
 
 module Open = struct
-  type encoder = Buffer.t -> (unit, Error.t) result
+  type 'a encoder = Buffer.t -> ('a, Error.t) result
 end
 
 
 open Open
 
 
-let run : 'a. ?initial_capacity:int -> encoder -> (string, Error.t) result =
+let run : 'a. ?initial_capacity:int -> 'a encoder -> (string * 'a, Error.t) result =
 fun ?initial_capacity:(initial_capacity = 65535) enc ->
   let open ResultMonad in
   let buf = Buffer.create initial_capacity in
   let res = enc buf in
   match res with
-  | Ok(())   -> return @@ Buffer.contents buf
+  | Ok(v)    -> return @@ (Buffer.contents buf, v)
   | Error(e) -> err @@ e
 
 
-let ( >> ) (enc1 : encoder) (enc2 : encoder) =
+let ( >>= ) (enc1 : 'a encoder) (encf2 : 'a -> 'b encoder) : 'b encoder =
 fun buf ->
   let open ResultMonad in
-  let res1 = enc1 buf in
-  match res1 with
-  | Ok(())   -> enc2 buf
-  | Error(e) -> err @@ e
+  enc1 buf >>= fun v ->
+  encf2 v buf
 
 
-let e_byte (ch : char) : encoder =
+let return (v : 'a) : 'a encoder =
+fun _buf ->
+  let open ResultMonad in
+  return v
+
+
+let err (e : Error.t) : 'a encoder =
+fun _buf ->
+  let open ResultMonad in
+  err @@ e
+
+
+let current : int encoder =
+fun buf ->
+  let open ResultMonad in
+  return @@ Buffer.length buf
+
+
+let e_byte (ch : char) : unit encoder =
 fun buf ->
   let open ResultMonad in
   Buffer.add_char buf ch;
   return ()
 
 
-let e_bytes (s : string) : encoder =
+let e_bytes (s : string) : unit encoder =
 fun buf ->
   let open ResultMonad in
   Buffer.add_string buf s;
   return ()
 
 
-let e_pad (count : int) : encoder =
+let e_pad (count : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   Buffer.add_string buf (String.make count (Char.chr 0));
@@ -94,7 +110,7 @@ let encode_uint32_unsafe buf u =
   return ()
 
 
-let e_uint8 (n : int) : encoder =
+let e_uint8 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if 0 <= n && n < 256 then
@@ -103,7 +119,7 @@ fun buf ->
     err @@ Error.NotEncodableAsUint8(n)
 
 
-let e_int8 (n : int) : encoder =
+let e_int8 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if -128 <= n && n < 128 then
@@ -113,7 +129,7 @@ fun buf ->
     err @@ Error.NotEncodableAsInt8(n)
 
 
-let e_uint16 (n : int) : encoder =
+let e_uint16 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if 0 <= n && n < 65536 then
@@ -122,7 +138,7 @@ fun buf ->
     err @@ Error.NotEncodableAsUint8(n)
 
 
-let e_int16 (n : int) : encoder =
+let e_int16 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if -32768 <= n && n <= 32768 then
@@ -132,7 +148,7 @@ fun buf ->
     err @@ Error.NotEncodableAsInt16(n)
 
 
-let e_uint24 (n : int) : encoder =
+let e_uint24 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if 0 <= n && n < 0x1000000 then
@@ -141,7 +157,7 @@ fun buf ->
     err @@ Error.NotEncodableAsUint24(n)
 
 
-let e_uint32 (n : wint) : encoder =
+let e_uint32 (n : wint) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if WideInt.is_in_uint32 n then
@@ -150,7 +166,7 @@ fun buf ->
     err @@ Error.NotEncodableAsUint32(n)
 
 
-let e_int32 (n : wint) : encoder =
+let e_int32 (n : wint) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if WideInt.is_in_int32 n then

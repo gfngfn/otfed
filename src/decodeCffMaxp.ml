@@ -15,7 +15,7 @@ let get (cff : cff_source) : Intermediate.Cff.Maxp.t ok =
       return Intermediate.Cff.Maxp.{
         num_glyphs = num_glyphs;
       }
-    else if version = !%% 0x00001000L then
+    else if version = !%% 0x00010000L then
       err @@ Error.CffContainsTtfMaxpTable
     else
       err @@ Error.UnknownTableVersion(version)

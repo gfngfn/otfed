@@ -73,10 +73,10 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
   </tr>
   <tr><td rowspan="8">Required</td>
       <td>cmap</td><td>-</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
-  <tr><td>head</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>hhea</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>head</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>hhea</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>hmtx</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>maxp</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>maxp</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>OS/2</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>

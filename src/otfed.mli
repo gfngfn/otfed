@@ -504,7 +504,7 @@ module Decode : sig
 
   module Ttf : sig
     module Maxp : sig
-      (** The type for representing [maxp] tables in fonts that has TrueType-based outlines. *)
+      (** The type for representing [maxp] tables in fonts that have TrueType-based outlines. *)
       type t = {
         num_glyphs               : int;
         max_points               : int;
@@ -534,7 +534,7 @@ module Decode : sig
   end
 
   module Cff : sig
-    (** The type for representing [maxp] tables in fonts that has CFF-based outlines. *)
+    (** The type for representing [maxp] tables in fonts that have CFF-based outlines. *)
     module Maxp : sig
       type t = {
         num_glyphs : int;

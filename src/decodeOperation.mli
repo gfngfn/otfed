@@ -60,7 +60,7 @@ val d_if : bool -> 'a decoder -> ('a option) decoder
 (** Reads a 4cc tag. *)
 val d_tag : Tag.t decoder
 
-val d_loc_format : loc_format decoder
+val d_loc_format : Intermediate.loc_format decoder
 
 type format_version_result =
   | InitTtf

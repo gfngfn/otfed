@@ -127,7 +127,8 @@ let d_tag : Value.Tag.t decoder =
   return @@ Value.Tag.of_wide_int n
 
 
-let d_loc_format : loc_format decoder =
+let d_loc_format : Intermediate.loc_format decoder =
+  let open Intermediate in
   d_uint16 >>= function
   | 0 -> return ShortLocFormat
   | 1 -> return LongLocFormat

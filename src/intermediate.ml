@@ -2,6 +2,11 @@
 open Basic
 
 
+type loc_format =
+  | ShortLocFormat
+  | LongLocFormat
+
+
 module Head = struct
 
   type derived = {

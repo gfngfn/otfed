@@ -48,3 +48,5 @@ val e_uint24 : int -> unit encoder
 val e_uint32 : wint -> unit encoder
 
 val e_int32 : wint -> unit encoder
+
+val e_timestamp : wint -> unit encoder

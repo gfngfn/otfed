@@ -177,3 +177,17 @@ fun buf ->
     encode_uint32_unsafe buf u
   else
     err @@ Error.NotEncodableAsInt32(n)
+
+
+let e_timestamp (n : wint) : unit encoder =
+fun buf ->
+  let open ResultMonad in
+  let open WideInt in
+  if is_in_int64 n then
+    let u = if is_neg n then !% 0 else n in  (* temporary *)
+    let q0 = u lsr 32 in
+    let q1 = u -% (q0 lsl 32) in
+    encode_uint32_unsafe buf q0 >>= fun () ->
+    encode_uint32_unsafe buf q1
+  else
+    err @@ Error.NotEncodableAsTimestamp(n)

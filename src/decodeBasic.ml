@@ -20,14 +20,10 @@ module TableDirectory = Map.Make(Value.Tag)
    - `length`: how long the table is. *)
 type table_directory = (offset * int) TableDirectory.t
 
-type loc_format =
-  | ShortLocFormat
-  | LongLocFormat
-
 type common_source = {
   core            : common_source_core;
   table_directory : table_directory;
-  loc_format      : loc_format;
+  loc_format      : Intermediate.loc_format;
   num_glyphs      : int;
   num_h_metrics   : int;
 }

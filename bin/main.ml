@@ -3,6 +3,7 @@ module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
 module V = Otfed.Value
+module I = Otfed.Intermediate
 
 type config = {
   tables : bool;
@@ -93,7 +94,7 @@ let print_head (source : D.source) =
     let open ResultMonad in
     Format.printf "head:@,";
     D.Head.get source >>= fun head ->
-    Format.printf "%a@," D.Head.pp head;
+    Format.printf "%a@," I.Head.pp head;
     return ()
   in
   res |> inj
@@ -196,7 +197,7 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
 
       | Some(loc) ->
           D.Head.get source |> inj >>= fun head ->
-          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          let units_per_em = head.I.Head.value.V.Head.units_per_em in
           D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
@@ -242,7 +243,7 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
           D.Head.get source |> inj >>= fun head ->
-          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          let units_per_em = head.I.Head.value.V.Head.units_per_em in
           D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->

@@ -210,6 +210,27 @@ module Value : sig
   module Math : (module type of Value.Math)
 end
 
+module Intermediate : sig
+  module Head : sig
+    (** The type for data contained in a single [head] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
+    type derived = {
+      xmin : int;
+      ymin : int;
+      xmax : int;
+      ymax : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [head] tables. *)
+    type t = {
+      value   : Value.Head.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
+end
+
 module Decode : sig
   module Error : sig
     include module type of DecodeError
@@ -285,25 +306,7 @@ module Decode : sig
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
-    (** The type for data contained in a single [head] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
-    type derived = {
-      xmin : int;
-      ymin : int;
-      xmax : int;
-      ymax : int;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [head] tables. *)
-    type t = {
-      value   : Value.Head.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
-
+    val get : source -> Intermediate.Head.t ok
   end
 
   (** Handles intermediate representation of [hhea] tables for decoding. *)

@@ -3,22 +3,7 @@ open Basic
 open DecodeBasic
 
 
-type derived = {
-  xmin : int;
-  ymin : int;
-  xmax : int;
-  ymax : int;
-}
-[@@deriving show { with_path = false }]
-
-type t = {
-  value   : Value.Head.t;
-  derived : derived;
-}
-[@@deriving show { with_path = false }]
-
-
-let get (src : source) : t ok =
+let get (src : source) : Intermediate.Head.t ok =
   let open ResultMonad in
   let common = get_common_source src in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
@@ -41,7 +26,7 @@ let get (src : source) : t ok =
       d_uint16     >>= fun mac_style ->
       d_uint16     >>= fun lowest_rec_ppem ->
       (* Skips `fontDirectionHint` and `indexToLocFormat`. *)
-      return {
+      return Intermediate.Head.{
         value = Value.Head.{
           font_revision;
           flags;

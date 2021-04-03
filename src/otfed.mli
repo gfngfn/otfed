@@ -249,6 +249,29 @@ module Intermediate : sig
     [@@deriving show { with_path = false }]
   end
 
+  module Os2 : sig
+    (** The type for data contained in a single [OS/2] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
+    type derived = {
+      x_avg_char_width    : int;
+      ul_unicode_range1   : wint;
+      ul_unicode_range2   : wint;
+      ul_unicode_range3   : wint;
+      ul_unicode_range4   : wint;
+      us_first_char_index : int;
+      us_last_char_index  : int;
+      us_max_context      : int option;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [OS/2] tables. *)
+    type t = {
+      value   : Value.Os2.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
+
   module Ttf : sig
     module Maxp : sig
       (** The type for representing [maxp] tables in fonts that have TrueType-based outlines. *)
@@ -400,28 +423,7 @@ module Decode : sig
 
   (** Handles intermediate representation of [OS/2] tables for decoding. *)
   module Os2 : sig
-    (** The type for data contained in a single [OS/2] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
-    type derived = {
-      x_avg_char_width    : int;
-      ul_unicode_range1   : wint;
-      ul_unicode_range2   : wint;
-      ul_unicode_range3   : wint;
-      ul_unicode_range4   : wint;
-      us_first_char_index : int;
-      us_last_char_index  : int;
-      us_max_context      : int option;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [OS/2] tables. *)
-    type t = {
-      value   : Value.Os2.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
+    val get : source -> Intermediate.Os2.t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)

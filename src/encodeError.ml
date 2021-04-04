@@ -10,3 +10,5 @@ type t =
   | NotEncodableAsUint32    of wint
   | NotEncodableAsInt32     of wint
   | NotEncodableAsTimestamp of wint
+  | NotA10BytePanose        of string
+  | NotA4ByteAchVendId      of string

@@ -78,7 +78,7 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
   <tr><td>hmtx</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>maxp</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>OS/2</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>OS/2</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="2">TTF</td>

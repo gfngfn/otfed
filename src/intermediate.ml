@@ -5,15 +5,17 @@ open Basic
 type loc_format =
   | ShortLocFormat
   | LongLocFormat
+[@@deriving show { with_path = false }]
 
 
 module Head = struct
 
   type derived = {
-    x_min : int;
-    y_min : int;
-    x_max : int;
-    y_max : int;
+    x_min               : int;
+    y_min               : int;
+    x_max               : int;
+    y_max               : int;
+    index_to_loc_format : loc_format;
   }
   [@@deriving show { with_path = false }]
 

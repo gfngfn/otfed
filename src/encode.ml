@@ -32,12 +32,12 @@ module Head = struct
     ]
 
 
-  let make (loc_format : Intermediate.loc_format) (ihead : Intermediate.Head.t) : table ok =
+  let make (ihead : Intermediate.Head.t) : table ok =
     let d = ihead.Intermediate.Head.derived in
     let v = ihead.Intermediate.Head.value in
     let loc_format_num =
       let open Intermediate in
-      match loc_format with
+      match d.index_to_loc_format with
       | ShortLocFormat -> 0
       | LongLocFormat  -> 1
     in

@@ -60,6 +60,10 @@ let get (src : source) : Intermediate.Head.t ok =
           y_min;
           x_max;
           y_max;
+          index_to_loc_format = common.loc_format;
+            (* `IndexToLocFormat` has already been obtained
+               since the entire font file was given as a source;
+               see the implementation of `Otfed.Decode.source_of_string`. *)
         };
       }
   in

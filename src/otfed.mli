@@ -222,14 +222,20 @@ module Value : sig
 end
 
 module Intermediate : sig
+  type loc_format =
+    | ShortLocFormat
+    | LongLocFormat
+  [@@deriving show { with_path = false }]
+
   module Head : sig
     (** The type for data contained in a single [head] table that are derivable
         from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
     type derived = {
-      x_min : int;
-      y_min : int;
-      x_max : int;
-      y_max : int;
+      x_min               : int;
+      y_min               : int;
+      x_max               : int;
+      y_max               : int;
+      index_to_loc_format : loc_format;
     }
     [@@deriving show { with_path = false }]
 

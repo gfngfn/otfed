@@ -50,5 +50,6 @@ type t =
   | InvalidMarkClass          of int
   | CffContainsTtfMaxpTable
   | TtfContainsCffMaxpTable
+  | UnexpectedMacStyle        of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

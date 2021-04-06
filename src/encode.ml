@@ -1,5 +1,6 @@
 
 open Basic
+open EncodeOperation.Open
 
 
 module Error = EncodeError
@@ -16,6 +17,20 @@ type table = {
 
 
 module Head = struct
+
+  let e_mac_style (mac_style : Value.Head.mac_style) : unit encoder =
+    let open EncodeOperation in
+    let open Value.Head in
+    e_16bits [
+      mac_style.bold;
+      mac_style.italic;
+      mac_style.underline;
+      mac_style.outline;
+      mac_style.shadow;
+      mac_style.condensed;
+      mac_style.extended;
+    ]
+
 
   let make (loc_format : Intermediate.loc_format) (ihead : Intermediate.Head.t) : table ok =
     let d = ihead.Intermediate.Head.derived in
@@ -44,7 +59,7 @@ module Head = struct
       e_int16 d.y_min             >>= fun () ->
       e_int16 d.x_max             >>= fun () ->
       e_int16 d.y_max             >>= fun () ->
-      e_uint16 v.mac_style        >>= fun () ->
+      e_mac_style v.mac_style     >>= fun () ->
       e_uint16 v.lowest_rec_ppem  >>= fun () ->
       e_int16 font_direction_hint >>= fun () ->
       e_int16 loc_format_num      >>= fun () ->

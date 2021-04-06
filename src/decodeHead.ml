@@ -19,10 +19,10 @@ let get (src : source) : Intermediate.Head.t ok =
       d_uint16     >>= fun units_per_em ->
       d_timestamp  >>= fun created ->
       d_timestamp  >>= fun modified ->
-      d_int16      >>= fun xmin ->
-      d_int16      >>= fun ymin ->
-      d_int16      >>= fun xmax ->
-      d_int16      >>= fun ymax ->
+      d_int16      >>= fun x_min ->
+      d_int16      >>= fun y_min ->
+      d_int16      >>= fun x_max ->
+      d_int16      >>= fun y_max ->
       d_uint16     >>= fun mac_style ->
       d_uint16     >>= fun lowest_rec_ppem ->
       (* Skips `fontDirectionHint` and `indexToLocFormat`. *)
@@ -37,10 +37,10 @@ let get (src : source) : Intermediate.Head.t ok =
           lowest_rec_ppem;
         };
         derived = {
-          xmin;
-          ymin;
-          xmax;
-          ymax;
+          x_min;
+          y_min;
+          x_max;
+          y_max;
         };
       }
   in

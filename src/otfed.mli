@@ -215,10 +215,10 @@ module Intermediate : sig
     (** The type for data contained in a single [head] table that are derivable
         from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
     type derived = {
-      xmin : int;
-      ymin : int;
-      xmax : int;
-      ymax : int;
+      x_min : int;
+      y_min : int;
+      x_max : int;
+      y_max : int;
     }
     [@@deriving show { with_path = false }]
 

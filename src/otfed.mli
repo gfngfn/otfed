@@ -1,4 +1,3 @@
-val message : string
 
 include module type of Basic
 
@@ -148,13 +147,24 @@ module Value : sig
   end
 
   module Head : sig
+    type mac_style = {
+      bold      : bool;
+      italic    : bool;
+      underline : bool;
+      outline   : bool;
+      shadow    : bool;
+      condensed : bool;
+      extended  : bool;
+    }
+    [@@deriving show { with_path = false }]
+
     type t = {
       font_revision   : wint;
       flags           : int;
       units_per_em    : int;
       created         : timestamp;
       modified        : timestamp;
-      mac_style       : int;
+      mac_style       : mac_style;
       lowest_rec_ppem : int;
     }
     [@@deriving show {with_path = false}]
@@ -209,6 +219,108 @@ module Value : sig
   end
 
   module Math : (module type of Value.Math)
+end
+
+module Intermediate : sig
+  type loc_format =
+    | ShortLocFormat
+    | LongLocFormat
+  [@@deriving show { with_path = false }]
+
+  module Head : sig
+    (** The type for data contained in a single [head] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
+    type derived = {
+      x_min               : int;
+      y_min               : int;
+      x_max               : int;
+      y_max               : int;
+      index_to_loc_format : loc_format;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [head] tables. *)
+    type t = {
+      value   : Value.Head.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
+
+  module Hhea : sig
+    (** The type for data contained in a single [hhea] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
+    type derived = {
+      advance_width_max      : int;
+      min_left_side_bearing  : int;
+      min_right_side_bearing : int;
+      xmax_extent            : int;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [hhea] tables. *)
+    type t = {
+      value   : Value.Hhea.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
+
+  module Os2 : sig
+    (** The type for data contained in a single [OS/2] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
+    type derived = {
+      x_avg_char_width    : int;
+      ul_unicode_range1   : wint;
+      ul_unicode_range2   : wint;
+      ul_unicode_range3   : wint;
+      ul_unicode_range4   : wint;
+      us_first_char_index : int;
+      us_last_char_index  : int;
+      us_max_context      : int option;
+    }
+    [@@deriving show { with_path = false }]
+
+    (** The type for representing [OS/2] tables. *)
+    type t = {
+      value   : Value.Os2.t;
+      derived : derived;
+    }
+    [@@deriving show { with_path = false }]
+  end
+
+  module Ttf : sig
+    module Maxp : sig
+      (** The type for representing [maxp] tables in fonts that have TrueType-based outlines. *)
+      type t = {
+        num_glyphs               : int;
+        max_points               : int;
+        max_contours             : int;
+        max_composite_points     : int;
+        max_composite_contours   : int;
+        max_zones                : int;
+        max_twilight_points      : int;
+        max_storage              : int;
+        max_function_defs        : int;
+        max_instruction_defs     : int;
+        max_stack_elements       : int;
+        max_size_of_instructions : int;
+        max_component_elements   : int;
+        max_component_depth      : int;
+      }
+      [@@deriving show { with_path = false }]
+    end
+  end
+
+  module Cff : sig
+    module Maxp : sig
+      (** The type for representing [maxp] tables in fonts that have CFF-based outlines. *)
+      type t = {
+        num_glyphs : int;
+      }
+      [@@deriving show { with_path = false }]
+    end
+  end
 end
 
 module Decode : sig
@@ -286,47 +398,12 @@ module Decode : sig
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
-    (** The type for data contained in a single [head] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
-    type derived = {
-      xmin : int;
-      ymin : int;
-      xmax : int;
-      ymax : int;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [head] tables. *)
-    type t = {
-      value   : Value.Head.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
-
+    val get : source -> Intermediate.Head.t ok
   end
 
   (** Handles intermediate representation of [hhea] tables for decoding. *)
   module Hhea : sig
-    (** The type for data contained in a single [hhea] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
-    type derived = {
-      advance_width_max      : int;
-      min_left_side_bearing  : int;
-      min_right_side_bearing : int;
-      xmax_extent            : int;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [hhea] tables. *)
-    type t = {
-      value   : Value.Hhea.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
+    val get : source -> Intermediate.Hhea.t ok
   end
 
   (** Handles intermediate representation of [cmap] tables for decoding.
@@ -363,28 +440,7 @@ module Decode : sig
 
   (** Handles intermediate representation of [OS/2] tables for decoding. *)
   module Os2 : sig
-    (** The type for data contained in a single [OS/2] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
-    type derived = {
-      x_avg_char_width    : int;
-      ul_unicode_range1   : wint;
-      ul_unicode_range2   : wint;
-      ul_unicode_range3   : wint;
-      ul_unicode_range4   : wint;
-      us_first_char_index : int;
-      us_last_char_index  : int;
-      us_max_context      : int option;
-    }
-    [@@deriving show { with_path = false }]
-
-    (** The type for representing [OS/2] tables. *)
-    type t = {
-      value   : Value.Os2.t;
-      derived : derived;
-    }
-    [@@deriving show { with_path = false }]
-
-    val get : source -> t ok
+    val get : source -> Intermediate.Os2.t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)
@@ -504,26 +560,7 @@ module Decode : sig
 
   module Ttf : sig
     module Maxp : sig
-      (** The type for representing [maxp] tables in fonts that have TrueType-based outlines. *)
-      type t = {
-        num_glyphs               : int;
-        max_points               : int;
-        max_contours             : int;
-        max_composite_points     : int;
-        max_composite_contours   : int;
-        max_zones                : int;
-        max_twilight_points      : int;
-        max_storage              : int;
-        max_function_defs        : int;
-        max_instruction_defs     : int;
-        max_stack_elements       : int;
-        max_size_of_instructions : int;
-        max_component_elements   : int;
-        max_component_depth      : int;
-      }
-      [@@deriving show { with_path = false }]
-
-      val get : ttf_source -> t ok
+      val get : ttf_source -> Intermediate.Ttf.Maxp.t ok
     end
 
     val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
@@ -534,14 +571,8 @@ module Decode : sig
   end
 
   module Cff : sig
-    (** The type for representing [maxp] tables in fonts that have CFF-based outlines. *)
     module Maxp : sig
-      type t = {
-        num_glyphs : int;
-      }
-      [@@deriving show { with_path = false }]
-
-      val get : cff_source -> t ok
+      val get : cff_source -> Intermediate.Cff.Maxp.t ok
     end
 
     val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
@@ -560,5 +591,18 @@ module Decode : sig
       gsubr_index:subroutine_index ->
       lsubr_index:subroutine_index ->
       string -> start:int -> charstring_length:int -> (charstring_operation list) ok
+  end
+end
+
+
+module Encode : sig
+  module Error : sig
+    type t
+  end
+
+  type 'a ok = ('a, Error.t) result
+
+  module Subset : sig
+    val make : Decode.source -> Value.glyph_id list -> (string option) ok
   end
 end

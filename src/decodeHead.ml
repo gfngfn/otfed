@@ -1,24 +1,28 @@
 
 open Basic
+open Value
 open DecodeBasic
+open DecodeOperation.Open
 
 
-type derived = {
-  xmin : int;
-  ymin : int;
-  xmax : int;
-  ymax : int;
-}
-[@@deriving show { with_path = false }]
+let d_mac_style : Head.mac_style decoder =
+  let open DecodeOperation in
+  d_uint16 >>= fun u ->
+  if u land (65535 - 127) = 0 then
+    return Value.Head.{
+      bold      = (u land 1 > 0);
+      italic    = (u land 2 > 0);
+      underline = (u land 4 > 0);
+      outline   = (u land 8 > 0);
+      shadow    = (u land 16 > 0);
+      condensed = (u land 32 > 0);
+      extended  = (u land 64 > 0);
+    }
+  else
+    err @@ Error.UnexpectedMacStyle(u)
 
-type t = {
-  value   : Value.Head.t;
-  derived : derived;
-}
-[@@deriving show { with_path = false }]
 
-
-let get (src : source) : t ok =
+let get (src : source) : Intermediate.Head.t ok =
   let open ResultMonad in
   let common = get_common_source src in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_head >>= fun (offset, _length) ->
@@ -34,14 +38,14 @@ let get (src : source) : t ok =
       d_uint16     >>= fun units_per_em ->
       d_timestamp  >>= fun created ->
       d_timestamp  >>= fun modified ->
-      d_int16      >>= fun xmin ->
-      d_int16      >>= fun ymin ->
-      d_int16      >>= fun xmax ->
-      d_int16      >>= fun ymax ->
-      d_uint16     >>= fun mac_style ->
+      d_int16      >>= fun x_min ->
+      d_int16      >>= fun y_min ->
+      d_int16      >>= fun x_max ->
+      d_int16      >>= fun y_max ->
+      d_mac_style  >>= fun mac_style ->
       d_uint16     >>= fun lowest_rec_ppem ->
       (* Skips `fontDirectionHint` and `indexToLocFormat`. *)
-      return {
+      return Intermediate.Head.{
         value = Value.Head.{
           font_revision;
           flags;
@@ -52,10 +56,14 @@ let get (src : source) : t ok =
           lowest_rec_ppem;
         };
         derived = {
-          xmin;
-          ymin;
-          xmax;
-          ymax;
+          x_min;
+          y_min;
+          x_max;
+          y_max;
+          index_to_loc_format = common.loc_format;
+            (* `IndexToLocFormat` has already been obtained
+               since the entire font file was given as a source;
+               see the implementation of `Otfed.Decode.source_of_string`. *)
         };
       }
   in

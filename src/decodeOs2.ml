@@ -3,26 +3,7 @@ open Basic
 open DecodeBasic
 
 
-type derived = {
-  x_avg_char_width    : int;
-  ul_unicode_range1   : wint;
-  ul_unicode_range2   : wint;
-  ul_unicode_range3   : wint;
-  ul_unicode_range4   : wint;
-  us_first_char_index : int;
-  us_last_char_index  : int;
-  us_max_context      : int option;
-}
-[@@deriving show { with_path = false }]
-
-type t = {
-  value   : Value.Os2.t;
-  derived : derived;
-}
-[@@deriving show { with_path = false }]
-
-
-let get (src : source) : t ok =
+let get (src : source) : Intermediate.Os2.t ok =
   let open ResultMonad in
   let common = get_common_source src in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_os2 >>= fun (offset, _length) ->
@@ -77,7 +58,7 @@ let get (src : source) : t ok =
     opt 0x0002 d_uint16 >>= fun us_max_context ->
     opt 0x0005 d_uint16 >>= fun us_lower_optical_point_size ->
     opt 0x0005 d_uint16 >>= fun us_upper_optical_point_size ->
-    return {
+    return Intermediate.Os2.{
       value = Value.Os2.{
         us_weight_class;
         us_width_class;

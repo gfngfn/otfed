@@ -3,6 +3,7 @@ module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
 module V = Otfed.Value
+module I = Otfed.Intermediate
 
 type config = {
   tables : bool;
@@ -93,7 +94,7 @@ let print_head (source : D.source) =
     let open ResultMonad in
     Format.printf "head:@,";
     D.Head.get source >>= fun head ->
-    Format.printf "%a@," D.Head.pp head;
+    Format.printf "%a@," I.Head.pp head;
     return ()
   in
   res |> inj
@@ -104,7 +105,7 @@ let print_hhea (source : D.source) =
     let open ResultMonad in
     Format.printf "hhea:@,";
     D.Hhea.get source >>= fun hhea ->
-    Format.printf "%a@," D.Hhea.pp hhea;
+    Format.printf "%a@," I.Hhea.pp hhea;
     return ()
   in
   res |> inj
@@ -117,12 +118,12 @@ let print_maxp (source : D.source) =
     match source with
     | Ttf(ttf) ->
         D.Ttf.Maxp.get ttf >>= fun maxp ->
-        Format.printf "%a@," D.Ttf.Maxp.pp maxp;
+        Format.printf "%a@," I.Ttf.Maxp.pp maxp;
         return ()
 
     | Cff(cff) ->
         D.Cff.Maxp.get cff >>= fun maxp ->
-        Format.printf "%a@," D.Cff.Maxp.pp maxp;
+        Format.printf "%a@," I.Cff.Maxp.pp maxp;
         return ()
   in
   res |> inj
@@ -196,7 +197,7 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
 
       | Some(loc) ->
           D.Head.get source |> inj >>= fun head ->
-          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          let units_per_em = head.I.Head.value.V.Head.units_per_em in
           D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->
@@ -242,7 +243,7 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
             | Some(w) -> Format.printf "  width: %d@," w;
           end;
           D.Head.get source |> inj >>= fun head ->
-          let units_per_em = head.D.Head.value.V.Head.units_per_em in
+          let units_per_em = head.I.Head.value.V.Head.units_per_em in
           D.Hmtx.get source |> inj >>= fun ihmtx ->
           D.Hmtx.access ihmtx gid |> inj >>= function
           | None ->

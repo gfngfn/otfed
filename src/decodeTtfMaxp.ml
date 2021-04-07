@@ -3,26 +3,7 @@ open Basic
 open DecodeBasic
 
 
-type t = {
-  num_glyphs               : int;
-  max_points               : int;
-  max_contours             : int;
-  max_composite_points     : int;
-  max_composite_contours   : int;
-  max_zones                : int;
-  max_twilight_points      : int;
-  max_storage              : int;
-  max_function_defs        : int;
-  max_instruction_defs     : int;
-  max_stack_elements       : int;
-  max_size_of_instructions : int;
-  max_component_elements   : int;
-  max_component_depth      : int;
-}
-[@@deriving show { with_path = false }]
-
-
-let get (ttf : ttf_source) : t ok =
+let get (ttf : ttf_source) : Intermediate.Ttf.Maxp.t ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
@@ -46,7 +27,7 @@ let get (ttf : ttf_source) : t ok =
       d_uint16 >>= fun max_size_of_instructions ->
       d_uint16 >>= fun max_component_elements ->
       d_uint16 >>= fun max_component_depth ->
-      return {
+      return Intermediate.Ttf.Maxp.{
         num_glyphs;
         max_points;
         max_contours;

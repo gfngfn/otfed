@@ -34,7 +34,7 @@ let d_loca_long (gid : glyph_id) : ((int * int) option) decoder =
     return @@ Some(glyf_offset1, glyf_offset2 - glyf_offset1)
 
 
-let d_loca (loc_format : loc_format) (gid : glyph_id) : (ttf_glyph_location option) decoder =
+let d_loca (loc_format : Intermediate.loc_format) (gid : glyph_id) : (ttf_glyph_location option) decoder =
   let open DecodeOperation in
   (* The position is set to the begging of `loca` table. *)
   let dec =

@@ -227,13 +227,24 @@ module Cmap = struct
 end
 
 module Head = struct
+  type mac_style = {
+    bold      : bool;
+    italic    : bool;
+    underline : bool;
+    outline   : bool;
+    shadow    : bool;
+    condensed : bool;
+    extended  : bool;
+  }
+  [@@deriving show { with_path = false }]
+
   type t = {
     font_revision       : wint;
     flags               : int;
     units_per_em        : int;
     created             : timestamp;
     modified            : timestamp;
-    mac_style           : int;
+    mac_style           : mac_style;
     lowest_rec_ppem     : int;
   }
   [@@deriving show { with_path = false }]

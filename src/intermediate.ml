@@ -88,6 +88,25 @@ module Ttf = struct
     }
     [@@deriving show { with_path = false }]
   end
+
+  type flag = {
+    on_curve       : bool;
+    x_short_vector : bool;
+    y_short_vector : bool;
+    this_x_is_same : bool;
+    this_y_is_same : bool;
+  }
+
+  type component_flag = {
+    arg_1_and_2_are_words    : bool;
+    args_are_xy_values       : bool;
+    round_xy_to_grid         : bool;
+    we_have_a_scale          : bool;
+    we_have_an_x_and_y_scale : bool;
+    we_have_a_two_by_two     : bool;
+    we_have_instructions     : bool;
+    use_my_metrics           : bool;
+  }
 end
 
 

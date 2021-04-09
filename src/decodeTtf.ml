@@ -66,13 +66,7 @@ let d_end_points (numberOfContours : int) : (int Alist.t) decoder =
   loop numberOfContours Alist.empty
 
 
-type flag = {
-  on_curve       : bool;
-  x_short_vector : bool;
-  y_short_vector : bool;
-  this_x_is_same : bool;
-  this_y_is_same : bool;
-}
+type flag = Intermediate.Ttf.flag
 
 
 let d_flags (num_points : int) : (flag Alist.t) decoder =
@@ -89,7 +83,7 @@ let d_flags (num_points : int) : (flag Alist.t) decoder =
     else
       d_uint8 >>= fun byte ->
       let flag =
-        {
+        Intermediate.Ttf.{
           on_curve       = (byte land 1 > 0);
           x_short_vector = (byte land 2 > 0);
           y_short_vector = (byte land 4 > 0);
@@ -151,7 +145,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
         xCoordinate :: xCoordinates,
         yCoordinate :: yCoordinates
       ) ->
-        let point = (flag.on_curve, xCoordinate, yCoordinate) in
+        let point = (flag.Intermediate.Ttf.on_curve, xCoordinate, yCoordinate) in
         let (is_final, endPtsOfContours) =
           match endPtsOfContours with
           | []      -> (false, [])
@@ -192,16 +186,7 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
     return (combine endPtsOfContours num_points flags xCoordinates yCoordinates)
 
 
-type component_flag = {
-  arg_1_and_2_are_words    : bool;
-  args_are_xy_values       : bool;
-  round_xy_to_grid         : bool;
-  we_have_a_scale          : bool;
-  we_have_an_x_and_y_scale : bool;
-  we_have_a_two_by_two     : bool;
-  we_have_instructions     : bool;
-  use_my_metrics           : bool;
-}
+type component_flag = Intermediate.Ttf.component_flag
 
 
 let d_component_flag : (bool * component_flag) decoder =
@@ -209,7 +194,7 @@ let d_component_flag : (bool * component_flag) decoder =
   d_uint16 >>= fun twobytes ->
   let more_components = (twobytes land 32 > 0) in
   let cflag =
-    {
+    Intermediate.Ttf.{
       arg_1_and_2_are_words    = (twobytes land 1 > 0);
       args_are_xy_values       = (twobytes land 2 > 0);
       round_xy_to_grid         = (twobytes land 4 > 0);

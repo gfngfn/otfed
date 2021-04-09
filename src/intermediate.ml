@@ -88,6 +88,14 @@ module Ttf = struct
     }
     [@@deriving show { with_path = false }]
   end
+
+  type flag = {
+    on_curve       : bool;
+    x_short_vector : bool;
+    y_short_vector : bool;
+    this_x_is_same : bool;
+    this_y_is_same : bool;
+  }
 end
 
 

@@ -66,13 +66,7 @@ let d_end_points (numberOfContours : int) : (int Alist.t) decoder =
   loop numberOfContours Alist.empty
 
 
-type flag = {
-  on_curve       : bool;
-  x_short_vector : bool;
-  y_short_vector : bool;
-  this_x_is_same : bool;
-  this_y_is_same : bool;
-}
+type flag = Intermediate.Ttf.flag
 
 
 let d_flags (num_points : int) : (flag Alist.t) decoder =
@@ -89,7 +83,7 @@ let d_flags (num_points : int) : (flag Alist.t) decoder =
     else
       d_uint8 >>= fun byte ->
       let flag =
-        {
+        Intermediate.Ttf.{
           on_curve       = (byte land 1 > 0);
           x_short_vector = (byte land 2 > 0);
           y_short_vector = (byte land 4 > 0);
@@ -151,7 +145,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
         xCoordinate :: xCoordinates,
         yCoordinate :: yCoordinates
       ) ->
-        let point = (flag.on_curve, xCoordinate, yCoordinate) in
+        let point = (flag.Intermediate.Ttf.on_curve, xCoordinate, yCoordinate) in
         let (is_final, endPtsOfContours) =
           match endPtsOfContours with
           | []      -> (false, [])

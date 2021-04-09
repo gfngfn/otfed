@@ -5,17 +5,22 @@ include EncodeOperationCore
 open Open
 
 
-let e_16bits (bits : bool list) =
-  let rec aux (p : int) (n : int) (bits : bool list) =
-    match bits with
-    | [] ->
-        e_uint16 n
+let rec encode_bits (enc : int -> unit encoder) (p : int) (n : int) (bits : bool list) =
+  match bits with
+  | [] ->
+      enc n
 
-    | bit :: bits ->
-        let n = if bit then n + p else n in
-        aux (p * 2) n bits
-  in
-  aux 1 0 bits
+  | bit :: bits ->
+      let n = if bit then n + p else n in
+      encode_bits enc (p * 2) n bits
+
+
+let e_8bits (bits : bool list) =
+  encode_bits e_uint8 1 0 bits
+
+
+let e_16bits (bits : bool list) =
+  encode_bits e_uint16 1 0 bits
 
 
 let rec e_list (enc : 'a -> unit encoder) =

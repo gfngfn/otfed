@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 open EncodeOperation.Open
 
 
@@ -12,7 +13,6 @@ type 'a ok = ('a, Error.t) result
 type table = {
   tag      : Value.Tag.t;
   contents : string;
-  length   : int;
 }
 
 
@@ -64,14 +64,13 @@ module Head = struct
       e_int16 font_direction_hint >>= fun () ->
       e_int16 loc_format_num      >>= fun () ->
       e_int16 glyph_data_format   >>= fun () ->
-      current
+      return ()
     in
     let open ResultMonad in
-    enc |> EncodeOperation.run >>= fun (contents, length) ->
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
     return {
       tag = Value.Tag.table_head;
       contents;
-      length;
     }
 
 end
@@ -103,14 +102,13 @@ module Hhea = struct
       e_int16  0                        >>= fun () ->
       e_int16  metric_data_format       >>= fun () ->
       e_uint16 number_of_h_metrics      >>= fun () ->
-      current
+      return ()
     in
     let open ResultMonad in
-    enc |> EncodeOperation.run >>= fun (contents, length) ->
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
     return {
       tag = Value.Tag.table_hhea;
       contents;
-      length;
     }
 
 end
@@ -302,13 +300,55 @@ module Os2 = struct
       e_uint16 v.us_win_ascent          >>= fun () ->
       e_uint16 v.us_win_descent         >>= fun () ->
       e_opt e_extension1 extension      >>= fun () ->
-      current
+      return ()
     in
-    enc |> EncodeOperation.run >>= fun (contents, length) ->
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
     return {
       tag = Value.Tag.table_os2;
       contents;
-      length;
+    }
+
+end
+
+
+module Hmtx = struct
+
+  let make (entries : (int * int) list) : table ok =
+    let enc =
+      let open EncodeOperation in
+      let e_entry (advanceWidth, lsb) =
+        e_uint16 advanceWidth >>= fun () ->
+        e_int16  lsb
+      in
+      e_list e_entry entries
+    in
+    let open ResultMonad in
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
+    return {
+      tag = Value.Tag.table_hmtx;
+      contents;
+    }
+
+
+  let make_by_iter ~num_glyphs:(num_glyphs : int) (f : glyph_id -> int * int) : table ok =
+    let enc =
+      let open EncodeOperation in
+      let rec aux gid =
+        if gid >= num_glyphs then
+          return ()
+        else
+          let (advanceWidth, lsb) = f gid in
+          e_uint16 advanceWidth >>= fun () ->
+          e_int16  lsb          >>= fun () ->
+          aux (gid + 1)
+      in
+      aux 0
+    in
+    let open ResultMonad in
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
+    return {
+      tag = Value.Tag.table_hmtx;
+      contents;
     }
 
 end
@@ -337,14 +377,13 @@ module Ttf = struct
         e_uint16 imaxp.max_size_of_instructions >>= fun () ->
         e_uint16 imaxp.max_component_elements   >>= fun () ->
         e_uint16 imaxp.max_component_depth      >>= fun () ->
-        current
+        return ()
       in
       let open ResultMonad in
-      enc |> EncodeOperation.run >>= fun (contents, length) ->
+      enc |> EncodeOperation.run >>= fun (contents, ()) ->
       return {
         tag = Value.Tag.table_maxp;
         contents;
-        length;
       }
 
   end
@@ -362,14 +401,13 @@ module Cff = struct
         let open EncodeOperation in
         e_uint32 table_version    >>= fun () ->
         e_uint16 imaxp.num_glyphs >>= fun () ->
-        current
+        return ()
       in
       let open ResultMonad in
-      enc |> EncodeOperation.run >>= fun (contents, length) ->
+      enc |> EncodeOperation.run >>= fun (contents, ()) ->
       return {
         tag = Value.Tag.table_maxp;
         contents;
-        length;
       }
 
   end

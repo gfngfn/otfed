@@ -186,16 +186,7 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
     return (combine endPtsOfContours num_points flags xCoordinates yCoordinates)
 
 
-type component_flag = {
-  arg_1_and_2_are_words    : bool;
-  args_are_xy_values       : bool;
-  round_xy_to_grid         : bool;
-  we_have_a_scale          : bool;
-  we_have_an_x_and_y_scale : bool;
-  we_have_a_two_by_two     : bool;
-  we_have_instructions     : bool;
-  use_my_metrics           : bool;
-}
+type component_flag = Intermediate.Ttf.component_flag
 
 
 let d_component_flag : (bool * component_flag) decoder =
@@ -203,7 +194,7 @@ let d_component_flag : (bool * component_flag) decoder =
   d_uint16 >>= fun twobytes ->
   let more_components = (twobytes land 32 > 0) in
   let cflag =
-    {
+    Intermediate.Ttf.{
       arg_1_and_2_are_words    = (twobytes land 1 > 0);
       args_are_xy_values       = (twobytes land 2 > 0);
       round_xy_to_grid         = (twobytes land 4 > 0);

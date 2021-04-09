@@ -11,5 +11,7 @@ val e_8bits : bool list -> unit encoder
     as an unsigned two-byte integer. *)
 val e_16bits : bool list -> unit encoder
 
+val e_f2dot14 : float -> unit encoder
+
 (** [e_list enc xs] writes [xs] by using [enc] for each element of [xs]. *)
 val e_list : ('a -> unit encoder) -> 'a list -> unit encoder

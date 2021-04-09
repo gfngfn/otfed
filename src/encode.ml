@@ -474,8 +474,93 @@ module Ttf = struct
     return ()
 
 
-  let e_composite_glyph (_elems : ttf_composite_glyph_description) : unit encoder =
-    failwith "TODO: e_composite_glyph"
+  let e_component_flag (more_components : bool) (cflag : Intermediate.Ttf.component_flag) =
+    let open EncodeOperation in
+    let open Intermediate.Ttf in
+    e_16bits [
+      cflag.arg_1_and_2_are_words;
+      cflag.args_are_xy_values;
+      cflag.round_xy_to_grid;
+      cflag.we_have_a_scale;
+      false; (* a reserved bit *)
+      more_components;
+      cflag.we_have_an_x_and_y_scale;
+      cflag.we_have_a_two_by_two;
+      cflag.we_have_instructions;
+      cflag.use_my_metrics;
+    ]
+
+
+  let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
+    let open EncodeOperation in
+    let rec aux = function
+      | [] ->
+          return ()
+
+      | (gid, composition, linear_opt) :: elems ->
+          let (args_are_xy_values, arg1, arg2) =
+            match composition with
+            | Vector(x, y)   -> (true, x, y)
+            | Matching(i, j) -> (false, i, j)
+          in
+          let (arg_1_and_2_are_words, e_arg) =
+            if -256 <= arg1 && arg1 < 256 && -256 <= arg2 && arg2 < 256 then
+              (true, e_int8)
+            else
+              (false, e_int16)
+          in
+          let cflags_base =
+            Intermediate.Ttf.{
+              arg_1_and_2_are_words;
+              args_are_xy_values;
+              round_xy_to_grid = true; (* TODO: should be extracted from `ttf_composite_glyph_description` *)
+              we_have_a_scale          = false;
+              we_have_an_x_and_y_scale = false;
+              we_have_a_two_by_two     = false;
+              we_have_instructions = false; (* TODO *)
+              use_my_metrics       = false; (* TODO *)
+            }
+          in
+          let (cflags, e_linear_transform) =
+            match linear_opt with
+            | Some{a = a; b = b; c = c; d = d} ->
+                if b = 0. && c = 0. then
+                  if a = d then
+                    let enc =
+                      e_f2dot14 a
+                    in
+                    ({ cflags_base with we_have_a_scale = true }, enc)
+                  else
+                    let enc =
+                      e_f2dot14 a >>= fun () ->
+                      e_f2dot14 d
+                    in
+                    ({ cflags_base with we_have_an_x_and_y_scale = true }, enc)
+                else
+                  let enc =
+                      e_f2dot14 a >>= fun () ->
+                      e_f2dot14 b >>= fun () ->
+                      e_f2dot14 c >>= fun () ->
+                      e_f2dot14 d
+                  in
+                  ({ cflags_base with we_have_a_two_by_two = true }, enc)
+
+            | None ->
+                (cflags_base, return ())
+          in
+          let more_components =
+            match elems with
+            | []     -> true
+            | _ :: _ -> false
+          in
+          e_component_flag more_components cflags >>= fun () ->
+          e_uint16 gid >>= fun () ->
+          e_arg arg1 >>= fun () ->
+          e_arg arg2 >>= fun () ->
+          e_linear_transform >>= fun () ->
+          aux elems
+    in
+    aux elems
 
 
   let e_glyph (g : glyph_info) =

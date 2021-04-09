@@ -83,7 +83,7 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
 
   <tr><td rowspan="2">TTF</td>
       <td>loca</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>glyf</td><td>-</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
+  <tr><td>glyf</td><td>v</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
 
   <tr><td rowspan="3">CFF</td>
       <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>

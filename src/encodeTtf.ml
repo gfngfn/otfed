@@ -256,22 +256,26 @@ let can_use_short_loc_format (locs : Intermediate.Ttf.glyph_location list) : boo
   | GlyphLocation(last_reloffset) :: _ -> last_reloffset / 2 < 65536
 
 
-let make_loca (locs : Intermediate.Ttf.glyph_location list) : table ok =
+let make_loca (locs : Intermediate.Ttf.glyph_location list) : (table * Intermediate.loc_format) ok =
   let enc =
     let open EncodeOperation in
-    let open Intermediate.Ttf in
-    let e_single =
+    let open Intermediate in
+    let (loc_format, e_single) =
       if can_use_short_loc_format locs then
-        (function GlyphLocation(reloffset) -> e_uint16 (reloffset / 2))
+        (ShortLocFormat, function Ttf.GlyphLocation(reloffset) -> e_uint16 (reloffset / 2))
       else
-        (function GlyphLocation(reloffset) -> e_uint32 (!% reloffset))
+        (LongLocFormat, function Ttf.GlyphLocation(reloffset) -> e_uint32 (!% reloffset))
     in
     e_single (GlyphLocation(0)) >>= fun () ->
-    e_list e_single locs
+    e_list e_single locs        >>= fun () ->
+    return loc_format
   in
   let open ResultMonad in
-  enc |> EncodeOperation.run >>= fun (contents, ()) ->
-  return {
-    tag = Value.Tag.table_loca;
-    contents;
-  }
+  enc |> EncodeOperation.run >>= fun (contents, loc_format) ->
+  let table =
+    {
+      tag = Value.Tag.table_loca;
+      contents;
+    }
+  in
+  return (table, loc_format)

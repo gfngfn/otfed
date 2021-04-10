@@ -58,15 +58,16 @@ let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_info list 
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let open ResultMonad in
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
-  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, _locs) ->
+  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
+  inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
   inj_dec @@ DecodeTable.Head.get (Ttf(ttf)) >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{
-      x_min               = bbox_all.x_min;
-      y_min               = bbox_all.y_min;
-      x_max               = bbox_all.x_max;
-      y_max               = bbox_all.y_max;
-      index_to_loc_format = failwith "TODO: head_derived, loc_format";
+      x_min = bbox_all.x_min;
+      y_min = bbox_all.y_min;
+      x_max = bbox_all.x_max;
+      y_max = bbox_all.y_max;
+      index_to_loc_format;
     }
   in
   let ihead =

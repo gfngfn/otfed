@@ -55,15 +55,59 @@ let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_info list 
       return (gs, bbox_all)
 
 
-let make_hmtx (src : source) (gids : glyph_id list) : EncodeBasic.table ok =
+type hmtx_entry = design_units * design_units
+
+type hmtx_accumulator = Intermediate.Hhea.derived * (design_units * design_units) Alist.t
+
+
+let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry) ok =
+  let open ResultMonad in
+  inj_dec @@ DecodeTable.Hmtx.access ihmtx gid >>= function
+  | None ->
+      err NoGlyphGiven
+
+  | Some((aw, lsb) as entry) ->
+      let derived =
+        let x_min = g.bounding_box.x_min in
+        let x_max = g.bounding_box.x_max in
+        let extent = x_max - x_min in
+        let rsb = aw - lsb - extent in
+        Intermediate.Hhea.{
+          advance_width_max      = aw;
+          min_left_side_bearing  = lsb;
+          min_right_side_bearing = rsb;
+          xmax_extent            = extent;
+        }
+      in
+      return (derived, entry)
+
+
+let folding_hmtx (ihmtx : Decode.Hmtx.t) ((derived, entries) : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) =
+  let open ResultMonad in
+  get_hmtx ihmtx gg >>= fun (derived_new, entry) ->
+      let derived =
+        Intermediate.Hhea.{
+          advance_width_max      = Stdlib.max derived.advance_width_max      derived_new.advance_width_max;
+          min_left_side_bearing  = Stdlib.min derived.min_left_side_bearing  derived_new.min_left_side_bearing;
+          min_right_side_bearing = Stdlib.min derived.min_right_side_bearing derived_new.min_right_side_bearing;
+          xmax_extent            = Stdlib.max derived.xmax_extent            derived_new.xmax_extent;
+        }
+      in
+      return (derived, Alist.extend entries entry)
+
+
+let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeBasic.table * Intermediate.Hhea.derived) ok =
   let open ResultMonad in
   inj_dec @@ DecodeTable.Hmtx.get src >>= fun ihmtx ->
-  gids |> mapM (fun gid ->
-    inj_dec @@ DecodeTable.Hmtx.access ihmtx gid >>= function
-    | None        -> err NoGlyphGiven
-    | Some(entry) -> return entry
-  ) >>= fun hmtx_entries ->
-  inj_enc @@ EncodeTable.Hmtx.make hmtx_entries
+  match ggs with
+  | [] ->
+      err NoGlyphGiven
+
+  | gg_first :: ggs_tail ->
+      get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first) ->
+      foldM (folding_hmtx ihmtx) ggs_tail (derived_first, Alist.empty) >>= fun (derived, entries_tail) ->
+      inj_enc @@ EncodeTable.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
+      return (table_hmtx, derived)
 
 
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
@@ -71,13 +115,13 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
 
   let src = Ttf(ttf) in
 
-  (* Make `hmtx`. *)
-  make_hmtx src gids >>= fun _table_hmtx ->
-
   (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
   inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
   inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
+
+  (* Make `hmtx`. *)
+  make_hmtx src (List.combine gids gs) >>= fun (_table_hmtx, _hhea_derived) ->
 
   (* Make `head`. *)
   inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->

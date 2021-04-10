@@ -123,7 +123,7 @@ let e_int8 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if -128 <= n && n < 128 then
-    let u = if n < 0 then n + 128 else n in
+    let u = if n < 0 then n + 256 else n in
     encode_uint8_unsafe buf u
   else
     err @@ Error.NotEncodableAsInt8(n)
@@ -142,7 +142,7 @@ let e_int16 (n : int) : unit encoder =
 fun buf ->
   let open ResultMonad in
   if -32768 <= n && n < 32768 then
-    let u = if n < 0 then n + 32768 else n in
+    let u = if n < 0 then n + 65536 else n in
     encode_uint16_unsafe buf u
   else
     err @@ Error.NotEncodableAsInt16(n)

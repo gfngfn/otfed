@@ -274,9 +274,9 @@ let d_pascal_string_names (len_remained : int) : (string array) decoder =
     if len_remained <= 0 then
       return @@ Array.of_list (Alist.to_list acc)
     else
-      d_uint16 >>= fun len ->
+      d_uint8 >>= fun len ->
       d_bytes len >>= fun name ->
-      aux (Alist.extend acc name) (len_remained - len)
+      aux (Alist.extend acc name) (len_remained - 1 - len)
   in
   aux Alist.empty len_remained
 

@@ -89,6 +89,9 @@ module Ttf = struct
     [@@deriving show { with_path = false }]
   end
 
+  type glyph_location =
+    | GlyphLocation of int
+
   type flag = {
     on_curve       : bool;
     x_short_vector : bool;

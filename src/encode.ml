@@ -577,6 +577,56 @@ module Ttf = struct
     e_int16 g.bounding_box.y_max >>= fun () ->
     enc
 
+
+  let make_glyf (gs : glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
+    let enc =
+      let open EncodeOperation in
+      gs |> mapM (fun g ->
+        e_glyph g           >>= fun () ->
+        pad_to_long_aligned >>= fun () ->
+          (* Every glyph location should begin and end at long-aligned local offsets. *)
+        current             >>= fun reloffset ->
+        return @@ Intermediate.Ttf.GlyphLocation(reloffset)
+      )
+    in
+    let open ResultMonad in
+    enc |> EncodeOperation.run >>= fun (contents, locs) ->
+    let table =
+      {
+        tag = Value.Tag.table_glyf;
+        contents;
+      }
+    in
+    return (table, locs)
+
+
+  let can_use_short_loc_format (locs : Intermediate.Ttf.glyph_location list) : bool =
+    let open Intermediate.Ttf in
+    match List.rev locs with
+    | []                                 -> true
+    | GlyphLocation(last_reloffset) :: _ -> last_reloffset / 2 < 65536
+
+
+  let make_loca (locs : Intermediate.Ttf.glyph_location list) : table ok =
+    let enc =
+      let open EncodeOperation in
+      let open Intermediate.Ttf in
+      let e_single =
+        if can_use_short_loc_format locs then
+          (function GlyphLocation(reloffset) -> e_uint16 (reloffset / 2))
+        else
+          (function GlyphLocation(reloffset) -> e_uint32 (!% reloffset))
+      in
+      e_single (GlyphLocation(0)) >>= fun () ->
+      e_list e_single locs
+    in
+    let open ResultMonad in
+    enc |> EncodeOperation.run >>= fun (contents, ()) ->
+    return {
+      tag = Value.Tag.table_loca;
+      contents;
+    }
+
 end
 
 

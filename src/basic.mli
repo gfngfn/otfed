@@ -26,6 +26,7 @@ module ResultMonad : sig
   val return : 'a -> ('a, 'e) result
   val err : 'e -> ('a, 'e) result
   val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
+  val foldM : ('b -> 'a -> ('b, 'e) result) -> 'a list -> 'b -> ('b, 'e) result
 end
 
 type offset = int

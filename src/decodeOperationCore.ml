@@ -45,6 +45,16 @@ let mapM df vs =
     return @@ (state, Alist.to_list acc)
 
 
+let foldM df vs acc =
+  fun state ->
+    let open ResultMonad in
+    vs |> List.fold_left (fun res v ->
+      res >>= fun (state, acc) ->
+      df acc v state >>= fun (state, acc) ->
+      return @@ (state, acc)
+    ) (Ok(state, acc))
+
+
 let transform_result (res : 'a ok) : 'a decoder =
   match res with
   | Ok(v)    -> return v

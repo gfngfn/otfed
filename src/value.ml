@@ -155,6 +155,11 @@ type bounding_box = {
 }
 [@@deriving show { with_path = false }]
 
+type ttf_glyph_info = {
+  bounding_box : bounding_box;
+  description  : ttf_glyph_description;
+}
+
 type cubic_path_element =
   | CubicLineTo  of point
   | CubicCurveTo of point * point * point

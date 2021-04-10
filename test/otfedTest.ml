@@ -45,7 +45,7 @@ let () =
 
 
 let () =
-  let pp ppf (descr, bbox) =
+  let pp ppf V.{ description = descr; bounding_box = bbox } =
     Format.fprintf ppf "(%a, %a)" V.pp_ttf_glyph_description descr V.pp_bounding_box bbox
   in
   let res = T.run TestCaseGlyf1.data T.d_glyf in

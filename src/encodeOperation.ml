@@ -1,5 +1,6 @@
 
 open Basic
+open Value
 
 
 include EncodeOperationCore
@@ -30,6 +31,10 @@ let e_f2dot14 (x : float) =
   e_int16 (int_of_float (x *. 16384.))
 
 
+let e_tag (tag : Tag.t) =
+  e_bytes (Tag.to_string tag)
+
+
 let mapM (enc : 'a -> 'b encoder) =
   let rec aux acc = function
     | [] ->
@@ -40,6 +45,18 @@ let mapM (enc : 'a -> 'b encoder) =
         aux (Alist.extend acc v) xs
   in
   aux Alist.empty
+
+
+let foldM (enc : 'b -> 'a -> 'b encoder) (xs : 'a list) (acc : 'b) =
+  let rec aux acc = function
+    | [] ->
+        return acc
+
+    | x :: xs ->
+        enc acc x >>= fun acc ->
+        aux acc xs
+  in
+  aux acc xs
 
 
 let e_list (enc : 'a -> 'b encoder) (xs : 'a list) =

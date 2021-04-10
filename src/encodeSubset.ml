@@ -55,12 +55,32 @@ let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_info list 
       return (gs, bbox_all)
 
 
+let make_hmtx (src : source) (gids : glyph_id list) : EncodeBasic.table ok =
+  let open ResultMonad in
+  inj_dec @@ DecodeTable.Hmtx.get src >>= fun ihmtx ->
+  gids |> mapM (fun gid ->
+    inj_dec @@ DecodeTable.Hmtx.access ihmtx gid >>= function
+    | None        -> err NoGlyphGiven
+    | Some(entry) -> return entry
+  ) >>= fun hmtx_entries ->
+  inj_enc @@ EncodeTable.Hmtx.make hmtx_entries
+
+
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let open ResultMonad in
+
+  let src = Ttf(ttf) in
+
+  (* Make `hmtx`. *)
+  make_hmtx src gids >>= fun _table_hmtx ->
+
+  (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
   inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
   inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
-  inj_dec @@ DecodeTable.Head.get (Ttf(ttf)) >>= fun { value = head_value; _ } ->
+
+  (* Make `head`. *)
+  inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{
       x_min = bbox_all.x_min;

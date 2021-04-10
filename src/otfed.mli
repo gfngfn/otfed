@@ -589,7 +589,8 @@ module Decode : sig
   type charstring_data = CharStringData of int * int
   type subroutine_index = charstring_data array
   module ForTest : sig
-    type 'a decoder
+    module DecodeOperation : (module type of DecodeOperation)
+    type 'a decoder = 'a DecodeOperation.Open.decoder
     val run : string -> 'a decoder -> 'a ok
     val d_glyf : Value.ttf_glyph_info decoder
     val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
@@ -604,6 +605,7 @@ end
 module Encode : sig
   module Error : sig
     type t
+    [@@deriving show { with_path = false }]
   end
 
   type 'a ok = ('a, Error.t) result
@@ -614,9 +616,18 @@ module Encode : sig
       | GlyphNotFound of Value.glyph_id
       | DecodeError   of Decode.Error.t
       | EncodeError   of Encode.Error.t
+    [@@deriving show { with_path = false }]
 
     type 'a ok = ('a, error) result
 
     val make : Decode.source -> Value.glyph_id list -> string ok
+  end
+
+  module ForTest : sig
+    module EncodeOperation : (module type of EncodeOperation)
+
+    type 'a encoder = 'a EncodeOperation.Open.encoder
+
+    val run : 'a encoder -> string ok
   end
 end

@@ -59,7 +59,9 @@ let decompose_contours (contours : ttf_contour list) : flag list * relative list
         let y_rel = y_coord - y_coord_prev in
         if y_rel = 0 then
           (false, true, acc.relative_ys)
-        else if -256 <= y_rel && y_rel < 256 then
+        else if -255 <= y_rel && y_rel < 256 then
+          (* Note that the valid interval is not [-256, 255], but [-255, 255].
+             This is because we possibly encode the absolute value of `y_rel` as 8-bit unsigned integer. *)
           let (is_positive, y_rel_abs) =
             if y_rel > 0 then (true, y_rel) else (false, -y_rel)
           in
@@ -96,6 +98,7 @@ let e_flag (flag : flag) =
     flag.on_curve;
     flag.x_short_vector;
     flag.y_short_vector;
+    false; (* repeat *)
     flag.this_x_is_same;
     flag.this_y_is_same;
   ]

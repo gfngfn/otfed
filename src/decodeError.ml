@@ -51,5 +51,13 @@ type t =
   | CffContainsTtfMaxpTable
   | TtfContainsCffMaxpTable
   | UnexpectedMacStyle        of int
+
+  | InconsistentNumberOfPoints of {
+      num_points : int;
+      num_flags  : int;
+      num_xs     : int;
+      num_ys     : int;
+    }
+
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

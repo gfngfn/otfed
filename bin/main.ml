@@ -2,6 +2,7 @@
 module Alist = Otfed.Alist
 module ResultMonad = Otfed.ResultMonad
 module D = Otfed.Decode
+module E = Otfed.Encode
 module V = Otfed.Value
 module I = Otfed.Intermediate
 
@@ -18,6 +19,7 @@ type config = {
   cff    : (V.glyph_id * string) Alist.t;
   gsub   : (string * string * string) Alist.t;
   gpos   : (string * string * string) Alist.t;
+  subset : (V.glyph_id list * string) Alist.t;
 }
 
 type error =
@@ -26,12 +28,15 @@ type error =
   | CannotReadFile     of string
   | CannotWriteFile    of string
   | DecodingError      of D.Error.t
+  | SubsetError        of E.Subset.error
 [@@deriving show { with_path = false }]
 
 
-let inj = function
-  | Ok(v)    -> Ok(v)
-  | Error(e) -> Error(DecodingError(e))
+let inj x =
+  x |> Result.map_error (fun e -> DecodingError(e))
+
+let inj_subset x =
+  x |> Result.map_error (fun e -> SubsetError(e))
 
 
 let print_table_directory (source : D.source) =
@@ -172,7 +177,7 @@ let print_kern (source : D.source) =
   res |> inj
 
 
-let write_glyph_svg path ~data =
+let write_file path ~data =
   let open ResultMonad in
   try
     Core_kernel.Out_channel.write_all path ~data;
@@ -211,7 +216,7 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
               Format.printf "  (%a, %a)@,"
                 V.pp_ttf_glyph_description descr
                 V.pp_bounding_box bbox;
-              write_glyph_svg path ~data
+              write_file path ~data
 
 
 
@@ -256,7 +261,7 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
               D.Cff.path_of_charstring charstring |> inj >>= fun paths ->
               Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
               let data = Svg.make_cff ~units_per_em paths ~aw in
-              write_glyph_svg path ~data
+              write_file path ~data
 
 
 let print_gsub_feature (feature : D.Gsub.feature) =
@@ -443,6 +448,13 @@ let print_gpos (source : D.source) (script_tag : string) (langsys_tag : string) 
           print_gpos_script script langsys_tag feature_tag
 
 
+let make_subset (source : D.source) (gids : V.glyph_id list) (path : string) =
+  let open ResultMonad in
+  E.Subset.make source gids |> inj_subset >>= fun data ->
+  write_file path ~data
+
+
+
 let parse_args () =
   let open ResultMonad in
   let rec aux n acc i =
@@ -484,6 +496,11 @@ let parse_args () =
           let feature = Sys.argv.(i + 3) in
           aux n { acc with gpos = Alist.extend acc.gpos (script, langsys, feature) } (i + 4)
 
+      | "subset" ->
+          let gids = String.split_on_char ',' Sys.argv.(i + 1) |> List.map int_of_string in
+          let path = Sys.argv.(i + 2) in
+          aux n { acc with subset = Alist.extend acc.subset (gids, path) } (i + 3)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -504,6 +521,7 @@ let parse_args () =
         cff    = Alist.empty;
         gsub   = Alist.empty;
         gpos   = Alist.empty;
+        subset = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -564,6 +582,9 @@ let _ =
         ) >>= fun _ ->
         config.gpos |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gpos source script langsys feature |> inj
+        ) >>= fun _ ->
+        config.subset |> Alist.to_list |> mapM (fun (gids, path) ->
+          make_subset source gids path
         ) >>= fun _ ->
         return ()
 

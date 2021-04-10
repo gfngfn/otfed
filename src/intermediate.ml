@@ -99,6 +99,7 @@ module Ttf = struct
     this_x_is_same : bool;
     this_y_is_same : bool;
   }
+  [@@deriving show { with_path = false }]
 
   type component_flag = {
     arg_1_and_2_are_words    : bool;
@@ -110,6 +111,7 @@ module Ttf = struct
     we_have_instructions     : bool;
     use_my_metrics           : bool;
   }
+  [@@deriving show { with_path = false }]
 end
 
 

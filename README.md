@@ -73,17 +73,17 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
   </tr>
   <tr><td rowspan="8">Required</td>
       <td>cmap</td><td>v (Format 12 only)</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
-  <tr><td>head</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
-  <tr><td>hhea</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
-  <tr><td>hmtx</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
-  <tr><td>maxp</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>head</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>hhea</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>hmtx</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>maxp</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>OS/2</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="2">TTF</td>
-      <td>loca</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
-  <tr><td>glyf</td><td>v</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
+      <td>loca</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>glyf</td><td>v</td><td>o (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
 
   <tr><td rowspan="3">CFF</td>
       <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>

@@ -1,10 +1,12 @@
 
 module V = Otfed.Value
 module D = Otfed.Decode
-module T = Otfed.Decode.ForTest
+module E = Otfed.Encode
+module DT = Otfed.Decode.ForTest
+module ET = Otfed.Encode.ForTest
 
 
-let assert_match ~pp ~message:msg expected = function
+let assert_match ~pp ~pp_error ~message:msg expected = function
   | Ok(got) ->
       if got = expected then
         print_endline "OK"
@@ -19,8 +21,16 @@ let assert_match ~pp ~message:msg expected = function
 
   | Error(e) ->
       Format.printf "%s\n" msg;
-      Format.printf "%a\n" Otfed.Decode.Error.pp e;
+      Format.printf "%a\n" pp_error e;
       exit 1
+
+
+let pp_xxd ppf s =
+  let pp_single ppf ch =
+    Format.fprintf ppf "%02x" (Char.code ch)
+  in
+  let chars = Core_kernel.String.to_list_rev s |> List.rev in
+  Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
 
 
 let () =
@@ -39,8 +49,43 @@ let () =
     Format.fprintf ppf "%a" (Format.pp_print_list ~pp_sep Format.pp_print_int) ds
   in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
-    let got = T.chop_two_bytes ~data ~unit_size ~repeat in
-    assert_match ~pp ~message:"chop_two_bytes" expected (Ok(got))
+    let got = DT.chop_two_bytes ~data ~unit_size ~repeat in
+    assert_match
+      ~pp
+      ~pp_error:D.Error.pp
+      ~message:"chop_two_bytes"
+      expected
+      (Ok(got))
+  )
+
+
+module DecOp = DT.DecodeOperation
+module EncOp = ET.EncodeOperation
+
+
+let () =
+  let cases =
+    [
+      (TestUtil.make_string_even [0xffec], -20);
+    ]
+  in
+  cases |> List.iter (fun (input, expected) ->
+    let res = DecOp.d_int16 |> DT.run input in
+    assert_match
+      ~pp:Format.pp_print_int
+      ~pp_error:D.Error.pp
+      ~message:"d_int16"
+      expected
+      res
+  );
+  cases |> List.iter (fun (expected, input) ->
+    let res = EncOp.e_int16 input |> ET.run in
+    assert_match
+      ~pp:pp_xxd
+      ~pp_error:E.Error.pp
+      ~message:"e_int16"
+      expected
+      res
   )
 
 
@@ -48,8 +93,13 @@ let () =
   let pp ppf V.{ description = descr; bounding_box = bbox } =
     Format.fprintf ppf "(%a, %a)" V.pp_ttf_glyph_description descr V.pp_bounding_box bbox
   in
-  let res = T.run TestCaseGlyf1.data T.d_glyf in
-  assert_match ~pp ~message:"glyf" TestCaseGlyf1.expected res
+  let res = DT.run TestCaseGlyf1.data DT.d_glyf in
+  assert_match
+    ~pp
+    ~pp_error:D.Error.pp
+    ~message:"glyf"
+    TestCaseGlyf1.expected
+    res
 
 
 let () =
@@ -84,5 +134,10 @@ let () =
     (start, data, charstring_length)
   in
   let pp = D.pp_charstring in
-  let res = T.run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
-  assert_match ~pp ~message:"cff" TestCaseCff1.expected_operations res
+  let res = DT.run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
+  assert_match
+    ~pp
+    ~pp_error:D.Error.pp
+    ~message:"cff"
+    TestCaseCff1.expected_operations
+    res

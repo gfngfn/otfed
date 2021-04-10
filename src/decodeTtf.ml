@@ -280,6 +280,7 @@ let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : ttf_gl
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
+  Format.printf "!!! (glyf_offset: %d, reloffset: %d)@," offset reloffset; (* for debug *)
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 

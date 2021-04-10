@@ -120,6 +120,9 @@ let tables (src : source) : Value.Tag.t set =
 module ForTest = struct
   type charstring_data = DecodeBasic.charstring_data
   type subroutine_index = DecodeBasic.subroutine_index
+
+  module DecodeOperation = DecodeOperation
+
   type 'a decoder = 'a DecodeOperation.Open.decoder
 
   let run s d =

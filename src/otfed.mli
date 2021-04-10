@@ -604,6 +604,7 @@ end
 module Encode : sig
   module Error : sig
     type t
+    [@@deriving show { with_path = false }]
   end
 
   type 'a ok = ('a, Error.t) result
@@ -614,6 +615,7 @@ module Encode : sig
       | GlyphNotFound of Value.glyph_id
       | DecodeError   of Decode.Error.t
       | EncodeError   of Encode.Error.t
+    [@@deriving show { with_path = false }]
 
     type 'a ok = ('a, error) result
 

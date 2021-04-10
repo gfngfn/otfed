@@ -12,3 +12,4 @@ type t =
   | NotEncodableAsTimestamp of wint
   | NotA10BytePanose        of string
   | NotA4ByteAchVendId      of string
+[@@deriving show { with_path = false }]

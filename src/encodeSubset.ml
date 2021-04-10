@@ -10,6 +10,7 @@ type error =
   | GlyphNotFound of glyph_id
   | DecodeError   of DecodeError.t
   | EncodeError   of EncodeError.t
+[@@deriving show { with_path = false }]
 
 type 'a ok = ('a, error) result
 
@@ -114,7 +115,12 @@ let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeB
 
 type relative_offset = int
 
-type table_directory_entry = Tag.t * relative_offset * wint
+type table_directory_entry = {
+  table_tag       : Tag.t;
+  relative_offset : relative_offset;
+  table_length    : int;
+  table_checksum  : wint;
+}
 
 type table_accumulator = relative_offset option * table_directory_entry Alist.t
 
@@ -149,6 +155,7 @@ let calculate_checksum (s : string) : wint =
   aux (of_int 0) 0
 
 
+(* `e_single_table` is used as a folding function in `enc_tables`. *)
 let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (table : EncodeBasic.table) =
   let open EncodeOperation in
   pad_to_long_aligned    >>= fun () ->
@@ -161,10 +168,21 @@ let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (tabl
       checksum_reloffset_opt
   in
   let table_checksum = calculate_checksum table.contents in
-  let entry = (table.tag, reloffset, table_checksum) in
+  let entry =
+    {
+      table_tag       = table.tag;
+      relative_offset = reloffset;
+      table_length    = String.length table.contents;
+      table_checksum  = table_checksum;
+    }
+  in
+  Format.printf "tag: %s, reloffset: %d, @," (Tag.to_string table.tag) reloffset; (* for debug *)
   return (checksum_reloffset_opt, Alist.extend entries entry)
 
 
+(* `enc_tables tables` writes the tables `tables` and returns the pair of
+   - an offset to `CheckSumAdjustment` relative to the position immediately after the table directory, and
+   - all the entries for the construction of the table directory. *)
 let enc_tables (tables : EncodeBasic.table list) : (relative_offset * table_directory_entry list) encoder =
   let open EncodeOperation in
   foldM e_single_table tables (None, Alist.empty) >>= fun (checksum_reloffset_opt, entries) ->
@@ -173,12 +191,13 @@ let enc_tables (tables : EncodeBasic.table list) : (relative_offset * table_dire
   | Some(checksum_reloffset) -> return (checksum_reloffset, Alist.to_list entries)
 
 
-let enc_table_directory_entry ~first_offset (all_table_checksum : wint) ((tag, reloffset, checksum) : table_directory_entry) : wint encoder =
+let enc_table_directory_entry ~first_offset (all_table_checksum : wint) (entry : table_directory_entry) : wint encoder =
   let open EncodeOperation in
-  e_tag tag                                >>= fun () ->
-  e_uint32 checksum                        >>= fun () ->
-  e_uint32 (!% (first_offset + reloffset)) >>= fun () ->
-  return @@ add_checksum all_table_checksum checksum
+  e_tag entry.table_tag                                >>= fun () ->
+  e_uint32 entry.table_checksum                        >>= fun () ->
+  e_uint32 (!% (first_offset + entry.relative_offset)) >>= fun () ->
+  e_uint32 (!% (entry.table_length))                   >>= fun () ->
+  return @@ add_checksum all_table_checksum entry.table_checksum
 
 
 let enc_table_directory_entries ~first_offset (entries : table_directory_entry list) : wint encoder =
@@ -214,10 +233,11 @@ let update_checksum_adjustment ~checksum_offset ~checksum_value (contents : stri
   | _ -> assert false
 
 
+(* Writes the 12-byte header of the entire TrueType-based OpenType font. *)
 let enc_header (numTables : int) =
   let open EncodeOperation in
   let entrySelector = Stdlib.(truncate (log (float_of_int numTables) /. log 2.0)) in
-  let searchRange = 1 lsl entrySelector in
+  let searchRange = (1 lsl entrySelector) * 16 in
   let rangeShift = numTables * 16 - searchRange in
   e_uint32 (!% 0x00010000) >>= fun () ->
   e_uint16 numTables       >>= fun () ->
@@ -230,7 +250,9 @@ let enc_header (numTables : int) =
 let make_font_data_from_tables (tables : EncodeBasic.table list) : string ok =
   let tables = tables |> List.sort EncodeBasic.compare_table in
   let numTables = List.length tables in
-  let first_offset = 12 + numTables * 12 in
+  let first_offset = 12 + numTables * 16 in
+    (* `first_offset` is the offset where the table directory ends. *)
+  Format.printf "first_offset: %d@," first_offset; (* for debug *)
   let open ResultMonad in
   inj_enc (enc_tables tables |> EncodeOperation.run) >>= fun (table_contents, (checksum_reloffset, entries)) ->
   let enc =

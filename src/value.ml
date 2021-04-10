@@ -215,15 +215,64 @@ type class_value = int
 [@@deriving show { with_path = false }]
 
 module Cmap = struct
-  type t
+  module Mapping : sig
+    type t
 
-  type subtable
+    val empty : t
+
+    val add_single : Uchar.t -> glyph_id -> t -> t
+
+    val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
+
+    val number_of_entries : t -> int
+  end = struct
+
+    module MapImpl = Map.Make(Uchar)
+
+    type t = glyph_id MapImpl.t
+
+
+    let empty = MapImpl.empty
+
+
+    let add_single =
+      MapImpl.add
+
+
+    let fold =
+      MapImpl.fold
+
+
+    let number_of_entries =
+      MapImpl.cardinal
+
+  end
 
   type subtable_ids = {
     platform_id : int;
     encoding_id : int;
-    format      : int;
   }
+
+  type subtable = {
+    subtable_ids : subtable_ids;
+    mapping      : Mapping.t;
+  }
+
+
+  (* TODO: take language IDs into account for some platforms *)
+  let compare_subtables (subtable1 : subtable) (subtable2 : subtable) =
+    let p = subtable2.subtable_ids.platform_id - subtable1.subtable_ids.platform_id in
+    if p = 0 then
+      subtable2.subtable_ids.encoding_id - subtable1.subtable_ids.encoding_id
+    else
+      p
+
+
+  type t = subtable set
+
+
+  let subtables cmap = cmap
+
 end
 
 module Head = struct
@@ -239,25 +288,25 @@ module Head = struct
   [@@deriving show { with_path = false }]
 
   type t = {
-    font_revision       : wint;
-    flags               : int;
-    units_per_em        : int;
-    created             : timestamp;
-    modified            : timestamp;
-    mac_style           : mac_style;
-    lowest_rec_ppem     : int;
+    font_revision   : wint;
+    flags           : int;
+    units_per_em    : int;
+    created         : timestamp;
+    modified        : timestamp;
+    mac_style       : mac_style;
+    lowest_rec_ppem : int;
   }
   [@@deriving show { with_path = false }]
 end
 
 module Hhea = struct
   type t = {
-    ascender               : int;
-    descender              : int;
-    line_gap               : int;
-    caret_slope_rise       : int;
-    caret_slope_run        : int;
-    caret_offset           : int;
+    ascender         : int;
+    descender        : int;
+    line_gap         : int;
+    caret_slope_rise : int;
+    caret_slope_run  : int;
+    caret_offset     : int;
   }
   [@@deriving show { with_path = false }]
 end

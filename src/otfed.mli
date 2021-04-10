@@ -142,7 +142,6 @@ module Value : sig
     type subtable_ids = {
       platform_id : int;
       encoding_id : int;
-      format      : int;
     }
   end
 
@@ -421,6 +420,8 @@ module Decode : sig
     val get_subtables : t -> (subtable set) ok
 
     val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
+
+    val get_format_number : subtable -> int
 
     val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
   end

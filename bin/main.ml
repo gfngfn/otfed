@@ -50,10 +50,11 @@ let print_cmap (source : D.source) =
     D.Cmap.get_subtables icmap >>= fun subtables ->
     subtables |> List.iter (fun subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
+      let format = D.Cmap.get_format_number subtable in
       Format.printf "- subtable (platform: %d, encoding: %d, format: %d)@,"
         ids.platform_id
         ids.encoding_id
-        ids.format;
+        format;
       D.Cmap.fold_subtable subtable (fun () seg ->
         match seg with
         | D.Incremental(uch1, uch2, gid) ->

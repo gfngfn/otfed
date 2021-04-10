@@ -13,5 +13,12 @@ val e_16bits : bool list -> unit encoder
 
 val e_f2dot14 : float -> unit encoder
 
-(** [e_list enc xs] writes [xs] by using [enc] for each element of [xs]. *)
+(** [mapM enc xs] writes [xs] by using [enc] for each element of [xs]. *)
+val mapM : ('a -> 'b encoder) -> 'a list -> ('b list) encoder
+
+(** [e_list enc xs] is the same as [mapM enc xs >>= fun _ -> return ()]. *)
 val e_list : ('a -> unit encoder) -> 'a list -> unit encoder
+
+(** Adds null bytes if needed so that
+    the next position is set to be long-aligned (i.e. multiples of 4). *)
+val pad_to_long_aligned : unit encoder

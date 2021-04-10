@@ -1,4 +1,7 @@
 
+open Basic
+
+
 include EncodeOperationCore
 
 
@@ -27,11 +30,25 @@ let e_f2dot14 (x : float) =
   e_int16 (int_of_float (x *. 16384.))
 
 
-let rec e_list (enc : 'a -> unit encoder) =
-  function
-  | [] ->
-      return ()
+let mapM (enc : 'a -> 'b encoder) =
+  let rec aux acc = function
+    | [] ->
+        return @@ Alist.to_list acc
 
-  | x :: xs ->
-      enc x >>= fun () ->
-      e_list enc xs
+    | x :: xs ->
+        enc x >>= fun v ->
+        aux (Alist.extend acc v) xs
+  in
+  aux Alist.empty
+
+
+let e_list (enc : 'a -> 'b encoder) (xs : 'a list) =
+  mapM enc xs >>= fun _ ->
+  return ()
+
+
+let pad_to_long_aligned : unit encoder =
+  current >>= fun length ->
+  match length mod 4 with
+  | 0 -> return ()
+  | n -> e_bytes (String.make n (Char.chr 0))

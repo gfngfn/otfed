@@ -215,8 +215,6 @@ type class_value = int
 [@@deriving show { with_path = false }]
 
 module Cmap = struct
-  type t
-
   module Mapping : sig
     type t
 
@@ -225,6 +223,8 @@ module Cmap = struct
     val add_single : Uchar.t -> glyph_id -> t -> t
 
     val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
+
+    val number_of_entries : t -> int
   end = struct
 
     module MapImpl = Map.Make(Uchar)
@@ -242,6 +242,10 @@ module Cmap = struct
     let fold =
       MapImpl.fold
 
+
+    let number_of_entries =
+      MapImpl.cardinal
+
   end
 
   type subtable_ids = {
@@ -253,6 +257,21 @@ module Cmap = struct
     subtable_ids : subtable_ids;
     mapping      : Mapping.t;
   }
+
+
+  (* TODO: take language IDs into account for some platforms *)
+  let compare_subtables (subtable1 : subtable) (subtable2 : subtable) =
+    let p = subtable2.subtable_ids.platform_id - subtable1.subtable_ids.platform_id in
+    if p = 0 then
+      subtable2.subtable_ids.encoding_id - subtable1.subtable_ids.encoding_id
+    else
+      p
+
+
+  type t = subtable set
+
+
+  let subtables cmap = cmap
 
 end
 

@@ -59,5 +59,6 @@ type t =
       num_ys     : int;
     }
 
+  | InvalidGlyphNameIndex     of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

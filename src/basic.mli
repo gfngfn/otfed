@@ -54,6 +54,7 @@ module WideInt : sig
   val is_in_uint32 : t -> bool
   val is_in_int64 : t -> bool
   val is_neg : t -> bool
+  val is_pos : t -> bool
 end
 
 type wint = WideInt.t

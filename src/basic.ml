@@ -133,6 +133,8 @@ module WideInt = struct
   let is_in_int64 iw = Int64.min_int <= iw && iw <= Int64.max_int
 
   let is_neg iw = iw < Int64.zero
+
+  let is_pos iw = iw > Int64.zero
 end
 
 type wint = WideInt.t

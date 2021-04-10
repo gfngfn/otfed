@@ -269,25 +269,25 @@ module Head = struct
   [@@deriving show { with_path = false }]
 
   type t = {
-    font_revision       : wint;
-    flags               : int;
-    units_per_em        : int;
-    created             : timestamp;
-    modified            : timestamp;
-    mac_style           : mac_style;
-    lowest_rec_ppem     : int;
+    font_revision   : wint;
+    flags           : int;
+    units_per_em    : int;
+    created         : timestamp;
+    modified        : timestamp;
+    mac_style       : mac_style;
+    lowest_rec_ppem : int;
   }
   [@@deriving show { with_path = false }]
 end
 
 module Hhea = struct
   type t = {
-    ascender               : int;
-    descender              : int;
-    line_gap               : int;
-    caret_slope_rise       : int;
-    caret_slope_run        : int;
-    caret_offset           : int;
+    ascender         : int;
+    descender        : int;
+    line_gap         : int;
+    caret_slope_rise : int;
+    caret_slope_run  : int;
+    caret_offset     : int;
   }
   [@@deriving show { with_path = false }]
 end

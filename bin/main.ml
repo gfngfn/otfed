@@ -14,6 +14,7 @@ type config = {
   maxp   : bool;
   math   : bool;
   kern   : bool;
+  post   : bool;
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
@@ -173,6 +174,17 @@ let print_kern (source : D.source) =
             ()
           )
           ()
+  in
+  res |> inj
+
+
+let print_post (source : D.source) =
+  let res =
+    let open ResultMonad in
+    Format.printf "post:@,";
+    D.Post.get source >>= fun post ->
+    Format.printf "  %a@," V.Post.pp post;
+    return ()
   in
   res |> inj
 
@@ -469,6 +481,7 @@ let parse_args () =
       | "maxp"   -> aux n { acc with maxp = true } (i + 1)
       | "math"   -> aux n { acc with math = true } (i + 1)
       | "kern"   -> aux n { acc with kern = true } (i + 1)
+      | "post"   -> aux n { acc with post = true } (i + 1)
 
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -516,6 +529,7 @@ let parse_args () =
         maxp   = false;
         math   = false;
         kern   = false;
+        post   = false;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -564,6 +578,9 @@ let _ =
         end >>= fun () ->
         begin
           if config.kern then print_kern source else return ()
+        end >>= fun () ->
+        begin
+          if config.post then print_post source else return ()
         end >>= fun () ->
         config.hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid

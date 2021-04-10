@@ -222,6 +222,8 @@ module Value : sig
     [@@deriving show { with_path = false }]
   end
 
+  module Post : (module type of Value.Post)
+
   module Math : (module type of Value.Math)
 end
 
@@ -447,6 +449,10 @@ module Decode : sig
   (** Handles intermediate representation of [OS/2] tables for decoding. *)
   module Os2 : sig
     val get : source -> Intermediate.Os2.t ok
+  end
+
+  module Post : sig
+    val get : source -> Value.Post.t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)

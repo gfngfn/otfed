@@ -352,6 +352,57 @@ module Os2 = struct
   [@@deriving show {with_path = false}]
 end
 
+module Post = struct
+  module GlyphNameArray : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+
+    val access : glyph_id -> t -> string option
+
+    val of_list : string list -> t
+
+    val to_list : t -> string list
+  end = struct
+    type t = string array
+
+    let pp ppf names =
+      let pp_sep ppf () = Format.fprintf ppf ",@ " in
+      Format.fprintf ppf "%a"
+        (Format.pp_print_list ~pp_sep Format.pp_print_string)
+        (Array.to_list names)
+
+    let access gid names =
+      try
+        Some(names.(gid))
+      with
+      | _ -> None
+
+
+    let of_list = Array.of_list
+
+    let to_list = Array.to_list
+  end
+
+  type value = {
+    italic_angle        : int;
+    underline_position  : int;
+    underline_thickness : int;
+    is_fixed_pitch      : bool;
+    min_mem_type_42     : int;
+    max_mem_type_42     : int;
+    min_mem_type_1      : int;
+    max_mem_type_1      : int;
+  }
+  [@@deriving show { with_path = false }]
+
+  type t = {
+    value       : value;
+    glyph_names : GlyphNameArray.t option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
 module Math = struct
   type math_value_record = int * device option
   [@@deriving show { with_path = false }]

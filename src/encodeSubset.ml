@@ -1,7 +1,8 @@
 
 open Basic
-open DecodeBasic
 open Value
+open DecodeBasic
+open EncodeOperation.Open
 
 
 type error =
@@ -111,6 +112,141 @@ let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeB
       return (table_hmtx, derived, number_of_h_metrics)
 
 
+type relative_offset = int
+
+type table_directory_entry = Tag.t * relative_offset * wint
+
+type table_accumulator = relative_offset option * table_directory_entry Alist.t
+
+
+let add_checksum (x : wint) (y : wint) : wint =
+  let open WideInt in
+    let q = (of_int 1) lsl 32 in
+    (x +% y) mod q
+
+
+let calculate_checksum (s : string) : wint =
+  let open WideInt in
+  let len = String.length s in
+  let access i =
+    if i < len then
+      of_byte (String.get s i)
+    else
+      !% 0
+  in
+  let rec aux acc i =
+    if i >= len then
+      acc
+    else
+      let b0 = access i in
+      let b1 = access (i + 1) in
+      let b2 = access (i + 2) in
+      let b3 = access (i + 3) in
+      let ui = (b0 lsl 24) lor (b1 lsl 16) lor (b2 lsl 8) lor b3 in
+      let acc = add_checksum acc ui in
+      aux acc (i + 4)
+  in
+  aux (of_int 0) 0
+
+
+let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (table : EncodeBasic.table) =
+  let open EncodeOperation in
+  pad_to_long_aligned    >>= fun () ->
+  current                >>= fun reloffset ->
+  e_bytes table.contents >>= fun () ->
+  let checksum_reloffset_opt =
+    if Tag.equal Tag.table_head table.tag then
+      Some(reloffset + 8)
+    else
+      checksum_reloffset_opt
+  in
+  let table_checksum = calculate_checksum table.contents in
+  let entry = (table.tag, reloffset, table_checksum) in
+  return (checksum_reloffset_opt, Alist.extend entries entry)
+
+
+let enc_tables (tables : EncodeBasic.table list) : (relative_offset * table_directory_entry list) encoder =
+  let open EncodeOperation in
+  foldM e_single_table tables (None, Alist.empty) >>= fun (checksum_reloffset_opt, entries) ->
+  match checksum_reloffset_opt with
+  | None                     -> assert false
+  | Some(checksum_reloffset) -> return (checksum_reloffset, Alist.to_list entries)
+
+
+let enc_table_directory_entry ~first_offset (all_table_checksum : wint) ((tag, reloffset, checksum) : table_directory_entry) : wint encoder =
+  let open EncodeOperation in
+  e_tag tag                                >>= fun () ->
+  e_uint32 checksum                        >>= fun () ->
+  e_uint32 (!% (first_offset + reloffset)) >>= fun () ->
+  return @@ add_checksum all_table_checksum checksum
+
+
+let enc_table_directory_entries ~first_offset (entries : table_directory_entry list) : wint encoder =
+  let open EncodeOperation in
+  foldM (enc_table_directory_entry ~first_offset) entries (!% 0)
+
+
+let cut_uint32_to_bytes (u : wint) : char * char * char * char =
+  let open WideInt in
+  let b0 = u lsr 24 in
+  let r0 = u -% (b0 lsl 24) in
+  let b1 = r0 lsr 16 in
+  let r1 = r0 -% (b1 lsl 16) in
+  let b2 = r1 lsr 8 in
+  let b3 = r1 -% (b2 lsl 8) in
+  (to_byte b0, to_byte b1, to_byte b2, to_byte b3)
+
+
+let update_checksum_adjustment ~checksum_offset ~checksum_value (contents : string) =
+  let checksum_adjustment =
+    let temp = (!%% 0xB1B0AFBAL) -% checksum_value in
+    if WideInt.is_neg temp then temp +% (!% (1 lsl 32)) else temp
+  in
+  try
+    let bytes = Bytes.of_string contents in
+    let (b0, b1, b2, b3) = cut_uint32_to_bytes checksum_adjustment in
+    Bytes.set bytes checksum_offset       b0;
+    Bytes.set bytes (checksum_offset + 1) b1;
+    Bytes.set bytes (checksum_offset + 2) b2;
+    Bytes.set bytes (checksum_offset + 3) b3;
+    Bytes.to_string bytes
+  with
+  | _ -> assert false
+
+
+let enc_header (numTables : int) =
+  let open EncodeOperation in
+  let entrySelector = Stdlib.(truncate (log (float_of_int numTables) /. log 2.0)) in
+  let searchRange = 1 lsl entrySelector in
+  let rangeShift = numTables * 16 - searchRange in
+  e_uint32 (!% 0x00010000) >>= fun () ->
+  e_uint16 numTables       >>= fun () ->
+  e_uint16 searchRange     >>= fun () ->
+  e_uint16 entrySelector   >>= fun () ->
+  e_uint16 rangeShift      >>= fun () ->
+  return ()
+
+
+let make_font_data_from_tables (tables : EncodeBasic.table list) : string ok =
+  let tables = tables |> List.sort EncodeBasic.compare_table in
+  let numTables = List.length tables in
+  let first_offset = 12 + numTables * 12 in
+  let open ResultMonad in
+  inj_enc (enc_tables tables |> EncodeOperation.run) >>= fun (table_contents, (checksum_reloffset, entries)) ->
+  let enc =
+    let open EncodeOperation in
+    enc_header numTables                              >>= fun () ->
+    enc_table_directory_entries ~first_offset entries >>= fun all_table_checksum ->
+    e_bytes table_contents                            >>= fun () ->
+    return all_table_checksum
+  in
+  inj_enc (enc |> EncodeOperation.run) >>= fun (contents, all_table_checksum) ->
+  let checksum_offset = first_offset + checksum_reloffset in
+  let prelude_checksum = calculate_checksum (String.sub contents 0 first_offset) in
+  let checksum_value = add_checksum prelude_checksum all_table_checksum in
+  return (update_checksum_adjustment ~checksum_offset ~checksum_value contents)
+
+
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let open ResultMonad in
 
@@ -119,16 +255,16 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let num_glyphs = List.length gids in
 
   (* Make `cmap`. *)
-  inj_enc @@ EncodeTable.Cmap.make [] >>= fun _table_cmap ->
+  inj_enc @@ EncodeTable.Cmap.make [] >>= fun table_cmap ->
     (* TODO: support an option for embedding `cmap` tables *)
 
   (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
-  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
-  inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
+  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
+  inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
   (* Make `hmtx` and get derived data for `hhea`. *)
-  make_hmtx src (List.combine gids gs) >>= fun (_table_hmtx, hhea_derived, number_of_h_metrics) ->
+  make_hmtx src (List.combine gids gs) >>= fun (table_hmtx, hhea_derived, number_of_h_metrics) ->
 
   (* Make `hhea`. *)
   inj_dec @@ DecodeTable.Hhea.get src >>= fun { value = hhea_value; _ } ->
@@ -138,14 +274,14 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
       derived = hhea_derived;
     }
   in
-  inj_enc @@ EncodeTable.Hhea.make ~number_of_h_metrics ihhea >>= fun _table_hhea ->
+  inj_enc @@ EncodeTable.Hhea.make ~number_of_h_metrics ihhea >>= fun table_hhea ->
 
   (* Make `maxp` *)
   inj_dec @@ DecodeTable.Ttf.Maxp.get ttf >>= fun maxp ->
   let maxp =
     { maxp with num_glyphs = num_glyphs }  (* TODO: set more accurate data *)
   in
-  inj_enc @@ EncodeTable.Ttf.Maxp.make maxp >>= fun _table_maxp ->
+  inj_enc @@ EncodeTable.Ttf.Maxp.make maxp >>= fun table_maxp ->
 
   (* Make `head`. *)
   inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->
@@ -164,8 +300,16 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
       derived = head_derived;
     }
   in
-  inj_enc @@ EncodeTable.Head.make ihead >>= fun _table_head ->
-  failwith "Encode.Subset.make_ttf"
+  inj_enc @@ EncodeTable.Head.make ihead >>= fun table_head ->
+  make_font_data_from_tables [
+    table_head;
+    table_hhea;
+    table_hmtx;
+    table_maxp;
+    table_cmap;
+    table_loca;
+    table_glyf;
+  ]
 
 
 let make_cff_subset (_cff : DecodeBasic.cff_source) (_gids : glyph_id list) =

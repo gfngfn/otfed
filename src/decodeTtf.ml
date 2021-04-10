@@ -259,18 +259,24 @@ let d_glyf =
   d_int16 >>= fun yMin ->
   d_int16 >>= fun xMax ->
   d_int16 >>= fun yMax ->
-  let bbox = { x_min = xMin; y_min = yMin; x_max = xMax; y_max = yMax } in
+  let bounding_box = { x_min = xMin; y_min = yMin; x_max = xMax; y_max = yMax } in
   if numberOfContours < -1 then
     err @@ Error.InvalidCompositeFormat(numberOfContours)
   else if numberOfContours = -1 then
     d_composite_glyph >>= fun components ->
-    return (TtfCompositeGlyph(components), bbox)
+    return {
+      description = TtfCompositeGlyph(components);
+      bounding_box;
+    }
   else
     d_simple_glyph numberOfContours >>= fun contours ->
-    return (TtfSimpleGlyph(contours), bbox)
+    return {
+      description = TtfSimpleGlyph(contours);
+      bounding_box;
+    }
 
 
-let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : (ttf_glyph_description * bounding_box) ok =
+let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : ttf_glyph_info ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->

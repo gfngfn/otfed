@@ -155,5 +155,8 @@ let expected =
       ];
     ]
   in
-  let bbox = V.{ x_min = 51; y_min = -147; x_max = 1963; y_max = 1684 } in
-  (description, bbox)
+  let bounding_box = V.{ x_min = 51; y_min = -147; x_max = 1963; y_max = 1684 } in
+  V.{
+    description;
+    bounding_box;
+  }

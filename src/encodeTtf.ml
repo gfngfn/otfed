@@ -8,12 +8,6 @@ open EncodeOperation.Open
 module Maxp = EncodeTtfMaxp
 
 
-type glyph_info = {
-  bounding_box : Value.bounding_box;
-  description  : Value.ttf_glyph_description;
-}
-
-
 let make_end_points (contours : ttf_contour list) : int list =
   let (acc, _) =
     contours |> List.fold_left (fun (acc, i) contour ->
@@ -218,7 +212,7 @@ let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
   aux elems
 
 
-let e_glyph (g : glyph_info) =
+let e_glyph (g : ttf_glyph_info) =
   let open EncodeOperation in
   let (number_of_contours, enc) =
     match g.description with
@@ -233,7 +227,7 @@ let e_glyph (g : glyph_info) =
   enc
 
 
-let make_glyf (gs : glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
+let make_glyf (gs : ttf_glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
   let enc =
     let open EncodeOperation in
     gs |> mapM (fun g ->

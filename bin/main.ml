@@ -206,7 +206,7 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
               return ()
 
           | Some(aw, _lsb) ->
-              D.Ttf.glyf ttf loc |> inj >>= fun (descr, bbox) ->
+              D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; bounding_box = bbox } ->
               Svg.make_ttf descr ~bbox ~units_per_em ~aw |> inj >>= fun data ->
               Format.printf "  (%a, %a)@,"
                 V.pp_ttf_glyph_description descr

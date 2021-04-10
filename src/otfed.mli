@@ -58,6 +58,19 @@ module Value : sig
     | TtfCompositeGlyph of ttf_composite_glyph_description
   [@@deriving show { with_path = false }]
 
+  type bounding_box = {
+    x_min : x_coordinate;
+    y_min : y_coordinate;
+    x_max : x_coordinate;
+    y_max : y_coordinate;
+  }
+  [@@deriving show { with_path = false }]
+
+  type ttf_glyph_info = {
+    bounding_box : bounding_box;
+    description  : ttf_glyph_description;
+  }
+
   type cubic_path_element =
     | CubicLineTo  of point
     | CubicCurveTo of point * point * point
@@ -78,14 +91,6 @@ module Value : sig
       A value [(pt, elems)] of this type stands for the path
       starting at [pt] and subsequent moves of which can be described by [elems]. *)
   type quadratic_path = point * quadratic_path_element list
-  [@@deriving show { with_path = false }]
-
-  type bounding_box = {
-    x_min : x_coordinate;
-    y_min : y_coordinate;
-    x_max : x_coordinate;
-    y_max : y_coordinate;
-  }
   [@@deriving show { with_path = false }]
 
   (** The type for ValueRecords (page 214). *)
@@ -566,7 +571,7 @@ module Decode : sig
 
     val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
 
-    val glyf : ttf_source -> ttf_glyph_location -> (Value.ttf_glyph_description * Value.bounding_box) ok
+    val glyf : ttf_source -> ttf_glyph_location -> Value.ttf_glyph_info ok
 
     val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
   end
@@ -586,7 +591,7 @@ module Decode : sig
   module ForTest : sig
     type 'a decoder
     val run : string -> 'a decoder -> 'a ok
-    val d_glyf : (Value.ttf_glyph_description * Value.bounding_box) decoder
+    val d_glyf : Value.ttf_glyph_info decoder
     val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
     val run_d_charstring :
       gsubr_index:subroutine_index ->

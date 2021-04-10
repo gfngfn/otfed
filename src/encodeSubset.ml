@@ -26,38 +26,39 @@ let update_bounding_box ~current ~new_one =
   }
 
 
-let get_glyph (ttf : ttf_source) (gid : glyph_id) =
+let get_glyph (ttf : ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
   let open ResultMonad in
   inj_dec @@ DecodeTable.Ttf.loca ttf gid >>= function
   | None      -> err @@ GlyphNotFound(gid)
   | Some(loc) -> inj_dec @@ DecodeTable.Ttf.glyf ttf loc
 
 
-type glyph_accumulator = ttf_glyph_description Alist.t * bounding_box
+type glyph_accumulator = ttf_glyph_info Alist.t * bounding_box
 
 
-let folding_glyph (ttf : ttf_source) ((descrs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
+let folding_glyph (ttf : ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
-  get_glyph ttf gid >>= fun (descr, bbox) ->
-  return (Alist.extend descrs descr, update_bounding_box ~current:bbox_all ~new_one:bbox)
+  get_glyph ttf gid >>= fun g ->
+  return (Alist.extend gs g, update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
 
 
-let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_description list * bounding_box) ok =
+let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
       err NoGlyphGiven
 
   | gid_first :: gids_tail ->
-      get_glyph ttf gid_first >>= fun (descr_first, bbox_first) ->
-      foldM (folding_glyph ttf) gids_tail (Alist.empty, bbox_first) >>= fun (descrs_tail, bbox_all) ->
-      let descrs = descr_first :: Alist.to_list descrs_tail in
-      return (descrs, bbox_all)
+      get_glyph ttf gid_first >>= fun g_first ->
+      foldM (folding_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
+      let gs = g_first :: Alist.to_list gs_tail in
+      return (gs, bbox_all)
 
 
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let open ResultMonad in
-  get_glyphs ttf gids >>= fun (_descrs, bbox_all) ->
+  get_glyphs ttf gids >>= fun (gs, bbox_all) ->
+  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, _locs) ->
   inj_dec @@ DecodeTable.Head.get (Ttf(ttf)) >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{

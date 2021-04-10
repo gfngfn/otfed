@@ -181,7 +181,6 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
 
 let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decoder =
   let open DecodeOperation in
-  Format.printf "!!! numberOfContours: %d@," numberOfContours; (* for debug *)
   if numberOfContours = 0 then
     return []
   else
@@ -192,7 +191,6 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
       | None         -> assert false
       | Some((_, e)) -> e + 1
     in
-    Format.printf "!!! num_points: %d@," num_points; (* for debug *)
     let endPtsOfContours = Alist.to_list endPtsOfContours in
     d_uint16 >>= fun instructionLength ->
     d_skip instructionLength >>= fun () ->
@@ -294,7 +292,6 @@ let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : ttf_gl
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  Format.printf "!!! (glyf_offset: %d, reloffset: %d)@," offset reloffset; (* for debug *)
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 

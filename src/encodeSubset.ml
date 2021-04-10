@@ -176,7 +176,6 @@ let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (tabl
       table_checksum  = table_checksum;
     }
   in
-  Format.printf "tag: %s, reloffset: %d, @," (Tag.to_string table.tag) reloffset; (* for debug *)
   return (checksum_reloffset_opt, Alist.extend entries entry)
 
 
@@ -252,7 +251,6 @@ let make_font_data_from_tables (tables : EncodeBasic.table list) : string ok =
   let numTables = List.length tables in
   let first_offset = 12 + numTables * 16 in
     (* `first_offset` is the offset where the table directory ends. *)
-  Format.printf "first_offset: %d@," first_offset; (* for debug *)
   let open ResultMonad in
   inj_enc (enc_tables tables |> EncodeOperation.run) >>= fun (table_contents, (checksum_reloffset, entries)) ->
   let enc =

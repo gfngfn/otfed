@@ -72,17 +72,17 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
     <th>Supported</th><th>Tested</th><th>Supported</th><th>Tested</th>
   </tr>
   <tr><td rowspan="8">Required</td>
-      <td>cmap</td><td>-</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
-  <tr><td>head</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>hhea</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>hmtx</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>maxp</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
+      <td>cmap</td><td>v (Format 12 only)</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
+  <tr><td>head</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>hhea</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>hmtx</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>maxp</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
   <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>OS/2</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
+  <tr><td>OS/2</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
   <tr><td>post</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="2">TTF</td>
-      <td>loca</td><td>v</td><td>-</td><td>v</td><td>-</td></tr>
+      <td>loca</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
   <tr><td>glyf</td><td>v</td><td>-</td><td>v</td><td>v (simple glyphs only)</td></tr>
 
   <tr><td rowspan="3">CFF</td>
@@ -92,8 +92,11 @@ $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
 
   <tr><td rowspan="5">Advanced</td>
       <td>BASE</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>-</td></tr>
-  <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>-</td></tr>
-  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>-</td></tr>
-  <tr><td>kern</td><td>-</td><td>-</td><td>v (Format 0 only)</td><td>-</td></tr>
+  <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>o</td></tr>
+  <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>o</td></tr>
+  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>kern</td><td>-</td><td>-</td><td>v (Format 0 only)</td><td>o</td></tr>
 </table>
+
+* v: done
+* o: no automated test has been given, but seems working correctly for many inputs.

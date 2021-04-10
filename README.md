@@ -37,6 +37,9 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
   | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
   | gpos <script> <langsys> <feature>  # Prints the contents of `GPOS` subtables.
+  | subset <glyph-ids> <output-ttf>    # Makes a subset of the font by giving glyph IDs (TrueType-based font only).
+
+<glyph-ids> ::= (comma-separated glyph IDs where no space is allowed around commas)
 ```
 
 ### Example usage
@@ -57,6 +60,12 @@ Outputs the glyph of ID 50 in Computer Modern Typewriter Italic as an SVG file:
 
 ```console
 $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
+```
+
+Outputs the subset of Junicode which contains `.notdef`, “Q”, and “f” only:
+
+```console
+$ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.ttf
 ```
 
 

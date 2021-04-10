@@ -136,12 +136,18 @@ let d_y_coordinates flags =
 
 
 let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
+  let open DecodeOperation in
   let rec aux pointacc contouracc endPtsOfContours = function
     | (i, [], [], []) ->
-        Format.printf "!!! i: %d@," i; (* for debug *)
-        assert (i = num_points);
-        assert (Alist.is_empty pointacc);
-        Alist.to_list contouracc
+        if i = num_points && Alist.is_empty pointacc then
+          return @@ Alist.to_list contouracc
+        else
+          err @@ Error.InconsistentNumberOfPoints{
+            num_points = num_points;
+            num_flags  = List.length flags;
+            num_xs     = List.length xCoordinates;
+            num_ys     = List.length yCoordinates;
+          }
 
     | (
         i,
@@ -164,7 +170,12 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
           aux (Alist.extend pointacc point) contouracc endPtsOfContours tuple
 
     | _ ->
-        assert false
+        err @@ Error.InconsistentNumberOfPoints{
+          num_points = num_points;
+          num_flags  = List.length flags;
+          num_xs     = List.length xCoordinates;
+          num_ys     = List.length yCoordinates;
+        }
   in
   aux Alist.empty Alist.empty endPtsOfContours (0, flags, xCoordinates, yCoordinates)
 
@@ -190,7 +201,7 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
     let flags = Alist.to_list flagacc in
     d_x_coordinates flags >>= fun xCoordinates ->
     d_y_coordinates flags >>= fun yCoordinates ->
-    return (combine endPtsOfContours num_points flags xCoordinates yCoordinates)
+    combine endPtsOfContours num_points flags xCoordinates yCoordinates
 
 
 type component_flag = Intermediate.Ttf.component_flag

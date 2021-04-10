@@ -116,6 +116,8 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
 
   let src = Ttf(ttf) in
 
+  let num_glyphs = List.length gids in
+
   (* Make `cmap`. *)
   inj_enc @@ EncodeTable.Cmap.make [] >>= fun _table_cmap ->
     (* TODO: support an option for embedding `cmap` tables *)
@@ -125,7 +127,7 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
   inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
 
-  (* Make `hmtx`. *)
+  (* Make `hmtx` and get derived data for `hhea`. *)
   make_hmtx src (List.combine gids gs) >>= fun (_table_hmtx, hhea_derived, number_of_h_metrics) ->
 
   (* Make `hhea`. *)
@@ -137,6 +139,13 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
     }
   in
   inj_enc @@ EncodeTable.Hhea.make ~number_of_h_metrics ihhea >>= fun _table_hhea ->
+
+  (* Make `maxp` *)
+  inj_dec @@ DecodeTable.Ttf.Maxp.get ttf >>= fun maxp ->
+  let maxp =
+    { maxp with num_glyphs = num_glyphs }  (* TODO: set more accurate data *)
+  in
+  inj_enc @@ EncodeTable.Ttf.Maxp.make maxp >>= fun _table_maxp ->
 
   (* Make `head`. *)
   inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->

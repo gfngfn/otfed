@@ -14,7 +14,9 @@ let get (src : source) : t ok =
   return @@ make_scheme common.core offset length ()
 
 
-type subtable = t * offset * Value.Cmap.subtable_ids
+type format = int
+
+type subtable = t * offset * Value.Cmap.subtable_ids * format
 
 
 open DecodeOperation
@@ -28,10 +30,9 @@ let d_encoding_record (cmap : t) : subtable decoder =
     Value.Cmap.{
       platform_id = platform_id;
       encoding_id = encoding_id;
-      format      = format;
     }
   in
-  return @@ (cmap, offset, ids)
+  return @@ (cmap, offset, ids, format)
 
 
 let get_subtables (cmap : t) : (subtable set) ok =
@@ -43,9 +44,9 @@ let get_subtables (cmap : t) : (subtable set) ok =
     else
       d_list (d_encoding_record cmap) >>= fun raw_subtables ->
       let subtables =
-        raw_subtables |> List.filter (fun (_, _, ids) ->
+        raw_subtables |> List.filter (fun (_, _, ids, format) ->
           let open Value.Cmap in
-          match ids.format with
+          match format with
           | 4 | 12 | 13 ->
               begin
                 match (ids.platform_id, ids.encoding_id) with
@@ -67,8 +68,12 @@ let get_subtables (cmap : t) : (subtable set) ok =
   run cmap.core cmap.offset dec
 
 
-let get_subtable_ids ((_, _, ids) : subtable) =
+let get_subtable_ids ((_, _, ids, _) : subtable) =
   ids
+
+
+let get_format_number ((_, _, _, format) : subtable) =
+  format
 
 
 let uchar_of_int n =
@@ -191,7 +196,7 @@ let d_cmap_13 f =
 
 
 let fold_subtable (subtable : subtable) f acc =
-  let (cmap, offset, _) = subtable in
+  let (cmap, offset, _, _) = subtable in
   let dec =
     (* Position: at the beginning of the designated cmap subtable *)
     d_uint16 >>= fun format ->

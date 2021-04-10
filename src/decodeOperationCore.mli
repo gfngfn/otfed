@@ -29,6 +29,9 @@ val transform_result : 'a ok -> 'a decoder
 (** The monadic list-mapping function for decoders. *)
 val mapM : ('a -> 'b decoder) -> 'a list -> ('b list) decoder
 
+(** The monadic list-folding function for decoders. *)
+val foldM : ('b -> 'a -> 'b decoder) -> 'a list -> 'b -> 'b decoder
+
 (** [run core offset dec] starts to decode the source [core] at the position [offset]
     by using [dec] and returns the resulting value. *)
 val run : common_source_core -> offset -> 'a decoder -> 'a ok

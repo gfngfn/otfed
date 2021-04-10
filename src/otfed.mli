@@ -604,6 +604,14 @@ module Encode : sig
   type 'a ok = ('a, Error.t) result
 
   module Subset : sig
-    val make : Decode.source -> Value.glyph_id list -> (string option) ok
+    type error =
+      | NoGlyphGiven
+      | GlyphNotFound of Value.glyph_id
+      | DecodeError   of Decode.Error.t
+      | EncodeError   of Encode.Error.t
+
+    type 'a ok = ('a, error) result
+
+    val make : Decode.source -> Value.glyph_id list -> string ok
   end
 end

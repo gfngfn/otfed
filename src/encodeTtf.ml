@@ -96,6 +96,7 @@ let e_flag (flag : flag) =
     flag.on_curve;
     flag.x_short_vector;
     flag.y_short_vector;
+    false; (* repeat *)
     flag.this_x_is_same;
     flag.this_y_is_same;
   ]

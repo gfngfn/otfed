@@ -138,6 +138,7 @@ let d_y_coordinates flags =
 let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
   let rec aux pointacc contouracc endPtsOfContours = function
     | (i, [], [], []) ->
+        Format.printf "!!! i: %d@," i; (* for debug *)
         assert (i = num_points);
         assert (Alist.is_empty pointacc);
         Alist.to_list contouracc
@@ -148,6 +149,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
         xCoordinate :: xCoordinates,
         yCoordinate :: yCoordinates
       ) ->
+        Format.printf "!!! i: %d, flag: %a@," i Intermediate.Ttf.pp_flag flag; (* for debug *)
         let point = (flag.Intermediate.Ttf.on_curve, xCoordinate, yCoordinate) in
         let (is_final, endPtsOfContours) =
           match endPtsOfContours with
@@ -169,6 +171,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
 
 let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decoder =
   let open DecodeOperation in
+  Format.printf "!!! numberOfContours: %d@," numberOfContours; (* for debug *)
   if numberOfContours = 0 then
     return []
   else
@@ -179,6 +182,7 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
       | None         -> assert false
       | Some((_, e)) -> e + 1
     in
+    Format.printf "!!! num_points: %d@," num_points; (* for debug *)
     let endPtsOfContours = Alist.to_list endPtsOfContours in
     d_uint16 >>= fun instructionLength ->
     d_skip instructionLength >>= fun () ->

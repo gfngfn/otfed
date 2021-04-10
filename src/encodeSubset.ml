@@ -96,7 +96,7 @@ let folding_hmtx (ihmtx : Decode.Hmtx.t) ((derived, entries) : hmtx_accumulator)
       return (derived, Alist.extend entries entry)
 
 
-let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeBasic.table * Intermediate.Hhea.derived) ok =
+let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeBasic.table * Intermediate.Hhea.derived * int) ok =
   let open ResultMonad in
   inj_dec @@ DecodeTable.Hmtx.get src >>= fun ihmtx ->
   match ggs with
@@ -107,7 +107,8 @@ let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeB
       get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first) ->
       foldM (folding_hmtx ihmtx) ggs_tail (derived_first, Alist.empty) >>= fun (derived, entries_tail) ->
       inj_enc @@ EncodeTable.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
-      return (table_hmtx, derived)
+      let number_of_h_metrics = List.length ggs in
+      return (table_hmtx, derived, number_of_h_metrics)
 
 
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
@@ -115,13 +116,27 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
 
   let src = Ttf(ttf) in
 
+  (* Make `cmap`. *)
+  inj_enc @@ EncodeTable.Cmap.make [] >>= fun _table_cmap ->
+    (* TODO: support an option for embedding `cmap` tables *)
+
   (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
   inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (_table_glyf, locs) ->
   inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (_table_loca, index_to_loc_format) ->
 
   (* Make `hmtx`. *)
-  make_hmtx src (List.combine gids gs) >>= fun (_table_hmtx, _hhea_derived) ->
+  make_hmtx src (List.combine gids gs) >>= fun (_table_hmtx, hhea_derived, number_of_h_metrics) ->
+
+  (* Make `hhea`. *)
+  inj_dec @@ DecodeTable.Hhea.get src >>= fun { value = hhea_value; _ } ->
+  let ihhea =
+    Intermediate.Hhea.{
+      value   = hhea_value;
+      derived = hhea_derived;
+    }
+  in
+  inj_enc @@ EncodeTable.Hhea.make ~number_of_h_metrics ihhea >>= fun _table_hhea ->
 
   (* Make `head`. *)
   inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->

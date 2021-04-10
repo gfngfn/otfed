@@ -13,8 +13,8 @@ type error =
 type 'a ok = ('a, error) result
 
 
-let d_inj d = Result.map_error (fun e -> DecodeError(e)) d
-let e_inj e = Result.map_error (fun e -> EncodeError(e)) e
+let inj_dec d = Result.map_error (fun e -> DecodeError(e)) d
+let inj_enc e = Result.map_error (fun e -> EncodeError(e)) e
 
 
 let update_bounding_box ~current ~new_one =
@@ -28,18 +28,21 @@ let update_bounding_box ~current ~new_one =
 
 let get_glyph (ttf : ttf_source) (gid : glyph_id) =
   let open ResultMonad in
-  d_inj @@ DecodeTable.Ttf.loca ttf gid >>= function
+  inj_dec @@ DecodeTable.Ttf.loca ttf gid >>= function
   | None      -> err @@ GlyphNotFound(gid)
-  | Some(loc) -> d_inj @@ DecodeTable.Ttf.glyf ttf loc
+  | Some(loc) -> inj_dec @@ DecodeTable.Ttf.glyf ttf loc
 
 
-let folding_glyph (ttf : ttf_source) ((descrs, bbox_all) : ttf_glyph_description Alist.t * bounding_box) (gid : glyph_id) =
+type glyph_accumulator = ttf_glyph_description Alist.t * bounding_box
+
+
+let folding_glyph (ttf : ttf_source) ((descrs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
   get_glyph ttf gid >>= fun (descr, bbox) ->
   return (Alist.extend descrs descr, update_bounding_box ~current:bbox_all ~new_one:bbox)
 
 
-let d_glyphs (ttf : ttf_source) (gids : glyph_id list) =
+let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_description list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
@@ -54,8 +57,8 @@ let d_glyphs (ttf : ttf_source) (gids : glyph_id list) =
 
 let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   let open ResultMonad in
-  d_glyphs ttf gids >>= fun (_descrs, bbox_all) ->
-  d_inj @@ DecodeTable.Head.get (Ttf(ttf)) >>= fun { value = head_value; _ } ->
+  get_glyphs ttf gids >>= fun (_descrs, bbox_all) ->
+  inj_dec @@ DecodeTable.Head.get (Ttf(ttf)) >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{
       x_min               = bbox_all.x_min;
@@ -71,7 +74,7 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
       derived = head_derived;
     }
   in
-  e_inj @@ EncodeTable.Head.make ihead >>= fun _table_head ->
+  inj_enc @@ EncodeTable.Head.make ihead >>= fun _table_head ->
   failwith "Encode.Subset.make_ttf"
 
 

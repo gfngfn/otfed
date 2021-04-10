@@ -283,6 +283,10 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
   inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
+  (* Make `post`. *)
+  inj_dec @@ DecodeTable.Post.get src >>= fun post ->
+  inj_enc @@ EncodeTable.Post.make post >>= fun table_post ->
+
   (* Make `hmtx` and get derived data for `hhea`. *)
   make_hmtx src (List.combine gids gs) >>= fun (table_hmtx, hhea_derived, number_of_h_metrics) ->
 
@@ -327,6 +331,7 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
     table_hmtx;
     table_maxp;
     table_cmap;
+    table_post;
     table_loca;
     table_glyf;
   ]

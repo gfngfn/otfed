@@ -217,12 +217,43 @@ type class_value = int
 module Cmap = struct
   type t
 
-  type subtable
+  module Mapping : sig
+    type t
+
+    val empty : t
+
+    val add_single : Uchar.t -> glyph_id -> t -> t
+
+    val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
+  end = struct
+
+    module MapImpl = Map.Make(Uchar)
+
+    type t = glyph_id MapImpl.t
+
+
+    let empty = MapImpl.empty
+
+
+    let add_single =
+      MapImpl.add
+
+
+    let fold =
+      MapImpl.fold
+
+  end
 
   type subtable_ids = {
     platform_id : int;
     encoding_id : int;
   }
+
+  type subtable = {
+    subtable_ids : subtable_ids;
+    mapping      : Mapping.t;
+  }
+
 end
 
 module Head = struct

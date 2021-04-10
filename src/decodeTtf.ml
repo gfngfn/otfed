@@ -155,7 +155,6 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
         xCoordinate :: xCoordinates,
         yCoordinate :: yCoordinates
       ) ->
-        Format.printf "!!! i: %d, flag: %a@," i Intermediate.Ttf.pp_flag flag; (* for debug *)
         let point = (flag.Intermediate.Ttf.on_curve, xCoordinate, yCoordinate) in
         let (is_final, endPtsOfContours) =
           match endPtsOfContours with

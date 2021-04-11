@@ -58,10 +58,15 @@ let get_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph_inf
 
 type hmtx_entry = design_units * design_units
 
-type hmtx_accumulator = Intermediate.Hhea.derived * (design_units * design_units) Alist.t
+type hmtx_accumulator = {
+  current_hhea_derived : Intermediate.Hhea.derived;
+  hmtx_entries         : hmtx_entry Alist.t;
+  advance_width_sum    : wint;
+  nonzero_width_count  : int;
+}
 
 
-let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry) ok =
+let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
@@ -80,12 +85,13 @@ let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (I
           xmax_extent            = extent;
         }
       in
-      return (derived, entry)
+      return (derived, entry, aw)
 
 
-let folding_hmtx (ihmtx : Decode.Hmtx.t) ((derived, entries) : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) =
+let folding_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) : hmtx_accumulator ok =
   let open ResultMonad in
-  get_hmtx ihmtx gg >>= fun (derived_new, entry) ->
+  let derived = acc.current_hhea_derived in
+  get_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
       let derived =
         Intermediate.Hhea.{
           advance_width_max      = Stdlib.max derived.advance_width_max      derived_new.advance_width_max;
@@ -94,10 +100,23 @@ let folding_hmtx (ihmtx : Decode.Hmtx.t) ((derived, entries) : hmtx_accumulator)
           xmax_extent            = Stdlib.max derived.xmax_extent            derived_new.xmax_extent;
         }
       in
-      return (derived, Alist.extend entries entry)
+      return {
+        current_hhea_derived = derived;
+        hmtx_entries         = Alist.extend acc.hmtx_entries entry;
+        advance_width_sum    = acc.advance_width_sum +% !% aw;
+        nonzero_width_count  = if aw = 0 then acc.nonzero_width_count else acc.nonzero_width_count + 1;
+      }
 
 
-let make_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : (Encode.table * Intermediate.Hhea.derived * int) ok =
+type hmtx_result = {
+  table_hmtx          : Encode.table;
+  hhea_derived        : Intermediate.Hhea.derived;
+  number_of_h_metrics : int;
+  average_char_width  : design_units;
+}
+
+
+let make_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with
@@ -105,11 +124,50 @@ let make_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : (
       err NoGlyphGiven
 
   | gg_first :: ggs_tail ->
-      get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first) ->
-      foldM (folding_hmtx ihmtx) ggs_tail (derived_first, Alist.empty) >>= fun (derived, entries_tail) ->
+      get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first, aw) ->
+      let acc =
+        {
+          current_hhea_derived = derived_first;
+          hmtx_entries         = Alist.empty;
+          advance_width_sum    = !% aw;
+          nonzero_width_count  = if aw = 0 then 0 else 1;
+        }
+      in
+      foldM (folding_hmtx ihmtx) ggs_tail acc >>= fun acc ->
+      let hhea_derived = acc.current_hhea_derived in
+      let entries_tail = acc.hmtx_entries in
       inj_enc @@ Encode.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
       let number_of_h_metrics = List.length ggs in
-      return (table_hmtx, derived, number_of_h_metrics)
+      let average_char_width =
+        let count = acc.nonzero_width_count in
+        if count = 0 then 0 else WideInt.to_int (acc.advance_width_sum /% (!% count))
+      in
+      return {
+        table_hmtx;
+        hhea_derived;
+        number_of_h_metrics;
+        average_char_width;
+      }
+
+
+let make_os2 (src : Decode.source) ~average_char_width ~first_char ~max_context ~last_char : Encode.table ok =
+  let open ResultMonad in
+  inj_dec @@ Decode.Os2.get src >>= fun { value = os2_value; _ } ->
+  let os2_derived =
+    Intermediate.Os2.{
+      x_avg_char_width    = average_char_width;
+      us_first_char_index = first_char;
+      us_last_char_index  = last_char;
+      us_max_context      = max_context;
+    }
+  in
+  let ios2 =
+    Intermediate.Os2.{
+      value   = os2_value;
+      derived = os2_derived;
+    }
+  in
+  inj_enc @@ Encode.Os2.make ios2
 
 
 type relative_offset = int
@@ -287,7 +345,14 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
   inj_enc @@ Encode.Post.make post >>= fun table_post ->
 
   (* Make `hmtx` and get derived data for `hhea`. *)
-  make_hmtx src (List.combine gids gs) >>= fun (table_hmtx, hhea_derived, number_of_h_metrics) ->
+  make_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
+  let { table_hmtx; hhea_derived; number_of_h_metrics; average_char_width; } = hmtx_result in
+
+  (* Make `OS/2`. *)
+  let first_char = Uchar.of_int 32 in (* TODO: get the first code point from `cmap`. *)
+  let last_char = Uchar.of_int 0xFFFF in (* TODO: get the last code point from `cmap`. *)
+  let max_context = Some(1) in (* TODO: should extend this if this function can encode advanced tables. *)
+  make_os2 src ~average_char_width ~first_char ~last_char ~max_context >>= fun table_os2 ->
 
   (* Make `hhea`. *)
   inj_dec @@ Decode.Hhea.get src >>= fun { value = hhea_value; _ } ->
@@ -331,6 +396,7 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
     table_maxp;
     table_cmap;
     table_post;
+    table_os2;
     table_loca;
     table_glyf;
   ]

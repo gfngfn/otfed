@@ -31,6 +31,11 @@ let e_f2dot14 (x : float) =
   e_int16 (int_of_float (x *. 16384.))
 
 
+let e_bmp_code_point (uch : Uchar.t) =
+  let n = Stdlib.min (Uchar.to_int uch) 0xFFFF in
+  e_uint16 n
+
+
 let e_tag (tag : Tag.t) =
   e_bytes (Tag.to_string tag)
 

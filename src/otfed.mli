@@ -203,6 +203,10 @@ module Value : sig
       y_strikeout_position        : int;
       s_family_class              : int;
       panose                      : string;  (* 10 bytes. *)
+      ul_unicode_range1           : wint;
+      ul_unicode_range2           : wint;
+      ul_unicode_range3           : wint;
+      ul_unicode_range4           : wint;
       ach_vend_id                 : string;  (* 4 bytes. *)
       fs_selection                : int;
       s_typo_ascender             : int;
@@ -277,12 +281,8 @@ module Intermediate : sig
         from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
     type derived = {
       x_avg_char_width    : int;
-      ul_unicode_range1   : wint;
-      ul_unicode_range2   : wint;
-      ul_unicode_range3   : wint;
-      ul_unicode_range4   : wint;
-      us_first_char_index : int;
-      us_last_char_index  : int;
+      us_first_char_index : Uchar.t;
+      us_last_char_index  : Uchar.t;
       us_max_context      : int option;
     }
     [@@deriving show { with_path = false }]

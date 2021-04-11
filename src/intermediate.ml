@@ -50,12 +50,8 @@ end
 module Os2 = struct
   type derived = {
     x_avg_char_width    : int;
-    ul_unicode_range1   : wint;
-    ul_unicode_range2   : wint;
-    ul_unicode_range3   : wint;
-    ul_unicode_range4   : wint;
-    us_first_char_index : int;
-    us_last_char_index  : int;
+    us_first_char_index : Uchar.t; [@printer pp_uchar]
+    us_last_char_index  : Uchar.t; [@printer pp_uchar]
     us_max_context      : int option;
   }
   [@@deriving show { with_path = false }]

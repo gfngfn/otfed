@@ -42,8 +42,8 @@ let get (src : source) : Intermediate.Os2.t ok =
     d_uint32   >>= fun ul_unicode_range4 ->
     d_bytes 4  >>= fun ach_vend_id ->
     d_uint16   >>= fun fs_selection ->
-    d_uint16   >>= fun us_first_char_index ->
-    d_uint16   >>= fun us_last_char_index ->
+    d_bmp_code_point >>= fun us_first_char_index ->
+    d_bmp_code_point >>= fun us_last_char_index ->
     d_int16    >>= fun s_typo_ascender ->
     d_int16    >>= fun s_type_descender ->
     d_int16    >>= fun s_typo_linegap ->
@@ -75,6 +75,10 @@ let get (src : source) : Intermediate.Os2.t ok =
         y_strikeout_position;
         s_family_class;
         panose;
+        ul_unicode_range1;
+        ul_unicode_range2;
+        ul_unicode_range3;
+        ul_unicode_range4;
         ach_vend_id;
         fs_selection;
         s_typo_ascender;
@@ -93,10 +97,6 @@ let get (src : source) : Intermediate.Os2.t ok =
       };
       derived = {
         x_avg_char_width;
-        ul_unicode_range1;
-        ul_unicode_range2;
-        ul_unicode_range3;
-        ul_unicode_range4;
         us_first_char_index;
         us_last_char_index;
         us_max_context;

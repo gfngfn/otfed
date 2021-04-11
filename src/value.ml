@@ -333,6 +333,10 @@ module Os2 = struct
     y_strikeout_position        : int;
     s_family_class              : int;
     panose                      : string;  (* 10 bytes. *)
+    ul_unicode_range1           : wint;
+    ul_unicode_range2           : wint;
+    ul_unicode_range3           : wint;
+    ul_unicode_range4           : wint;
     ach_vend_id                 : string;  (* 4 bytes. *)
     fs_selection                : int;
     s_typo_ascender             : int;

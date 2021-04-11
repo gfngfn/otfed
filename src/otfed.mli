@@ -1,7 +1,7 @@
 
 include module type of Basic
 
-(** Handles unmarshaled in-memory representation of tables. *)
+(** Handles master data for OpenType fonts. *)
 module Value : sig
 
   (** Handles 4cc tags. *)
@@ -224,6 +224,7 @@ module Value : sig
   module Math : (module type of Value.Math)
 end
 
+(** Handles in-memory representation of OpenType tables that contain metadata derived from master data. *)
 module Intermediate : sig
   type loc_format =
     | ShortLocFormat
@@ -329,8 +330,10 @@ module Decode : sig
 
   type 'a ok = ('a, Error.t) result
 
+  (** The type for sources equipped with TrueType-based outlines. *)
   type ttf_source
 
+  (** The type for sources equipped with CFF-based outlines. *)
   type cff_source
 
   type source =
@@ -389,7 +392,7 @@ module Decode : sig
     | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
   [@@deriving show { with_path = false }]
 
-  (** Represents CharStrings. *)
+  (** Represents a CharString. *)
   type charstring = charstring_operation list
   [@@deriving show { with_path = false }]
 
@@ -572,8 +575,12 @@ module Decode : sig
       val get : ttf_source -> Intermediate.Ttf.Maxp.t ok
     end
 
+    (** [loca ttf gid] consults the [loca] table of the source [ttf] by glyph ID [gid],
+        and returns the location of the glyph in the [glyf] table if exists.  *)
     val loca : ttf_source -> Value.glyph_id -> (Intermediate.Ttf.glyph_location option) ok
 
+    (** [glyf ttf loc] accesses [loca] in the [glyf] table and
+        returns the bounding box and the outline of the glyph. *)
     val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.ttf_glyph_info ok
 
     val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok

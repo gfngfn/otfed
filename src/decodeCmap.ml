@@ -96,11 +96,19 @@ let make_incremental_segment ~msg ~start:startCharCode ~last:endCharCode ~gid:st
     return @@ Incremental(startCharCode, endCharCode, startGlyphId)
 
 
-let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) =
+let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) acc (endCodes, startCodes, idDeltas, idRangeOffsets) =
   let rec aux i acc = function
     | ([], [], [], []) ->
-        assert (i = segCount);
-        return acc
+        if i = segCount then
+          return acc
+        else
+          err @@ Error.InconsistentNumberOfCmapSegments{
+            seg_count            = segCount;
+            num_end_codes        = List.length endCodes;
+            num_start_codes      = List.length startCodes;
+            num_id_deltas        = List.length idDeltas;
+            num_id_range_offsets = List.length idRangeOffsets;
+          }
 
     | (
         endCode :: endCodes,
@@ -161,9 +169,15 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
         aux (i + 1) acc (endCodes, startCodes, idDeltas, idRangeOffsets)
 
     | _ ->
-        assert false
+        err @@ Error.InconsistentNumberOfCmapSegments{
+          seg_count            = segCount;
+          num_end_codes        = List.length endCodes;
+          num_start_codes      = List.length startCodes;
+          num_id_deltas        = List.length idDeltas;
+          num_id_range_offsets = List.length idRangeOffsets;
+        }
   in
-  aux 0
+  aux 0 acc (endCodes, startCodes, idDeltas, idRangeOffsets)
 
 
 let d_reserved_pad =

@@ -178,24 +178,13 @@ type old_to_new_map = glyph_id OldToNewMap.t
 let make_subset_of_subtable ~current_min:(uch_min : Uchar.t) ~current_max:(uch_max : Uchar.t) (old_to_new_map : old_to_new_map) (subtable_old : Value.Cmap.subtable) : Value.Cmap.subtable * Uchar.t * Uchar.t =
   let open Value.Cmap in
   let mapping_old = subtable_old.mapping in
-
-  let pp_entry ppf (gid_old, gid_new) = Format.fprintf ppf "{%d --> %d}" gid_old gid_new in (* for debug *)
-  Format.printf "!!!======== pid: %d, eid: %d ======== @,%a@,"
-    subtable_old.subtable_ids.platform_id
-    subtable_old.subtable_ids.encoding_id
-    (Format.pp_print_list pp_entry) (OldToNewMap.bindings old_to_new_map);
-
   let (mapping_new, uch_min, uch_max) =
     Mapping.fold (fun uch gid_old ((mapping_new, uch_min, uch_max) as acc) ->
       match old_to_new_map |> OldToNewMap.find_opt gid_old with
       | None ->
-(*
-          Format.printf "!!! _ uch: %a, old: %d@," pp_uchar uch gid_old; (* for debug *)
-*)
           acc
 
       | Some(gid_new) ->
-          Format.printf "!!! * uch: %a, old: %d, new: %d@," pp_uchar uch gid_old gid_new; (* for debug *)
           let mapping_new = mapping_new |> Mapping.add_single uch gid_new in
           (mapping_new, Stdlib.min uch_min uch, Stdlib.max uch_max uch)
     ) mapping_old (Mapping.empty, uch_min, uch_max)
@@ -218,7 +207,6 @@ let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uch
   in
   let (old_to_new_map, _) =
     gids |> List.fold_left (fun (old_to_new_map, gid_new) gid_old ->
-      Format.printf "!!! old: %d, new: %d@," gid_old gid_new; (* for debug *)
       (old_to_new_map |> OldToNewMap.add gid_old gid_new, gid_new + 1)
     ) (OldToNewMap.empty, 0)
   in

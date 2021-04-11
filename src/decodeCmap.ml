@@ -82,11 +82,10 @@ let uchar_of_int n =
   | _ -> err @@ Error.InvalidCodePoint(n)
 
 
-let make_incremental_segment ~msg ~start:startCharCode ~last:endCharCode ~gid:startGlyphId =
+let make_incremental_segment ~start:startCharCode ~last:endCharCode ~gid:startGlyphId =
   let open DecodeOperation in
   if startCharCode > endCharCode then
     err @@ Error.InvalidCmapSegment{
-      msg; (* for debug *)
       incremental    = true;
       start_char     = startCharCode;
       end_char       = endCharCode;
@@ -126,9 +125,9 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
               transform_result (uchar_of_int (- idDelta)) >>= fun uchFirst2 ->
               transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
               let gidFirst1 = gidStart land 65535 in
-              make_incremental_segment ~msg:"1a" ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
+              make_incremental_segment ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
               let acc = f acc segment1 in
-              make_incremental_segment ~msg:"1b" ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
+              make_incremental_segment ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
               let acc = f acc segment2 in
               return acc
             else if gidStart <= 65535 && 65535 < gidEnd then
@@ -137,15 +136,15 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
               transform_result (uchar_of_int (65536 - idDelta)) >>= fun uchFirst2 ->
               transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
               let gidFirst1 = gidStart in
-              make_incremental_segment ~msg:"2a" ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
+              make_incremental_segment ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
               let acc = f acc segment1 in
-              make_incremental_segment ~msg:"2b" ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
+              make_incremental_segment ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
               let acc = f acc segment2 in
               return acc
             else
               transform_result (uchar_of_int startCode) >>= fun uchStart ->
               transform_result (uchar_of_int endCode) >>= fun uchEnd ->
-              make_incremental_segment ~msg:"3" ~start:uchStart ~last:uchEnd ~gid:(gidStart land 65535) >>= fun segment ->
+              make_incremental_segment ~start:uchStart ~last:uchEnd ~gid:(gidStart land 65535) >>= fun segment ->
               let acc = f acc segment in
               return acc
           else
@@ -227,7 +226,7 @@ let d_cmap_segment k f acc =
 
 let d_cmap_12 f =
   d_cmap_segment (fun start last gid ->
-    make_incremental_segment ~msg:"format 12" ~start ~last ~gid
+    make_incremental_segment ~start ~last ~gid
   ) f
 
 
@@ -235,7 +234,6 @@ let d_cmap_13 f =
   d_cmap_segment (fun startCharCode endCharCode startGlyphId ->
     if startCharCode > endCharCode then
       err @@ Error.InvalidCmapSegment{
-        msg = "format 13"; (* for debug *)
         incremental    = false;
         start_char     = startCharCode;
         end_char       = endCharCode;

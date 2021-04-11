@@ -7,6 +7,10 @@ module V = Otfed.Value
 module I = Otfed.Intermediate
 module Subset = Otfed.Subset
 
+
+let pp_uchar = Otfed.pp_uchar
+
+
 type config = {
   tables : bool;
   cmap   : bool;
@@ -57,7 +61,7 @@ let print_cmap (source : D.source) =
     let open ResultMonad in
     D.Cmap.get source >>= fun icmap ->
     D.Cmap.get_subtables icmap >>= fun subtables ->
-    subtables |> List.iter (fun subtable ->
+    foldM (fun () subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
       let format = D.Cmap.get_format_number subtable in
       Format.printf "- subtable (platform: %d, encoding: %d, format: %d)@,"
@@ -68,15 +72,14 @@ let print_cmap (source : D.source) =
         match seg with
         | D.Incremental(uch1, uch2, gid) ->
             if Uchar.equal uch1 uch2 then
-              Format.printf "  - I U+%04X --> %d@," (Uchar.to_int uch1) gid
+              Format.printf "  - I %a --> %d@," pp_uchar uch1 gid
             else
-              Format.printf "  - I U+%04X, U+%04X --> %d@," (Uchar.to_int uch1) (Uchar.to_int uch2) gid
+              Format.printf "  - I %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
 
         | D.Constant(uch1, uch2, gid) ->
-            Format.printf "  - C U+%04X, U+%04X --> %d@," (Uchar.to_int uch1) (Uchar.to_int uch2) gid
-      ) () |> ignore;
-    );
-    return ()
+              Format.printf "  - C %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
+      ) ()
+    ) subtables ()
   in
   res |> inj
 

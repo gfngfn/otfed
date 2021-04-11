@@ -170,6 +170,64 @@ let make_os2 (src : Decode.source) ~average_char_width ~first_char ~max_context 
   inj_enc @@ Encode.Os2.make ios2
 
 
+module OldToNewMap = Map.Make(Int)
+
+type old_to_new_map = glyph_id OldToNewMap.t
+
+
+let make_subset_of_subtable ~current_min:(uch_min : Uchar.t) ~current_max:(uch_max : Uchar.t) (old_to_new_map : old_to_new_map) (subtable_old : Value.Cmap.subtable) : Value.Cmap.subtable * Uchar.t * Uchar.t =
+  let open Value.Cmap in
+  let mapping_old = subtable_old.mapping in
+  let (mapping_new, uch_min, uch_max) =
+    Mapping.fold (fun uch gid_old ((mapping_new, uch_min, uch_max) as acc) ->
+      match old_to_new_map |> OldToNewMap.find_opt gid_old with
+      | None ->
+          acc
+
+      | Some(gid_new) ->
+          let mapping_new = mapping_new |> Mapping.add_single uch gid_new in
+          (mapping_new, Stdlib.min uch_min uch, Stdlib.max uch_max uch)
+    ) mapping_old (Mapping.empty, uch_min, uch_max)
+  in
+  let subtable_new =
+    {
+      subtable_ids = subtable_old.subtable_ids;
+      mapping      = mapping_new;
+    }
+  in
+  (subtable_new, uch_min, uch_max)
+
+
+let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uchar.t * Uchar.t) ok =
+  let open ResultMonad in
+  let res_dec =
+    Decode.Cmap.get src >>= fun icmap ->
+    Decode.Cmap.get_subtables icmap >>= fun isubtables ->
+    isubtables |> mapM Decode.Cmap.unmarshal_subtable
+  in
+  let (old_to_new_map, _) =
+    gids |> List.fold_left (fun (old_to_new_map, gid_new) gid_old ->
+      (old_to_new_map |> OldToNewMap.add gid_old gid_new, gid_new + 1)
+    ) (OldToNewMap.empty, 0)
+  in
+  inj_dec res_dec >>= fun subtables ->
+  let (subtable_new_acc, uch_min, uch_max) =
+    subtables |> List.fold_left (fun (subtable_new_acc, uch_min, uch_max) subtable_old ->
+      let (subtable_new, uch_min, uch_max) =
+        make_subset_of_subtable
+          ~current_min:uch_min
+          ~current_max:uch_max
+          old_to_new_map
+          subtable_old
+      in
+      (Alist.extend subtable_new_acc subtable_new, uch_min, uch_max)
+    ) (Alist.empty, Uchar.of_int 0xFFFF, Uchar.of_int 0)
+  in
+  let subtables_new = subtable_new_acc |> Alist.to_list in
+  inj_enc @@ Encode.Cmap.make subtables_new >>= fun table_cmap ->
+  return (table_cmap, uch_min, uch_max)
+
+
 type relative_offset = int
 
 type table_directory_entry = {
@@ -332,8 +390,7 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
   let num_glyphs = List.length gids in
 
   (* Make `cmap`. *)
-  inj_enc @@ Encode.Cmap.make [] >>= fun table_cmap ->
-    (* TODO: support an option for embedding `cmap` tables *)
+  make_cmap src gids >>= fun (table_cmap, first_char, last_char) ->
 
   (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
@@ -353,8 +410,6 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
   let { table_hmtx; hhea_derived; number_of_h_metrics; average_char_width; } = hmtx_result in
 
   (* Make `OS/2`. *)
-  let first_char = Uchar.of_int 32 in (* TODO: get the first code point from `cmap`. *)
-  let last_char = Uchar.of_int 0xFFFF in (* TODO: get the last code point from `cmap`. *)
   let max_context = Some(1) in (* TODO: should extend this if this function can encode advanced tables. *)
   make_os2 src ~average_char_width ~first_char ~last_char ~max_context >>= fun table_os2 ->
 

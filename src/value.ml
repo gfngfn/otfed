@@ -227,6 +227,10 @@ module Cmap = struct
 
     val add_single : Uchar.t -> glyph_id -> t -> t
 
+    val add_incremental_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
+
+    val add_constant_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
+
     val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
 
     val number_of_entries : t -> int
@@ -242,6 +246,28 @@ module Cmap = struct
 
     let add_single =
       MapImpl.add
+
+
+    let add_incremental_range ~start ~last ~gid map =
+      let rec aux map uch gid =
+        if uch > last then
+          map
+        else
+          let map = map |> add_single uch gid in
+          aux map (Uchar.succ uch) (gid + 1)
+      in
+      aux map start gid
+
+
+    let add_constant_range ~start ~last ~gid map =
+      let rec aux map uch =
+        if uch > last then
+          map
+        else
+          let map = map |> add_single uch gid in
+          aux map (Uchar.succ uch)
+      in
+      aux map start
 
 
     let fold =

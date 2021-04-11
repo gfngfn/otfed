@@ -431,6 +431,8 @@ module Decode : sig
     val get_format_number : subtable -> int
 
     val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
+
+    val unmarshal_subtable : subtable -> Value.Cmap.subtable ok
   end
 
   (** Handles intermediate representation of [hmtx] tables for decoding.

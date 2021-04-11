@@ -59,6 +59,22 @@ type t =
       num_ys     : int;
     }
 
+  | InconsistentNumberOfCmapSegments of {
+      seg_count            : int;
+      num_end_codes        : int;
+      num_start_codes      : int;
+      num_id_deltas        : int;
+      num_id_range_offsets : int;
+    }
+
+  | InvalidCmapSegment of {
+      incremental    : bool;
+      start_char     : Uchar.t; [@printer pp_uchar]
+      end_char       : Uchar.t; [@printer pp_uchar]
+      start_glyph_id : Value.glyph_id;
+    }
+
+  | InvalidReservedPad        of int
   | InvalidGlyphNameIndex     of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

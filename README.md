@@ -81,7 +81,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
     <th>Supported</th><th>Tested</th><th>Supported</th><th>Tested</th>
   </tr>
   <tr><td rowspan="8">Required</td>
-      <td>cmap</td><td>v (Format 12 only)</td><td>-</td><td>v (Format 4, 12, and 13 only)</td><td>-</td></tr>
+      <td>cmap</td><td>v (Format 12 only)</td><td>o</td><td>v (Format 4, 12, and 13 only)</td><td>o</td></tr>
   <tr><td>head</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>hhea</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>hmtx</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>

@@ -82,11 +82,34 @@ let uchar_of_int n =
   | _ -> err @@ Error.InvalidCodePoint(n)
 
 
-let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) =
+let make_segment ~incremental ~start:startCharCode ~last:endCharCode ~gid:startGlyphId =
+  let open DecodeOperation in
+  if startCharCode > endCharCode then
+    err @@ Error.InvalidCmapSegment{
+      incremental    = incremental;
+      start_char     = startCharCode;
+      end_char       = endCharCode;
+      start_glyph_id = startGlyphId;
+    }
+  else if incremental then
+    return @@ Incremental(startCharCode, endCharCode, startGlyphId)
+  else
+    return @@ Constant(startCharCode, endCharCode, startGlyphId)
+
+
+let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) acc (endCodes, startCodes, idDeltas, idRangeOffsets) =
   let rec aux i acc = function
     | ([], [], [], []) ->
-        assert (i = segCount);
-        return acc
+        if i = segCount then
+          return acc
+        else
+          err @@ Error.InconsistentNumberOfCmapSegments{
+            seg_count            = segCount;
+            num_end_codes        = List.length endCodes;
+            num_start_codes      = List.length startCodes;
+            num_id_deltas        = List.length idDeltas;
+            num_id_range_offsets = List.length idRangeOffsets;
+          }
 
     | (
         endCode :: endCodes,
@@ -104,8 +127,10 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
               transform_result (uchar_of_int (- idDelta)) >>= fun uchFirst2 ->
               transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
               let gidFirst1 = gidStart land 65535 in
-              let acc = f acc (Incremental(uchFirst1, uchLast1, gidFirst1)) in
-              let acc = f acc (Incremental(uchFirst2, uchLast2, 0)) in
+              make_segment ~incremental:true ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
+              let acc = f acc segment1 in
+              make_segment ~incremental:true ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
+              let acc = f acc segment2 in
               return acc
             else if gidStart <= 65535 && 65535 < gidEnd then
               transform_result (uchar_of_int startCode) >>= fun uchFirst1 ->
@@ -113,13 +138,16 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
               transform_result (uchar_of_int (65536 - idDelta)) >>= fun uchFirst2 ->
               transform_result (uchar_of_int endCode) >>= fun uchLast2 ->
               let gidFirst1 = gidStart in
-              let acc = f acc (Incremental(uchFirst1, uchLast1, gidFirst1)) in
-              let acc = f acc (Incremental(uchFirst2, uchLast2, 0)) in
+              make_segment ~incremental:true ~start:uchFirst1 ~last:uchLast1 ~gid:gidFirst1 >>= fun segment1 ->
+              let acc = f acc segment1 in
+              make_segment ~incremental:true ~start:uchFirst2 ~last:uchLast2 ~gid:0 >>= fun segment2 ->
+              let acc = f acc segment2 in
               return acc
             else
               transform_result (uchar_of_int startCode) >>= fun uchStart ->
               transform_result (uchar_of_int endCode) >>= fun uchEnd ->
-              let acc = f acc (Incremental(uchStart, uchEnd, gidStart land 65535)) in
+              make_segment ~incremental:true ~start:uchStart ~last:uchEnd ~gid:(gidStart land 65535) >>= fun segment ->
+              let acc = f acc segment in
               return acc
           else
             let rec iter cp acc =
@@ -142,9 +170,23 @@ let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cma
         aux (i + 1) acc (endCodes, startCodes, idDeltas, idRangeOffsets)
 
     | _ ->
-        assert false
+        err @@ Error.InconsistentNumberOfCmapSegments{
+          seg_count            = segCount;
+          num_end_codes        = List.length endCodes;
+          num_start_codes      = List.length startCodes;
+          num_id_deltas        = List.length idDeltas;
+          num_id_range_offsets = List.length idRangeOffsets;
+        }
   in
-  aux 0
+  aux 0 acc (endCodes, startCodes, idDeltas, idRangeOffsets)
+
+
+let d_reserved_pad =
+  d_uint16 >>= fun n ->
+  if n = 0 then
+    return ()
+  else
+    err @@ Error.InvalidReservedPad(n)
 
 
 let d_cmap_4 f acc =
@@ -154,7 +196,7 @@ let d_cmap_4 f acc =
   let segCount = segCountX2 / 2 in
   d_skip (2 * 3) >>= fun () -> (* Skips `searchRange`, `entrySelector`, and `rangeShift`. *)
   d_repeat segCount d_uint16 >>= fun endCodes ->
-  d_skip 1 >>= fun () -> (* Skips a reserved pad. *)
+  d_reserved_pad >>= fun () ->
   d_repeat segCount d_uint16 >>= fun startCodes ->
   d_repeat segCount d_int16 >>= fun idDeltas ->
   d_repeat segCount d_uint16 >>= fun idRangeOffsets ->
@@ -172,7 +214,8 @@ let rec d_cmap_groups k count f acc =
       err @@ InvalidCodePointRange(startCharCode, endCharCode)
     else
       d_uint32_int >>= fun startGlyphId ->
-      let acc = f acc (k startCharCode endCharCode startGlyphId) in
+      k startCharCode endCharCode startGlyphId >>= fun segment ->
+      let acc = f acc segment in
       d_cmap_groups k (count - 1) f acc
 
 
@@ -184,14 +227,14 @@ let d_cmap_segment k f acc =
 
 
 let d_cmap_12 f =
-  d_cmap_segment (fun startCharCode endCharCode startGlyphId ->
-    Incremental(startCharCode, endCharCode, startGlyphId)
+  d_cmap_segment (fun start last gid ->
+    make_segment ~incremental:true ~start ~last ~gid
   ) f
 
 
 let d_cmap_13 f =
-  d_cmap_segment (fun startCharCode endCharCode startGlyphId ->
-    Constant(startCharCode, endCharCode, startGlyphId)
+  d_cmap_segment (fun start last gid ->
+    make_segment ~incremental:false ~start ~last ~gid
   ) f
 
 
@@ -207,3 +250,21 @@ let fold_subtable (subtable : subtable) f acc =
     | _  -> err @@ UnsupportedCmapFormat(format)
   in
   run cmap.core offset dec
+
+
+let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =
+  let open ResultMonad in
+  let open Value.Cmap in
+  fold_subtable subtable (fun mapping segment ->
+    match segment with
+    | Incremental(uch1, uch2, gid) ->
+        mapping |> Mapping.add_incremental_range ~start:uch1 ~last:uch2 ~gid:gid
+
+    | Constant(uch1, uch2, gid) ->
+        mapping |> Mapping.add_constant_range ~start:uch1 ~last:uch2 ~gid:gid
+
+  ) Mapping.empty >>= fun mapping ->
+  return Value.Cmap.{
+    subtable_ids = get_subtable_ids subtable;
+    mapping;
+  }

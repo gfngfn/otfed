@@ -17,10 +17,11 @@ let make_subtables ~first_offset:(first_offset : int) (cmap_subtables : Value.Cm
     let length = !% (16 + nGroups * 12) in
     let open EncodeOperation in
     current >>= fun reloffset ->
-    e_uint16 12          >>= fun () -> (* Subtable format number 12. *)
-    e_uint16 0           >>= fun () -> (* Reserved *)
-    e_uint32 language_id >>= fun () ->
-    e_uint32 length      >>= fun () ->
+    e_uint16 12           >>= fun () -> (* Subtable format number 12. *)
+    e_uint16 0            >>= fun () -> (* Reserved *)
+    e_uint32 length       >>= fun () ->
+    e_uint32 language_id  >>= fun () ->
+    e_uint32 (!% nGroups) >>= fun () ->
     Value.Cmap.Mapping.fold (fun uch gid enc ->
       let cp = !% (Uchar.to_int uch) in
       enc >>= fun () ->

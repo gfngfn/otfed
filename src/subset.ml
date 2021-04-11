@@ -382,7 +382,7 @@ let make_font_data_from_tables (tables : Encode.table list) : string ok =
   return (update_checksum_adjustment ~checksum_offset ~checksum_value contents)
 
 
-let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok =
+let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok =
   let open ResultMonad in
 
   let src = Decode.Ttf(ttf) in
@@ -448,25 +448,27 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
     }
   in
   inj_enc @@ Encode.Head.make ihead >>= fun table_head ->
-  make_font_data_from_tables [
-    table_head;
-    table_hhea;
-    table_hmtx;
-    table_maxp;
-    table_cmap;
-    table_post;
-    table_name;
-    table_os2;
-    table_loca;
-    table_glyf;
+  make_font_data_from_tables @@ List.concat [
+    [
+      table_head;
+      table_hhea;
+      table_hmtx;
+      table_maxp;
+      table_post;
+      table_name;
+      table_os2;
+      table_loca;
+      table_glyf;
+    ];
+    if omit_cmap then [] else [table_cmap];
   ]
 
 
-let make_cff_subset (_cff : Decode.cff_source) (_gids : glyph_id list) : string ok =
+let make_cff_subset ~omit_cmap:(_ : bool) (_cff : Decode.cff_source) (_gids : glyph_id list) : string ok =
   failwith "Encode.Subset.make_cff"
 
 
-let make (src : Decode.source) (gids : glyph_id list) : string ok =
+let make ?(omit_cmap = false) (src : Decode.source) (gids : glyph_id list) : string ok =
   match src with
-  | Ttf(ttf) -> make_ttf_subset ttf gids
-  | Cff(cff) -> make_cff_subset cff gids
+  | Ttf(ttf) -> make_ttf_subset ~omit_cmap ttf gids
+  | Cff(cff) -> make_cff_subset ~omit_cmap cff gids

@@ -629,5 +629,5 @@ module Subset : sig
 
   type 'a ok = ('a, error) result
 
-  val make : Decode.source -> Value.glyph_id list -> string ok
+  val make : ?omit_cmap:bool -> Decode.source -> Value.glyph_id list -> string ok
 end

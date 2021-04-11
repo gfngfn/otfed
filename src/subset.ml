@@ -1,7 +1,6 @@
 
 open Basic
 open Value
-open DecodeBasic
 open EncodeOperation.Open
 
 
@@ -28,23 +27,23 @@ let update_bounding_box ~current ~new_one =
   }
 
 
-let get_glyph (ttf : ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
+let get_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
   let open ResultMonad in
-  inj_dec @@ DecodeTable.Ttf.loca ttf gid >>= function
+  inj_dec @@ Decode.Ttf.loca ttf gid >>= function
   | None      -> err @@ GlyphNotFound(gid)
-  | Some(loc) -> inj_dec @@ DecodeTable.Ttf.glyf ttf loc
+  | Some(loc) -> inj_dec @@ Decode.Ttf.glyf ttf loc
 
 
 type glyph_accumulator = ttf_glyph_info Alist.t * bounding_box
 
 
-let folding_glyph (ttf : ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
+let folding_glyph (ttf : Decode.ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
   get_glyph ttf gid >>= fun g ->
   return (Alist.extend gs g, update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
 
 
-let get_glyphs (ttf : ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
+let get_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
@@ -64,7 +63,7 @@ type hmtx_accumulator = Intermediate.Hhea.derived * (design_units * design_units
 
 let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry) ok =
   let open ResultMonad in
-  inj_dec @@ DecodeTable.Hmtx.access ihmtx gid >>= function
+  inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
       err NoGlyphGiven
 
@@ -98,9 +97,9 @@ let folding_hmtx (ihmtx : Decode.Hmtx.t) ((derived, entries) : hmtx_accumulator)
       return (derived, Alist.extend entries entry)
 
 
-let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeBasic.table * Intermediate.Hhea.derived * int) ok =
+let make_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : (Encode.table * Intermediate.Hhea.derived * int) ok =
   let open ResultMonad in
-  inj_dec @@ DecodeTable.Hmtx.get src >>= fun ihmtx ->
+  inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with
   | [] ->
       err NoGlyphGiven
@@ -108,7 +107,7 @@ let make_hmtx (src : source) (ggs : (glyph_id * ttf_glyph_info) list) : (EncodeB
   | gg_first :: ggs_tail ->
       get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first) ->
       foldM (folding_hmtx ihmtx) ggs_tail (derived_first, Alist.empty) >>= fun (derived, entries_tail) ->
-      inj_enc @@ EncodeTable.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
+      inj_enc @@ Encode.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
       let number_of_h_metrics = List.length ggs in
       return (table_hmtx, derived, number_of_h_metrics)
 
@@ -156,7 +155,7 @@ let calculate_checksum (s : string) : wint =
 
 
 (* `e_single_table` is used as a folding function in `enc_tables`. *)
-let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (table : EncodeBasic.table) =
+let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (table : Encode.table) =
   let open EncodeOperation in
   pad_to_long_aligned    >>= fun () ->
   current                >>= fun reloffset ->
@@ -182,7 +181,7 @@ let e_single_table ((checksum_reloffset_opt, entries) : table_accumulator) (tabl
 (* `enc_tables tables` writes the tables `tables` and returns the pair of
    - an offset to `CheckSumAdjustment` relative to the position immediately after the table directory, and
    - all the entries for the construction of the table directory. *)
-let enc_tables (tables : EncodeBasic.table list) : (relative_offset * table_directory_entry list) encoder =
+let enc_tables (tables : Encode.table list) : (relative_offset * table_directory_entry list) encoder =
   let open EncodeOperation in
   foldM e_single_table tables (None, Alist.empty) >>= fun (checksum_reloffset_opt, entries) ->
   match checksum_reloffset_opt with
@@ -246,8 +245,8 @@ let enc_header (numTables : int) =
   return ()
 
 
-let make_font_data_from_tables (tables : EncodeBasic.table list) : string ok =
-  let tables = tables |> List.sort EncodeBasic.compare_table in
+let make_font_data_from_tables (tables : Encode.table list) : string ok =
+  let tables = tables |> List.sort Encode.compare_table in
   let numTables = List.length tables in
   let first_offset = 12 + numTables * 16 in
     (* `first_offset` is the offset where the table directory ends. *)
@@ -267,48 +266,48 @@ let make_font_data_from_tables (tables : EncodeBasic.table list) : string ok =
   return (update_checksum_adjustment ~checksum_offset ~checksum_value contents)
 
 
-let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
+let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok =
   let open ResultMonad in
 
-  let src = Ttf(ttf) in
+  let src = Decode.Ttf(ttf) in
 
   let num_glyphs = List.length gids in
 
   (* Make `cmap`. *)
-  inj_enc @@ EncodeTable.Cmap.make [] >>= fun table_cmap ->
+  inj_enc @@ Encode.Cmap.make [] >>= fun table_cmap ->
     (* TODO: support an option for embedding `cmap` tables *)
 
   (* Make `glyf` and `loca`. *)
   get_glyphs ttf gids >>= fun (gs, bbox_all) ->
-  inj_enc @@ EncodeTable.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
-  inj_enc @@ EncodeTable.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
+  inj_enc @@ Encode.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
+  inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
   (* Make `post`. *)
-  inj_dec @@ DecodeTable.Post.get src >>= fun post ->
-  inj_enc @@ EncodeTable.Post.make post >>= fun table_post ->
+  inj_dec @@ Decode.Post.get src >>= fun post ->
+  inj_enc @@ Encode.Post.make post >>= fun table_post ->
 
   (* Make `hmtx` and get derived data for `hhea`. *)
   make_hmtx src (List.combine gids gs) >>= fun (table_hmtx, hhea_derived, number_of_h_metrics) ->
 
   (* Make `hhea`. *)
-  inj_dec @@ DecodeTable.Hhea.get src >>= fun { value = hhea_value; _ } ->
+  inj_dec @@ Decode.Hhea.get src >>= fun { value = hhea_value; _ } ->
   let ihhea =
     Intermediate.Hhea.{
       value   = hhea_value;
       derived = hhea_derived;
     }
   in
-  inj_enc @@ EncodeTable.Hhea.make ~number_of_h_metrics ihhea >>= fun table_hhea ->
+  inj_enc @@ Encode.Hhea.make ~number_of_h_metrics ihhea >>= fun table_hhea ->
 
   (* Make `maxp` *)
-  inj_dec @@ DecodeTable.Ttf.Maxp.get ttf >>= fun maxp ->
+  inj_dec @@ Decode.Ttf.Maxp.get ttf >>= fun maxp ->
   let maxp =
     { maxp with num_glyphs = num_glyphs }  (* TODO: set more accurate data *)
   in
-  inj_enc @@ EncodeTable.Ttf.Maxp.make maxp >>= fun table_maxp ->
+  inj_enc @@ Encode.Ttf.Maxp.make maxp >>= fun table_maxp ->
 
   (* Make `head`. *)
-  inj_dec @@ DecodeTable.Head.get src >>= fun { value = head_value; _ } ->
+  inj_dec @@ Decode.Head.get src >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{
       x_min = bbox_all.x_min;
@@ -324,7 +323,7 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
       derived = head_derived;
     }
   in
-  inj_enc @@ EncodeTable.Head.make ihead >>= fun table_head ->
+  inj_enc @@ Encode.Head.make ihead >>= fun table_head ->
   make_font_data_from_tables [
     table_head;
     table_hhea;
@@ -337,11 +336,11 @@ let make_ttf_subset (ttf : ttf_source) (gids : glyph_id list) =
   ]
 
 
-let make_cff_subset (_cff : DecodeBasic.cff_source) (_gids : glyph_id list) =
+let make_cff_subset (_cff : Decode.cff_source) (_gids : glyph_id list) : string ok =
   failwith "Encode.Subset.make_cff"
 
 
-let make (src : DecodeBasic.source) (gids : glyph_id list) =
+let make (src : Decode.source) (gids : glyph_id list) : string ok =
   match src with
   | Ttf(ttf) -> make_ttf_subset ttf gids
   | Cff(cff) -> make_cff_subset cff gids

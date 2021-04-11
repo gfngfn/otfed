@@ -330,9 +330,7 @@ module Intermediate : sig
 end
 
 module Decode : sig
-  module Error : sig
-    include module type of DecodeError
-  end
+  module Error : (module type of DecodeError)
 
   type 'a ok = ('a, Error.t) result
 
@@ -609,25 +607,9 @@ end
 
 
 module Encode : sig
-  module Error : sig
-    type t
-    [@@deriving show { with_path = false }]
-  end
+  module Error : (module type of EncodeError)
 
   type 'a ok = ('a, Error.t) result
-
-  module Subset : sig
-    type error =
-      | NoGlyphGiven
-      | GlyphNotFound of Value.glyph_id
-      | DecodeError   of Decode.Error.t
-      | EncodeError   of Encode.Error.t
-    [@@deriving show { with_path = false }]
-
-    type 'a ok = ('a, error) result
-
-    val make : Decode.source -> Value.glyph_id list -> string ok
-  end
 
   module ForTest : sig
     module EncodeOperation : (module type of EncodeOperation)
@@ -636,4 +618,17 @@ module Encode : sig
 
     val run : 'a encoder -> string ok
   end
+end
+
+module Subset : sig
+  type error =
+    | NoGlyphGiven
+    | GlyphNotFound of Value.glyph_id
+    | DecodeError   of Decode.Error.t
+    | EncodeError   of Encode.Error.t
+  [@@deriving show { with_path = false }]
+
+  type 'a ok = ('a, error) result
+
+  val make : Decode.source -> Value.glyph_id list -> string ok
 end

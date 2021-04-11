@@ -6,9 +6,6 @@ include EncodeTable
 include EncodeBasic
 
 
-module Subset = EncodeSubset
-
-
 module ForTest = struct
   module EncodeOperation = EncodeOperation
 

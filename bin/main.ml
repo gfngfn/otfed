@@ -1,11 +1,5 @@
 
-module Alist = Otfed.Alist
-module ResultMonad = Otfed.ResultMonad
-module D = Otfed.Decode
-module E = Otfed.Encode
-module V = Otfed.Value
-module I = Otfed.Intermediate
-module Subset = Otfed.Subset
+open Common
 
 
 let pp_uchar = Otfed.pp_uchar
@@ -28,23 +22,8 @@ type config = {
   gsub   : (string * string * string) Alist.t;
   gpos   : (string * string * string) Alist.t;
   subset : (V.glyph_id list * string) Alist.t;
+  string : string Alist.t;
 }
-
-type error =
-  | UnknownCommand     of string
-  | InvalidCommandLine
-  | CannotReadFile     of string
-  | CannotWriteFile    of string
-  | DecodingError      of D.Error.t
-  | SubsetError        of Subset.error
-[@@deriving show { with_path = false }]
-
-
-let inj x =
-  x |> Result.map_error (fun e -> DecodingError(e))
-
-let inj_subset x =
-  x |> Result.map_error (fun e -> SubsetError(e))
 
 
 let print_table_directory (source : D.source) =
@@ -64,7 +43,7 @@ let print_cmap (source : D.source) =
     foldM (fun () subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
       let format = D.Cmap.get_format_number subtable in
-      Format.printf "- subtable (platform: %d, encoding: %d, format: %d)@,"
+      Format.printf "* subtable (platform: %d, encoding: %d, format: %d)@,"
         ids.platform_id
         ids.encoding_id
         format;
@@ -301,6 +280,28 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
               Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
               let data = Svg.make_cff ~units_per_em paths ~aw in
               write_file path ~data
+
+
+let print_glyph_ids_for_string (source : D.source) (s : string) =
+  let open ResultMonad in
+  Utf8Handler.to_uchar_list s >>= fun uchs ->
+  inj @@ D.Cmap.get source >>= fun icmap ->
+  inj @@ D.Cmap.get_subtables icmap >>= fun isubtables ->
+  isubtables |> mapM D.Cmap.unmarshal_subtable |> inj >>= fun subtables ->
+  subtables |> mapM (fun V.Cmap.{ mapping; subtable_ids; } ->
+    Format.printf "* subtable (platform: %d, encoding: %d)@,"
+      subtable_ids.platform_id
+      subtable_ids.encoding_id;
+    uchs |> mapM (fun uch ->
+      begin
+        match mapping |> V.Cmap.Mapping.find uch with
+        | None      -> Format.printf "  - %a --> (none)@," pp_uchar uch
+        | Some(gid) -> Format.printf "  - %a --> %d@," pp_uchar uch gid
+      end;
+      return ()
+    )
+  ) |> inj >>= fun _ ->
+  return ()
 
 
 let print_gsub_feature (feature : D.Gsub.feature) =
@@ -542,6 +543,10 @@ let parse_args () =
           let path = Sys.argv.(i + 2) in
           aux n { acc with subset = Alist.extend acc.subset (gids, path) } (i + 3)
 
+      | "cmap_word" ->
+          let s = Sys.argv.(i + 1) in
+          aux n { acc with string = Alist.extend acc.string s } (i + 2)
+
       | s ->
           err @@ UnknownCommand(s)
   in
@@ -566,6 +571,7 @@ let parse_args () =
         gsub   = Alist.empty;
         gpos   = Alist.empty;
         subset = Alist.empty;
+        string = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -593,51 +599,73 @@ let _ =
     read_file path >>= fun s ->
     D.source_of_string s |> inj >>= function
     | Single(source) ->
-        if config.tables then print_table_directory source else ();
+        let {
+          tables;
+          head;
+          hhea;
+          maxp;
+          os2;
+          math;
+          kern;
+          post;
+          name;
+          hmtx;
+          cmap;
+          glyf;
+          cff;
+          gsub;
+          gpos;
+          subset;
+          string;
+        } = config in
+        if tables then print_table_directory source else ();
         begin
-          if config.head then print_head source else return ()
+          if head then print_head source else return ()
         end >>= fun () ->
         begin
-          if config.hhea then print_hhea source else return ()
+          if hhea then print_hhea source else return ()
         end >>= fun () ->
         begin
-          if config.maxp then print_maxp source else return ()
+          if maxp then print_maxp source else return ()
         end >>= fun () ->
         begin
-          if config.os2 then print_os2 source else return ()
+          if os2 then print_os2 source else return ()
         end >>= fun () ->
         begin
-          if config.math then print_math source else return ()
+          if math then print_math source else return ()
         end >>= fun () ->
         begin
-          if config.kern then print_kern source else return ()
+          if kern then print_kern source else return ()
         end >>= fun () ->
         begin
-          if config.post then print_post source else return ()
+          if post then print_post source else return ()
         end >>= fun () ->
         begin
-          if config.name then print_name source else return ()
+          if name then print_name source else return ()
         end >>= fun () ->
-        config.hmtx |> Alist.to_list |> mapM (fun gid ->
+        hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid
         ) >>= fun _ ->
         begin
-          if config.cmap then print_cmap source else return ()
+          if cmap then print_cmap source else return ()
         end >>= fun () ->
-        config.glyf |> Alist.to_list |> mapM (fun (gid, path) ->
+        glyf |> Alist.to_list |> mapM (fun (gid, path) ->
           print_glyf source gid path
         ) >>= fun _ ->
-        config.cff |> Alist.to_list |> mapM (fun (gid, path) ->
+        cff |> Alist.to_list |> mapM (fun (gid, path) ->
           print_cff source gid path
         ) >>= fun _ ->
-        config.gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
+        gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gsub source script langsys feature |> inj
         ) >>= fun _ ->
-        config.gpos |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
+        gpos |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gpos source script langsys feature |> inj
         ) >>= fun _ ->
-        config.subset |> Alist.to_list |> mapM (fun (gids, path) ->
+        subset |> Alist.to_list |> mapM (fun (gids, path) ->
           make_subset source gids path
+        ) >>= fun _ ->
+        string |> Alist.to_list |> mapM (fun s ->
+          print_glyph_ids_for_string source s
         ) >>= fun _ ->
         return ()
 

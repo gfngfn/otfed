@@ -225,6 +225,8 @@ module Cmap = struct
 
     val empty : t
 
+    val find : Uchar.t -> t -> glyph_id option
+
     val add_single : Uchar.t -> glyph_id -> t -> t
 
     val add_incremental_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
@@ -242,6 +244,10 @@ module Cmap = struct
 
 
     let empty = MapImpl.empty
+
+
+    let find =
+      MapImpl.find_opt
 
 
     let add_single =

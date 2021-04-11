@@ -139,16 +139,7 @@ module Value : sig
   (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
   type mark2_record = anchor array
 
-  module Cmap : sig
-    type t
-
-    type subtable
-
-    type subtable_ids = {
-      platform_id : int;
-      encoding_id : int;
-    }
-  end
+  module Cmap : (module type of Value.Cmap)
 
   module Head : sig
     type mac_style = {

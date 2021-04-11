@@ -415,13 +415,16 @@ module Name = struct
     name_id     : int;
     name        : string;
   }
+  [@@deriving show { with_path = false }]
 
   type lang_tag = string
+  [@@deriving show { with_path = false }]
 
   type t = {
     name_records : name_record list;
     lang_tags    : (lang_tag list) option;
   }
+  [@@deriving show { with_path = false }]
 end
 
 module Math = struct

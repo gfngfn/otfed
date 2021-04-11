@@ -64,8 +64,10 @@ type t =
       start_char     : Uchar.t; [@printer pp_uchar]
       end_char       : Uchar.t; [@printer pp_uchar]
       start_glyph_id : Value.glyph_id;
+      msg            : string;
     }
 
+  | InvalidReservedPad        of int
   | InvalidGlyphNameIndex     of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

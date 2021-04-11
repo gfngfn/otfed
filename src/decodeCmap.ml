@@ -251,10 +251,20 @@ let fold_subtable (subtable : subtable) f acc =
   in
   run cmap.core offset dec
 
-(*
-let to_value (subtable : subtable) =
-  fold_subtable subtable (fun map segment ->
+
+let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =
+  let open ResultMonad in
+  let open Value.Cmap in
+  fold_subtable subtable (fun mapping segment ->
     match segment with
-    | _ -> ()
-  ) Value.Cmap.Mapping.empty
-*)
+    | Incremental(uch1, uch2, gid) ->
+        mapping |> Mapping.add_incremental_range ~start:uch1 ~last:uch2 ~gid:gid
+
+    | Constant(uch1, uch2, gid) ->
+        mapping |> Mapping.add_constant_range ~start:uch1 ~last:uch2 ~gid:gid
+
+  ) Mapping.empty >>= fun mapping ->
+  return Value.Cmap.{
+    subtable_ids = get_subtable_ids subtable;
+    mapping;
+  }

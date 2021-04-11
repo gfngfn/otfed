@@ -29,6 +29,7 @@ $ dune exec otfedcli <path/to/font-file> <commands>
 <command> ::=
   | tables                             # Prints all the tags of tables contained in the font.
   | cmap                               # Prints all the Unicode-aware `cmap` subtables.
+  | cmap_word "<arbitrary-utf8-text>"  # Consults `cmap` subtables for each character in the given text.
   | head                               # Prints the contents of `head` table.
   | hhea                               # Prints the contents of `hhea` table.
   | maxp                               # Prints the contents of `maxp` table.

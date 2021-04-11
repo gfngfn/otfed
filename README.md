@@ -86,7 +86,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>hhea</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>hmtx</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>maxp</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
-  <tr><td>name</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>name</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>OS/2</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>post</td><td>v (version 3 only)</td><td>o</td><td>v</td><td>o</td></tr>
 

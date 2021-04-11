@@ -228,6 +228,8 @@ module Value : sig
 
   module Post : (module type of Value.Post)
 
+  module Name : (module type of Value.Name)
+
   module Math : (module type of Value.Math)
 end
 
@@ -451,6 +453,10 @@ module Decode : sig
 
   module Post : sig
     val get : source -> Value.Post.t ok
+  end
+
+  module Name : sig
+    val get : source -> Value.Name.t ok
   end
 
   (** Handles intermediate representation of [GSUB] tables for decoding. *)

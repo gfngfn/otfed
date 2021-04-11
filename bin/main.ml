@@ -17,6 +17,7 @@ type config = {
   math   : bool;
   kern   : bool;
   post   : bool;
+  name   : bool;
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
@@ -196,7 +197,18 @@ let print_post (source : D.source) =
     let open ResultMonad in
     Format.printf "post:@,";
     D.Post.get source >>= fun post ->
-    Format.printf "  %a@," V.Post.pp post;
+    Format.printf "%a@," V.Post.pp post;
+    return ()
+  in
+  res |> inj
+
+
+let print_name (source : D.source) =
+  let res =
+    let open ResultMonad in
+    Format.printf "name:@,";
+    D.Name.get source >>= fun name ->
+    Format.printf "%a@," V.Name.pp name;
     return ()
   in
   res |> inj
@@ -242,7 +254,6 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
                 V.pp_ttf_glyph_description descr
                 V.pp_bounding_box bbox;
               write_file path ~data
-
 
 
 let pp_sep ppf () =
@@ -479,7 +490,6 @@ let make_subset (source : D.source) (gids : V.glyph_id list) (path : string) =
   write_file path ~data
 
 
-
 let parse_args () =
   let open ResultMonad in
   let rec aux n acc i =
@@ -496,6 +506,7 @@ let parse_args () =
       | "math"   -> aux n { acc with math = true } (i + 1)
       | "kern"   -> aux n { acc with kern = true } (i + 1)
       | "post"   -> aux n { acc with post = true } (i + 1)
+      | "name"   -> aux n { acc with name = true } (i + 1)
 
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -545,6 +556,7 @@ let parse_args () =
         math   = false;
         kern   = false;
         post   = false;
+        name   = false;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -599,6 +611,9 @@ let _ =
         end >>= fun () ->
         begin
           if config.post then print_post source else return ()
+        end >>= fun () ->
+        begin
+          if config.name then print_name source else return ()
         end >>= fun () ->
         config.hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid

@@ -407,6 +407,26 @@ module Post = struct
   [@@deriving show { with_path = false }]
 end
 
+module Name = struct
+  type name_record = {
+    platform_id : int;
+    encoding_id : int;
+    language_id : int;
+    name_id     : int;
+    name        : string;
+  }
+  [@@deriving show { with_path = false }]
+
+  type lang_tag = string
+  [@@deriving show { with_path = false }]
+
+  type t = {
+    name_records : name_record list;
+    lang_tags    : (lang_tag list) option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
 module Math = struct
   type math_value_record = int * device option
   [@@deriving show { with_path = false }]

@@ -5,6 +5,7 @@ module D = Otfed.Decode
 module E = Otfed.Encode
 module V = Otfed.Value
 module I = Otfed.Intermediate
+module Subset = Otfed.Subset
 
 type config = {
   tables : bool;
@@ -29,7 +30,7 @@ type error =
   | CannotReadFile     of string
   | CannotWriteFile    of string
   | DecodingError      of D.Error.t
-  | SubsetError        of E.Subset.error
+  | SubsetError        of Subset.error
 [@@deriving show { with_path = false }]
 
 
@@ -462,7 +463,7 @@ let print_gpos (source : D.source) (script_tag : string) (langsys_tag : string) 
 
 let make_subset (source : D.source) (gids : V.glyph_id list) (path : string) =
   let open ResultMonad in
-  E.Subset.make source gids |> inj_subset >>= fun data ->
+  Subset.make source gids |> inj_subset >>= fun data ->
   write_file path ~data
 
 

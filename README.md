@@ -90,21 +90,35 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>OS/2</td><td>v</td><td>-</td><td>v</td><td>o</td></tr>
   <tr><td>post</td><td>v (version 3 only)</td><td>o</td><td>v</td><td>o</td></tr>
 
-  <tr><td rowspan="2">TTF</td>
-      <td>loca</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td rowspan="6">TTF</td>
+      <td>cvt␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>fpgm</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>glyf</td><td>v</td><td>o (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
+  <tr><td>loca</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>prep</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="3">CFF</td>
       <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>
   <tr><td>CFF2</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>VORG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
-  <tr><td rowspan="5">Advanced</td>
+  <tr><td rowspan="1">SVG</td>
+      <td>SVG␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+
+  <tr><td rowspan="4">Optional</td>
+      <td>DSIG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>kern</td><td>-</td><td>-</td><td>v (Format 0 only)</td><td>o</td></tr>
+  <tr><td>vhea</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>vmtx</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+
+  <tr><td rowspan="7">Advanced</td>
       <td>BASE</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>GDEF</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>o</td></tr>
   <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>o</td></tr>
+  <tr><td>JSTF</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>o</td></tr>
-  <tr><td>kern</td><td>-</td><td>-</td><td>v (Format 0 only)</td><td>o</td></tr>
 </table>
 
 * v: done

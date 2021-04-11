@@ -344,6 +344,10 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
   inj_dec @@ Decode.Post.get src >>= fun post ->
   inj_enc @@ Encode.Post.make post >>= fun table_post ->
 
+  (* Make `name`. *)
+  inj_dec @@ Decode.Name.get src >>= fun name ->
+  inj_enc @@ Encode.Name.make name >>= fun table_name ->
+
   (* Make `hmtx` and get derived data for `hhea`. *)
   make_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
   let { table_hmtx; hhea_derived; number_of_h_metrics; average_char_width; } = hmtx_result in
@@ -396,6 +400,7 @@ let make_ttf_subset (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok
     table_maxp;
     table_cmap;
     table_post;
+    table_name;
     table_os2;
     table_loca;
     table_glyf;

@@ -59,6 +59,13 @@ type t =
       num_ys     : int;
     }
 
+  | InvalidCmapSegment of {
+      incremental    : bool;
+      start_char     : Uchar.t; [@printer pp_uchar]
+      end_char       : Uchar.t; [@printer pp_uchar]
+      start_glyph_id : Value.glyph_id;
+    }
+
   | InvalidGlyphNameIndex     of int
   | Unsupported               of unsupported_report
 [@@deriving show { with_path = false }]

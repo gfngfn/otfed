@@ -172,7 +172,8 @@ let rec d_cmap_groups k count f acc =
       err @@ InvalidCodePointRange(startCharCode, endCharCode)
     else
       d_uint32_int >>= fun startGlyphId ->
-      let acc = f acc (k startCharCode endCharCode startGlyphId) in
+      k startCharCode endCharCode startGlyphId >>= fun segment ->
+      let acc = f acc segment in
       d_cmap_groups k (count - 1) f acc
 
 
@@ -185,13 +186,29 @@ let d_cmap_segment k f acc =
 
 let d_cmap_12 f =
   d_cmap_segment (fun startCharCode endCharCode startGlyphId ->
-    Incremental(startCharCode, endCharCode, startGlyphId)
+    if endCharCode > startCharCode then
+      err @@ Error.InvalidCmapSegment{
+        incremental    = true;
+        start_char     = startCharCode;
+        end_char       = endCharCode;
+        start_glyph_id = startGlyphId;
+      }
+    else
+      return @@ Incremental(startCharCode, endCharCode, startGlyphId)
   ) f
 
 
 let d_cmap_13 f =
   d_cmap_segment (fun startCharCode endCharCode startGlyphId ->
-    Constant(startCharCode, endCharCode, startGlyphId)
+    if endCharCode > startCharCode then
+      err @@ Error.InvalidCmapSegment{
+        incremental    = false;
+        start_char     = startCharCode;
+        end_char       = endCharCode;
+        start_glyph_id = startGlyphId;
+      }
+    else
+      return @@ Constant(startCharCode, endCharCode, startGlyphId)
   ) f
 
 
@@ -207,3 +224,11 @@ let fold_subtable (subtable : subtable) f acc =
     | _  -> err @@ UnsupportedCmapFormat(format)
   in
   run cmap.core offset dec
+
+(*
+let to_value (subtable : subtable) =
+  fold_subtable subtable (fun map segment ->
+    match segment with
+    | _ -> ()
+  ) Value.Cmap.Mapping.empty
+*)

@@ -114,6 +114,8 @@ module WideInt = struct
 
   let sub = Int64.sub
 
+  let div = Int64.div
+
   let of_int = Int64.of_int
 
   let to_int = Int64.to_int
@@ -144,8 +146,13 @@ let ( +% ) = WideInt.add
 
 let ( -% ) = WideInt.sub
 
+let ( /% ) = WideInt.div
+
 let ( !% ) = WideInt.of_int
 
 let ( !%% ) = WideInt.of_int64
 
 let is_in_range ~lower:a ~upper:b x = (a <= x && x <= b)
+
+let pp_uchar ppf uchar =
+  Format.fprintf ppf "U+%04X" (Uchar.to_int uchar)

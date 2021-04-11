@@ -15,6 +15,12 @@ val e_16bits : bool list -> unit encoder
 
 val e_f2dot14 : float -> unit encoder
 
+(** [e_bmp_code_point uch] writes a code point [uch] as a two-byte unsigned integer
+    if [uch] is within the Basic Multilingual Plane (i.e. less than or equal to [0xFFFF]),
+    or writes [0xFFFF] otherwise. *)
+val e_bmp_code_point : Uchar.t -> unit encoder
+
+(** Writes a 4cc tag. *)
 val e_tag : Tag.t -> unit encoder
 
 (** [mapM enc xs] writes [xs] by using [enc] for each element of [xs]. *)

@@ -14,6 +14,9 @@ val d_uint32_int : int decoder
 (** Reads 4 bytes as a Unicode code point. *)
 val d_code_point : Uchar.t decoder
 
+(** Reads 2 bytes as a Unicode code point. *)
+val d_bmp_code_point : Uchar.t decoder
+
 val d_f2dot14 : float decoder
 
 (** [pick offset dec] reads data at [offset] by using [dec], and does NOT move the position. *)

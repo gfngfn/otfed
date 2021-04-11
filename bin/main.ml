@@ -13,6 +13,7 @@ type config = {
   head   : bool;
   hhea   : bool;
   maxp   : bool;
+  os2    : bool;
   math   : bool;
   kern   : bool;
   post   : bool;
@@ -133,6 +134,17 @@ let print_maxp (source : D.source) =
         D.Cff.Maxp.get cff >>= fun maxp ->
         Format.printf "%a@," I.Cff.Maxp.pp maxp;
         return ()
+  in
+  res |> inj
+
+
+let print_os2 (source : D.source) =
+  let res =
+    let open ResultMonad in
+    Format.printf "OS/2:@,";
+    D.Os2.get source >>= fun os2 ->
+    Format.printf "%a@," I.Os2.pp os2;
+    return ()
   in
   res |> inj
 
@@ -480,6 +492,7 @@ let parse_args () =
       | "head"   -> aux n { acc with head = true } (i + 1)
       | "hhea"   -> aux n { acc with hhea = true } (i + 1)
       | "maxp"   -> aux n { acc with maxp = true } (i + 1)
+      | "os2"    -> aux n { acc with os2 = true } (i + 1)
       | "math"   -> aux n { acc with math = true } (i + 1)
       | "kern"   -> aux n { acc with kern = true } (i + 1)
       | "post"   -> aux n { acc with post = true } (i + 1)
@@ -528,6 +541,7 @@ let parse_args () =
         head   = false;
         hhea   = false;
         maxp   = false;
+        os2    = false;
         math   = false;
         kern   = false;
         post   = false;
@@ -573,6 +587,9 @@ let _ =
         end >>= fun () ->
         begin
           if config.maxp then print_maxp source else return ()
+        end >>= fun () ->
+        begin
+          if config.os2 then print_os2 source else return ()
         end >>= fun () ->
         begin
           if config.math then print_math source else return ()

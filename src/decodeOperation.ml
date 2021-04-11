@@ -22,6 +22,14 @@ let d_code_point : Uchar.t decoder =
     err @@ Error.InvalidCodePoint(n)
 
 
+let d_bmp_code_point : Uchar.t decoder =
+  d_uint16 >>= fun n ->
+  if Uchar.is_valid n then
+    return @@ Uchar.of_int n
+  else
+    err @@ Error.InvalidCodePoint(n)
+
+
 let d_f2dot14 : float decoder =
   d_int16 >>= fun n ->
   return ((float n) /. 16384.0)

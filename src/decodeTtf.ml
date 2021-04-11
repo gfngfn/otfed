@@ -8,9 +8,6 @@ open DecodeOperation.Open
 module Maxp = DecodeTtfMaxp
 
 
-type glyph_location = Intermediate.Ttf.glyph_location
-
-
 let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
   let open DecodeOperation in
   (* The position is set to the begging of `loca` table. *)
@@ -37,7 +34,7 @@ let d_loca_long (gid : glyph_id) : ((int * int) option) decoder =
     return @@ Some(glyf_offset1, glyf_offset2 - glyf_offset1)
 
 
-let d_loca (loc_format : Intermediate.loc_format) (gid : glyph_id) : (glyph_location option) decoder =
+let d_loca (loc_format : Intermediate.loc_format) (gid : glyph_id) : (Intermediate.Ttf.glyph_location option) decoder =
   let open DecodeOperation in
   (* The position is set to the begging of `loca` table. *)
   let dec =
@@ -50,7 +47,7 @@ let d_loca (loc_format : Intermediate.loc_format) (gid : glyph_id) : (glyph_loca
   | Some((glyf_offset, _length)) -> return @@ Some(Intermediate.Ttf.GlyphLocation(glyf_offset))
 
 
-let loca (ttf : ttf_source) (gid : glyph_id) : (glyph_location option) ok =
+let loca (ttf : ttf_source) (gid : glyph_id) : (Intermediate.Ttf.glyph_location option) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->

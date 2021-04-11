@@ -54,8 +54,6 @@ type cmap_segment =
   | Incremental of Uchar.t * Uchar.t * Value.glyph_id
   | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
-type ttf_glyph_location = Intermediate.Ttf.glyph_location
-
 type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
 
 type cff_key =

@@ -341,8 +341,6 @@ module Decode : sig
     | Single     of source
     | Collection of source list
 
-  type ttf_glyph_location
-
   (** [source_of_string s] parses [s] as a complete font file. *)
   val source_of_string : string -> single_or_collection ok
 
@@ -574,9 +572,9 @@ module Decode : sig
       val get : ttf_source -> Intermediate.Ttf.Maxp.t ok
     end
 
-    val loca : ttf_source -> Value.glyph_id -> (ttf_glyph_location option) ok
+    val loca : ttf_source -> Value.glyph_id -> (Intermediate.Ttf.glyph_location option) ok
 
-    val glyf : ttf_source -> ttf_glyph_location -> Value.ttf_glyph_info ok
+    val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.ttf_glyph_info ok
 
     val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
   end

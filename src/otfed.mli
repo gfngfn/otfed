@@ -309,6 +309,8 @@ module Intermediate : sig
       }
       [@@deriving show { with_path = false }]
     end
+
+    type glyph_location
   end
 
   module Cff : sig
@@ -609,6 +611,52 @@ module Encode : sig
   module Error : (module type of EncodeError)
 
   type 'a ok = ('a, Error.t) result
+
+  type table
+
+  module Head : sig
+    val make : Intermediate.Head.t -> table ok
+  end
+
+  module Hhea : sig
+    val make : number_of_h_metrics:int -> Intermediate.Hhea.t -> table ok
+  end
+
+  module Os2 : sig
+    val make : Intermediate.Os2.t -> table ok
+  end
+
+  module Post : sig
+    val make : Value.Post.t -> table ok
+  end
+
+  module Name : sig
+    val make : Value.Name.t -> table ok
+  end
+
+  module Hmtx : sig
+    val make : (Value.design_units * Value.design_units) list -> table ok
+  end
+
+  module Cmap : sig
+    val make : Value.Cmap.t -> table ok
+  end
+
+  module Ttf : sig
+    module Maxp : sig
+      val make : Intermediate.Ttf.Maxp.t -> table ok
+    end
+
+    val make_glyf : Value.ttf_glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
+
+    val make_loca : Intermediate.Ttf.glyph_location list -> (table * Intermediate.loc_format) ok
+  end
+
+  module Cff : sig
+    module Maxp : sig
+      val make : Intermediate.Cff.Maxp.t -> table ok
+    end
+  end
 
   module ForTest : sig
     module EncodeOperation : (module type of EncodeOperation)

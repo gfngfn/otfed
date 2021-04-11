@@ -250,22 +250,22 @@ module Cmap = struct
 
     let add_incremental_range ~start ~last ~gid map =
       let rec aux map uch gid =
-        if uch >= last then
+        if uch > last then
           map
         else
           let map = map |> add_single uch gid in
-          aux map (Uchar.succ start) (gid + 1)
+          aux map (Uchar.succ uch) (gid + 1)
       in
       aux map start gid
 
 
     let add_constant_range ~start ~last ~gid map =
       let rec aux map uch =
-        if uch >= last then
+        if uch > last then
           map
         else
           let map = map |> add_single uch gid in
-          aux map (Uchar.succ start)
+          aux map (Uchar.succ uch)
       in
       aux map start
 

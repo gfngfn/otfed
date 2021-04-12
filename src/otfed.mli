@@ -617,7 +617,25 @@ module Encode : sig
 
   type 'a ok = ('a, Error.t) result
 
+  (** The type for encoded tables. Values of this type is basically
+      a pair of a 4cc tag and a raw string contents. *)
   type table
+
+  val get_table_tag : table -> Value.Tag.t
+
+  val get_contents : table -> string
+
+  (** Make an entire font file from tables. This function performs:
+      - sorting tables based on 4cc tags,
+      - the insertion of padding [0x00] in order for every table to begin at the offset of multiples of 4,
+      - the calculation of checksums of each table, and
+      - the insertion of the sfnt header and the table directory,
+      - the calculation of checkSumAdjustment.
+
+      On the other hand, it does NOT perform, for example:
+      - checking whether all the required tables are present, or
+      - checking that some derived data encoded in given tables are consistent with master data. *)
+  val make_font_data_from_tables : table list -> string ok
 
   module Head : sig
     val make : Intermediate.Head.t -> table ok

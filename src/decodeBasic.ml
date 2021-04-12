@@ -93,9 +93,41 @@ type stem_argument = string
 type charstring_element =
   | ArgumentInteger  of int
   | ArgumentReal     of float
-  | Operator         of cff_key
-  | HintMaskOperator of stem_argument
-  | CntrMaskOperator of stem_argument
+
+  | OpHStem   (* `hstem (1)` *)
+  | OpVStem   (* `vstem (3)` *)
+  | OpHStemHM (* `hstemhm (18)` *)
+  | OpVStemHM (* `hstemhm (23)` *)
+
+  | OpRMoveTo (* `rmoveto (21)` *)
+  | OpHMoveTo (* `hmoveto (22)` *)
+  | OpVMoveTo   (* `vmoveto (4)` *)
+
+  | OpRLineTo   (* `rlineto (5)` *)
+  | OpHLineTo   (* `hlineto (6)` *)
+  | OpVLineTo   (* `vlineto (7)` *)
+
+  | OpCallSubr  (* `callsubr (10)` *)
+  | OpCallGSubr (* `callgsubr (29)` *)
+
+  | OpReturn  (* `return (11)` *)
+  | OpEndChar (* `endchar (14)` *)
+
+  | OpHintMask  of stem_argument (* `hintmask (19)` *)
+  | OpCntrMask  of stem_argument (* `cntrmask (20)` *)
+
+  | OpRCurveLine (* `rcurveline (24)` *)
+  | OpRLineCurve (* `rlinecurve (25)` *)
+  | OpRRCurveTo  (* `rrcurveto (8)` *)
+  | OpVVCurveTo  (* `vvcurveto (26)` *)
+  | OpHHCurveTo  (* `hhcurveto (27)` *)
+  | OpVHCurveTo  (* `vhcurveto (30)` *)
+  | OpHVCurveTo  (* `hvcurveto (31)` *)
+
+  | OpHFlex  (* `hflex (12 34)` *)
+  | OpFlex   (* `flex (12 35)` *)
+  | OpHFlex1 (* `hflex1 (12 36)` *)
+  | OpFlex1  (* `flex1 (12 37)` *)
 [@@deriving show { with_path = false }]
 
 (* `CharString(offset, length)`

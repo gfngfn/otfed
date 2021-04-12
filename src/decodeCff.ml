@@ -434,48 +434,63 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
   in
   (* `num_args` may be an odd number, but it is due to the width value *)
   d_uint8 >>= function
-  | ( 1 | 3 | 18 | 23) as b0 ->
-    (* `stem` operators *)
-      return_stem (1, Operator(ShortKey(b0)))
 
-  | b0 when b0 |> is_in_range ~lower:0 ~upper:9 ->
-      return_flushing_operator (1, Operator(ShortKey(b0)))
+  | 1  -> return_stem (1, OpHStem)
+  | 3  -> return_stem (1, OpVStem)
+  | 18 -> return_stem (1, OpHStemHM)
+  | 23 -> return_stem (1, OpVStemHM)
 
-  | (10 | 29) as b0 ->
-    (* `callsubr`/`callgsubr` operator *)
-      return_subroutine_operator (Operator(ShortKey(b0)))
+  | 4  -> return_flushing_operator (1, OpVMoveTo)
+  | 5  -> return_flushing_operator (1, OpRLineTo)
+  | 6  -> return_flushing_operator (1, OpHLineTo)
+  | 7  -> return_flushing_operator (1, OpVLineTo)
+  | 8  -> return_flushing_operator (1, OpRRCurveTo)
+
+  | 10 -> return_subroutine_operator OpCallSubr
+  | 29 -> return_subroutine_operator OpCallGSubr
 
   | 11 ->
-    (* `return` operator *)
-      let cselem = Operator(ShortKey(11)) in
-      return_simple (1, cselem)
+      return_simple (1, OpReturn)
 
   | 12 ->
-      d_uint8 >>= fun b1 ->
-      return_flushing_operator (2, Operator(LongKey(b1)))
+      begin
+        d_uint8 >>= fun b1 ->
+        match b1 with
+        | (3 | 4 | 5 | 9 | 10 | 11 | 12 | 14 | 15) ->
+            err @@ Error.Unsupported(CharstringArithmeticOperator(b1))
 
-  | b0 when b0 |> is_in_range ~lower:13 ~upper:18 ->
-      return_flushing_operator (1, Operator(ShortKey(b0)))
+        | 34 -> return_flushing_operator (2, OpHFlex)
+        | 35 -> return_flushing_operator (2, OpFlex)
+        | 36 -> return_flushing_operator (2, OpHFlex1)
+        | 37 -> return_flushing_operator (2, OpFlex1)
 
-  | 19 ->
-    (* `hintmask` operator *)
+        | _ ->
+            err @@ Error.InvalidCharstring
+      end
+
+  | 14 -> return_flushing_operator (1, OpEndChar)
+
+  | 19 -> (* `hintmask` operator *)
       d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
-      return_stem (1 + step, HintMaskOperator(bits))
+      return_stem (1 + step, OpHintMask(bits))
 
-  | 20 ->
-    (* `cntrmask` operator *)
+  | 20 -> (* `cntrmask` operator *)
       d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
-      return_stem (1 + step, CntrMaskOperator(bits))
+      return_stem (1 + step, OpCntrMask(bits))
 
-  | b0  when b0 |> is_in_range ~lower:21 ~upper:27 ->
-      return_flushing_operator (1, Operator(ShortKey(b0)))
+  | 21 -> return_flushing_operator (1, OpRMoveTo)
+  | 22 -> return_flushing_operator (1, OpHMoveTo)
+  | 24 -> return_flushing_operator (1, OpRCurveLine)
+  | 25 -> return_flushing_operator (1, OpRLineCurve)
+  | 26 -> return_flushing_operator (1, OpVVCurveTo)
+  | 27 -> return_flushing_operator (1, OpHHCurveTo)
 
   | 28 ->
       d_twoscompl2 >>= fun ret ->
       return_argument (3, ArgumentInteger(ret))
 
-  | b0 when b0 |> is_in_range ~lower:30 ~upper:31 ->
-      return_flushing_operator (1, Operator(ShortKey(b0)))
+  | 30 -> return_flushing_operator (1, OpVHCurveTo)
+  | 31 -> return_flushing_operator (1, OpHVCurveTo)
 
   | b0 when b0 |> is_in_range ~lower:32 ~upper:246 ->
       return_argument (1, ArgumentInteger(b0 - 139))
@@ -609,8 +624,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let stack = stack |> ImmutStack.push (int_of_float r) in
       return ({ cstate with stack }, [])
 
-  | Operator(ShortKey(1)) ->
-    (* `hstem (1)` *)
+  | OpHStem ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
@@ -622,8 +636,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             return ({ cstate with width; stack }, [HStem(y, dy, cspts)])
       end
 
-  | Operator(ShortKey(3)) ->
-    (* `vstem (3)` *)
+  | OpVStem ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
@@ -635,19 +648,16 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             return ({ cstate with width; stack }, [VStem(x, dx, cspts)])
       end
 
-  | Operator(ShortKey(4)) ->
-    (* `vmoveto (4)` *)
+  | OpVMoveTo ->
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
       return ({ cstate with width; stack }, [VMoveTo(arg)])
 
-  | Operator(ShortKey(5)) ->
-    (* `rlineto (5)` *)
+  | OpRLineTo ->
       let (stack, cspts) = pop_iter pop2_opt stack in
       return ({ cstate with stack }, [RLineTo(cspts)])
 
-  | Operator(ShortKey(6)) ->
-    (* `hlineto (6)` *)
+  | OpHLineTo ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, firstopt) = pop_opt stack in
       let flats = pairs |> List.map (fun (a, b) -> [a; b]) |> List.concat in
@@ -657,8 +667,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | Some(first) -> return ({ cstate with stack }, [HLineTo(first :: flats)])
       end
 
-  | Operator(ShortKey(7)) ->
-    (* `vlineto (7)` *)
+  | OpVLineTo ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, firstopt) = pop_opt stack in
       let flats = pairs |> List.map (fun (a, b) -> [a; b]) |> List.concat in
@@ -668,14 +677,12 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | Some(first) -> return ({ cstate with stack }, [VLineTo(first :: flats)])
       end
 
-  | Operator(ShortKey(8)) ->
-    (* `rrcurveto (8)` *)
+  | OpRRCurveTo ->
       let (stack, tuples) = pop_iter pop6_opt stack in
       let beziers = tuples |> List.map make_bezier in
       return ({ cstate with stack }, [RRCurveTo(beziers)])
 
-  | Operator(ShortKey(10)) ->
-    (* `callsubr (10)` *)
+  | OpCallSubr ->
       pop_mandatory stack >>= fun (stack, i) ->
       let remaining = cstate.remaining in
       transform_result @@ access_subroutine cconst.lsubr_index i >>= fun (offset, length, biased_number) ->
@@ -688,20 +695,17 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       in
       return (cstate, Alist.to_list acc)
 
-  | Operator(ShortKey(11)) ->
-    (* `return (11)` *)
+  | OpReturn ->
       return (cstate, [])
 
-  | Operator(ShortKey(14)) ->
-    (* `endchar (14)` *)
+  | OpEndChar ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
       if ImmutStack.is_empty stack then
         return ({ cstate with width; stack }, [])
       else
         err Error.InvalidCharstring
 
-  | Operator(ShortKey(18)) ->
-    (* `hstemhm (18)` *)
+  | OpHStemHM ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
@@ -713,8 +717,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             return ({ cstate with width; stack }, [HStemHM(y, dy, cspts)])
       end
 
-  | HintMaskOperator(arg) ->
-    (* `hintmask (19)` *)
+  | OpHintMask(arg) ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, width) = pop_opt_for_width cstate.width stack in
       let cstate = { cstate with width; stack } in
@@ -724,8 +727,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); HintMask(arg)])
       end
 
-  | CntrMaskOperator(arg) ->
-    (* `cntrmask (20)` *)
+  | OpCntrMask(arg) ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       let (stack, width) = pop_opt_for_width cstate.width stack in
       let cstate = { cstate with width; stack } in
@@ -735,21 +737,18 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); CntrMask(arg)])
       end
 
-  | Operator(ShortKey(21)) ->
-    (* `rmoveto (21)` *)
+  | OpRMoveTo ->
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
       return ({ cstate with width; stack }, [RMoveTo((dx1, dy1))])
 
-  | Operator(ShortKey(22)) ->
-    (* `hmoveto (22)` *)
+  | OpHMoveTo ->
       pop_mandatory stack >>= fun (stack, arg) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
       return ({ cstate with width; stack }, [HMoveTo(arg)])
 
-  | Operator(ShortKey(23)) ->
-    (* `vstemhm (23)` *)
+  | OpVStemHM ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
@@ -761,16 +760,14 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
             return ({ cstate with width; stack }, [VStemHM(x, dx, cspts)])
       end
 
-  | Operator(ShortKey(24)) ->
-    (* `rcurveline (24)` *)
+  | OpRCurveLine ->
       pop_mandatory stack >>= fun (stack, dyd) ->
       pop_mandatory stack >>= fun (stack, dxd) ->
       let (stack, tuples) = pop_iter pop6_opt stack in
       let beziers = tuples |> List.map make_bezier in
       return ({ cstate with stack }, [RRCurveTo(beziers); RLineTo([(dxd, dyd)])])
 
-  | Operator(ShortKey(25)) ->
-    (* `rlinecurve (25)` *)
+  | OpRLineCurve ->
       pop_mandatory stack >>= fun (stack, dyd) ->
       pop_mandatory stack >>= fun (stack, dxd) ->
       pop_mandatory stack >>= fun (stack, dyc) ->
@@ -780,22 +777,19 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let (stack, pairs) = pop_iter pop2_opt stack in
       return ({ cstate with stack }, [RLineTo(pairs); RRCurveTo([((dxb, dyb), (dxc, dyc), (dxd, dyd))])])
 
-  | Operator(ShortKey(26)) ->
-    (* `vvcurveto (26)` *)
+  | OpVVCurveTo ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       let rets = tuples |> List.map (fun (dya, dxb, dyb, dyc) -> (dya, (dxb, dyb), dyc)) in
       let (stack, dx1opt) = pop_opt stack in
       return ({ cstate with stack }, [VVCurveTo(dx1opt, rets)])
 
-  | Operator(ShortKey(27)) ->
-    (* `hhcurveto (27)` *)
+  | OpHHCurveTo ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       let rets = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
       let (stack, dy1opt) = pop_opt stack in
       return ({ cstate with stack }, [HHCurveTo(dy1opt, rets)])
 
-  | Operator(ShortKey(29)) ->
-    (* `callgsubr (29)` *)
+  | OpCallGSubr ->
       let remaining = cstate.remaining in
       pop_mandatory stack >>= fun (stack, i) ->
       transform_result @@ access_subroutine cconst.gsubr_index i >>= fun (offset, length, biased_number) ->
@@ -808,8 +802,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       in
       return (cstate, Alist.to_list acc)
 
-  | Operator(ShortKey(30)) ->
-    (* `vhcurveto (30)` *)
+  | OpVHCurveTo ->
       begin
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
@@ -825,8 +818,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       else
         err Error.InvalidCharstring
 
-  | Operator(ShortKey(31)) ->
-    (* `hvcurveto (31)` *)
+  | OpHVCurveTo ->
       begin
         if ImmutStack.size stack mod 4 = 1 then
           pop_mandatory stack >>= fun (stack, df) ->
@@ -841,14 +833,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       else
         err Error.InvalidCharstring
 
-  | Operator(ShortKey(_)) ->
-      err Error.InvalidCharstring
-
-  | Operator(LongKey(i)) when List.mem i [9; 10; 11; 12; 14; 18; 23; 24; 26; 27; 28; 29; 30] ->
-      err @@ Error.Unsupported(CharstringArithmeticOperator(i))
-
-  | Operator(LongKey(34)) ->
-    (* `hflex (12 34)` *)
+  | OpHFlex ->
       pop_mandatory stack >>= fun (stack, dx6) ->
       pop_mandatory stack >>= fun (stack, dx5) ->
       pop_mandatory stack >>= fun (stack, dx4) ->
@@ -858,8 +843,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dx1) ->
       return ({ cstate with stack }, [HFlex(dx1, (dx2, dy2), dx3, dx4, dx5, dx6)])
 
-  | Operator(LongKey(35)) ->
-    (* `flex (12 35)` *)
+  | OpFlex ->
       pop_mandatory stack >>= fun (stack, fd) ->
       pop_mandatory stack >>= fun (stack, dy6) ->
       pop_mandatory stack >>= fun (stack, dx6) ->
@@ -876,8 +860,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let parsed = [Flex((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), (dx6, dy6), fd)] in
       return ({ cstate with stack }, parsed)
 
-  | Operator(LongKey(36)) ->
-    (* `hflex1 (12 36)` *)
+  | OpHFlex1 ->
       pop_mandatory stack >>= fun (stack, dx6) ->
       pop_mandatory stack >>= fun (stack, dy5) ->
       pop_mandatory stack >>= fun (stack, dx5) ->
@@ -889,8 +872,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dx1) ->
       return ({ cstate with stack }, [HFlex1((dx1, dy1), (dx2, dy2), dx3, dx4, (dx5, dy5), dx6)])
 
-  | Operator(LongKey(37)) ->
-    (* `flex1 (12 37)` *)
+  | OpFlex1 ->
       pop_mandatory stack >>= fun (stack, d6) ->
       pop_mandatory stack >>= fun (stack, dy5) ->
       pop_mandatory stack >>= fun (stack, dx5) ->
@@ -903,9 +885,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       return ({ cstate with stack }, [Flex1((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), d6)])
-
-  | Operator(LongKey(_)) ->
-      err InvalidCharstring
 
 
 and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * charstring_operation Alist.t) decoder =

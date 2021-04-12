@@ -459,8 +459,8 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
         | (3 | 4 | 5 | 9 | 10 | 11 | 12 | 14 | 15) ->
             err @@ Error.Unsupported(CharstringArithmeticOperator(b1))
 
-        | 34 -> return_flushing_operator (2, OpFlex)
-        | 35 -> return_flushing_operator (2, OpHFlex)
+        | 34 -> return_flushing_operator (2, OpHFlex)
+        | 35 -> return_flushing_operator (2, OpFlex)
         | 36 -> return_flushing_operator (2, OpHFlex1)
         | 37 -> return_flushing_operator (2, OpFlex1)
 
@@ -614,6 +614,7 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
   d_charstring_element cstate >>= fun (cstate, cselem) ->
+  Format.printf "!!! elem: %a@," pp_charstring_element cselem; (* for debug *)
   let stack = cstate.stack in
   match cselem with
   | ArgumentInteger(i) ->

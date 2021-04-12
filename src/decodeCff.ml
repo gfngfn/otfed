@@ -365,12 +365,16 @@ type width_state =
 
 type stack = int ImmutStack.t
 
-type charstring_state = {
+type charstring_lexing_state = {
   remaining   : int;
-  width       : width_state;
-  stack       : stack;
   num_args    : int;
   num_stems   : int;
+}
+
+type charstring_state = {
+  lexing      : charstring_lexing_state;
+  width       : width_state;
+  stack       : stack;
   used_gsubrs : IntSet.t;
   used_lsubrs : IntSet.t;
 }
@@ -388,49 +392,49 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
   return (arglen, arg)
 
 
-let d_charstring_element (cstate : charstring_state) : (charstring_state * charstring_element) decoder =
+let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing_state * charstring_element) decoder =
   let open DecodeOperation in
-  let num_args = cstate.num_args in
-  let num_stems = cstate.num_stems in
+  let num_args = lstate.num_args in
+  let num_stems = lstate.num_stems in
   let return_simple (step, cselem) =
-    return ({ cstate with remaining = cstate.remaining - step }, cselem)
+    return ({ lstate with remaining = lstate.remaining - step }, cselem)
   in
   let return_argument (step, cselem) =
-    let cstate =
-      { cstate with
+    let lstate =
+      { lstate with
         num_args  = num_args + 1;
-        remaining = cstate.remaining - step
+        remaining = lstate.remaining - step
       }
     in
-    return (cstate, cselem)
+    return (lstate, cselem)
   in
   let return_flushing_operator (step, cselem) =
-    let cstate =
-      { cstate with
+    let lstate =
+      { lstate with
         num_args  = 0;
-        remaining = cstate.remaining - step
+        remaining = lstate.remaining - step
       }
     in
-    return (cstate, cselem)
+    return (lstate, cselem)
   in
   let return_subroutine_operator cselem =
-    let cstate =
-      { cstate with
+    let lstate =
+      { lstate with
         num_args  = num_args - 1;
-        remaining = cstate.remaining - 1
+        remaining = lstate.remaining - 1
       }
     in
-    return (cstate, cselem)
+    return (lstate, cselem)
   in
   let return_stem (step, cselem) =
-    let cstate =
-      { cstate with
+    let lstate =
+      {
         num_args  = 0;
         num_stems = num_stems + num_args / 2;
-        remaining = cstate.remaining - step
+        remaining = lstate.remaining - step
       }
     in
-    return (cstate, cselem)
+    return (lstate, cselem)
   in
   (* `num_args` may be an odd number, but it is due to the width value *)
   d_uint8 >>= function
@@ -600,7 +604,8 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
-  d_charstring_element cstate >>= fun (cstate, cselem) ->
+  d_charstring_element cstate.lexing >>= fun (lstate, cselem) ->
+  let cstate = { cstate with lexing = lstate } in
   let stack = cstate.stack in
   match cselem with
   | ArgumentInteger(i) ->
@@ -670,17 +675,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       return ({ cstate with stack }, [RRCurveTo(beziers)])
 
   | OpCallSubr ->
-      pop_mandatory stack >>= fun (stack, i) ->
-      let remaining = cstate.remaining in
-      transform_result @@ access_subroutine cconst.lsubr_index i >>= fun (offset, length, biased_number) ->
-      pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
-      let cstate =
-        { cstate with
-          remaining   = remaining;
-          used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
-        }
-      in
-      return (cstate, Alist.to_list acc)
+      d_subroutine cconst cstate cconst.lsubr_index
 
   | OpReturn ->
       return (cstate, [])
@@ -777,17 +772,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       return ({ cstate with stack }, [HHCurveTo(dy1opt, rets)])
 
   | OpCallGSubr ->
-      let remaining = cstate.remaining in
-      pop_mandatory stack >>= fun (stack, i) ->
-      transform_result @@ access_subroutine cconst.gsubr_index i >>= fun (offset, length, biased_number) ->
-      pick offset (d_charstring cconst { cstate with stack; remaining = length }) >>= fun (cstate, acc) ->
-      let cstate =
-        { cstate with
-          remaining  = remaining;
-          used_gsubrs = cstate.used_gsubrs |> IntSet.add biased_number;
-        }
-      in
-      return (cstate, Alist.to_list acc)
+      d_subroutine cconst cstate cconst.gsubr_index
 
   | OpVHCurveTo ->
       begin
@@ -874,12 +859,28 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       return ({ cstate with stack }, [Flex1((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), d6)])
 
 
+and d_subroutine (cconst : charstring_constant) (cstate : charstring_state) (subr : subroutine_index) =
+  let open DecodeOperation in
+  pop_mandatory cstate.stack >>= fun (stack, i) ->
+  let remaining = cstate.lexing.remaining in
+  transform_result @@ access_subroutine subr i >>= fun (offset, length, biased_number) ->
+  let cstate = { cstate with stack; lexing = { cstate.lexing with remaining = length } } in
+  pick offset (d_charstring cconst cstate) >>= fun (cstate, acc) ->
+  let cstate =
+    { cstate with
+      lexing      = { cstate.lexing with remaining };
+      used_lsubrs = cstate.used_lsubrs |> IntSet.add biased_number;
+    }
+  in
+  return (cstate, Alist.to_list acc)
+
+
 and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * charstring_operation Alist.t) decoder =
   let open DecodeOperation in
   let rec aux (cstate : charstring_state) acc =
     parse_progress cconst cstate >>= fun (cstate, parsed) ->
     let acc = Alist.append acc parsed in
-    let remaining = cstate.remaining in
+    let remaining = cstate.lexing.remaining in
     if remaining = 0 then
       return (cstate, acc)
     else if remaining < 0 then
@@ -893,11 +894,13 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
 
 let initial_charstring_state length =
   {
-    remaining   = length;
+    lexing = {
+      remaining = length;
+      num_args  = 0;
+      num_stems = 0;
+    };
     width       = LookingForWidth;
     stack       = ImmutStack.empty;
-    num_args    = 0;
-    num_stems   = 0;
     used_gsubrs = IntSet.empty;
     used_lsubrs = IntSet.empty;
   }

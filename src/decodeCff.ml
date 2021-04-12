@@ -614,7 +614,6 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
   d_charstring_element cstate >>= fun (cstate, cselem) ->
-  Format.printf "!!! elem: %a@," pp_charstring_element cselem; (* for debug *)
   let stack = cstate.stack in
   match cselem with
   | ArgumentInteger(i) ->
@@ -697,7 +696,6 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       return (cstate, Alist.to_list acc)
 
   | OpReturn ->
-    (* `return (11)` *)
       return (cstate, [])
 
   | OpEndChar ->

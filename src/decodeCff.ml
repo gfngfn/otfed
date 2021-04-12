@@ -440,35 +440,17 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
   | 18 -> return_stem (1, OpHStemHM)
   | 23 -> return_stem (1, OpVStemHM)
 
-  | 21 -> return_flushing_operator (1, OpRMoveTo)
-  | 22 -> return_flushing_operator (1, OpHMoveTo)
   | 4  -> return_flushing_operator (1, OpVMoveTo)
-
-  | 5 -> return_flushing_operator (1, OpRLineTo)
-  | 6 -> return_flushing_operator (1, OpHLineTo)
-  | 7 -> return_flushing_operator (1, OpVLineTo)
+  | 5  -> return_flushing_operator (1, OpRLineTo)
+  | 6  -> return_flushing_operator (1, OpHLineTo)
+  | 7  -> return_flushing_operator (1, OpVLineTo)
+  | 8  -> return_flushing_operator (1, OpRRCurveTo)
 
   | 10 -> return_subroutine_operator OpCallSubr
   | 29 -> return_subroutine_operator OpCallGSubr
 
-  | 11 -> return_simple (1, OpReturn)
-  | 14 -> return_flushing_operator (1, OpEndChar)
-
-  | 19 -> (* `hintmask` operator *)
-      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
-      return_stem (1 + step, OpHintMask(bits))
-
-  | 20 -> (* `cntrmask` operator *)
-      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
-      return_stem (1 + step, OpCntrMask(bits))
-
-  | 24 -> return_flushing_operator (1, OpRCurveLine)
-  | 25 -> return_flushing_operator (1, OpRLineCurve)
-  | 8  -> return_flushing_operator (1, OpRRCurveTo)
-  | 26 -> return_flushing_operator (1, OpVVCurveTo)
-  | 27 -> return_flushing_operator (1, OpHHCurveTo)
-  | 30 -> return_flushing_operator (1, OpVHCurveTo)
-  | 31 -> return_flushing_operator (1, OpHVCurveTo)
+  | 11 ->
+      return_simple (1, OpReturn)
 
   | 12 ->
       begin
@@ -486,26 +468,46 @@ let d_charstring_element (cstate : charstring_state) : (charstring_state * chars
             err @@ Error.InvalidCharstring
       end
 
+  | 14 -> return_flushing_operator (1, OpEndChar)
+
+  | 19 -> (* `hintmask` operator *)
+      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
+      return_stem (1 + step, OpHintMask(bits))
+
+  | 20 -> (* `cntrmask` operator *)
+      d_stem_argument (num_stems + num_args / 2) >>= fun (step, bits) ->
+      return_stem (1 + step, OpCntrMask(bits))
+
+  | 21 -> return_flushing_operator (1, OpRMoveTo)
+  | 22 -> return_flushing_operator (1, OpHMoveTo)
+  | 24 -> return_flushing_operator (1, OpRCurveLine)
+  | 25 -> return_flushing_operator (1, OpRLineCurve)
+  | 26 -> return_flushing_operator (1, OpVVCurveTo)
+  | 27 -> return_flushing_operator (1, OpHHCurveTo)
+
   | 28 ->
       d_twoscompl2 >>= fun ret ->
-      return_argument (3, ArgInteger(ret))
+      return_argument (3, ArgumentInteger(ret))
+
+  | 30 -> return_flushing_operator (1, OpVHCurveTo)
+  | 31 -> return_flushing_operator (1, OpHVCurveTo)
 
   | b0 when b0 |> is_in_range ~lower:32 ~upper:246 ->
-      return_argument (1, ArgInteger(b0 - 139))
+      return_argument (1, ArgumentInteger(b0 - 139))
 
   | b0 when b0 |> is_in_range ~lower:247 ~upper:250 ->
       d_uint8 >>= fun b1 ->
-      return_argument (2, ArgInteger((b0 - 247) * 256 + b1 + 108))
+      return_argument (2, ArgumentInteger((b0 - 247) * 256 + b1 + 108))
 
   | b0 when b0 |> is_in_range ~lower:251 ~upper:254 ->
       d_uint8 >>= fun b1 ->
-      return_argument (2, ArgInteger(- (b0 - 251) * 256 - b1 - 108))
+      return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
 
   | 255 ->
       d_twoscompl2 >>= fun ret1 ->
       d_twoscompl2 >>= fun ret2 ->
       let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
-      return_argument (5, ArgReal(ret))
+      return_argument (5, ArgumentReal(ret))
 
   | _ ->
       assert false
@@ -614,11 +616,11 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
   d_charstring_element cstate >>= fun (cstate, cselem) ->
   let stack = cstate.stack in
   match cselem with
-  | ArgInteger(i) ->
+  | ArgumentInteger(i) ->
       let stack = stack |> ImmutStack.push i in
       return ({ cstate with stack }, [])
 
-  | ArgReal(r) ->
+  | ArgumentReal(r) ->
       let stack = stack |> ImmutStack.push (int_of_float r) in
       return ({ cstate with stack }, [])
 

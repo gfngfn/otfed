@@ -91,8 +91,8 @@ type stem_argument = string
 [@@deriving show { with_path = false }]
 
 type charstring_element =
-  | ArgInteger  of int
-  | ArgReal     of float
+  | ArgumentInteger  of int
+  | ArgumentReal     of float
 
   | OpHStem   (* `hstem (1)` *)
   | OpVStem   (* `vstem (3)` *)

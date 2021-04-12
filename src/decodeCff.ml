@@ -553,19 +553,6 @@ let pop6_opt (stack : stack) : (stack * (int * int * int * int * int * int)) opt
   ImmutStack.pop stack >>= fun (stack, d1) ->
   Some((stack, (d1, d2, d3, d4, d5, d6)))
 
-(*
-let pop8_opt (stack : stack) : (stack * (int * int * int * int * int * int * int * int)) option =
-  let ( >>= ) = Option.bind in
-  ImmutStack.pop stack >>= fun (stack, d8) ->
-  ImmutStack.pop stack >>= fun (stack, d7) ->
-  ImmutStack.pop stack >>= fun (stack, d6) ->
-  ImmutStack.pop stack >>= fun (stack, d5) ->
-  ImmutStack.pop stack >>= fun (stack, d4) ->
-  ImmutStack.pop stack >>= fun (stack, d3) ->
-  ImmutStack.pop stack >>= fun (stack, d2) ->
-  ImmutStack.pop stack >>= fun (stack, d1) ->
-  Some((stack, (d1, d2, d3, d4, d5, d6, d7, d8)))
-*)
 
 let pop_iter (popf : stack -> (stack * 'a) option) (stack : stack) : stack * 'a list =
   let rec aux stack acc =

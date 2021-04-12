@@ -101,7 +101,7 @@ type charstring_element =
 
   | OpRMoveTo (* `rmoveto (21)` *)
   | OpHMoveTo (* `hmoveto (22)` *)
-  | OpVMoveTo   (* `vmoveto (4)` *)
+  | OpVMoveTo (* `vmoveto (4)` *)
 
   | OpRLineTo   (* `rlineto (5)` *)
   | OpHLineTo   (* `hlineto (6)` *)

@@ -8,6 +8,22 @@ open DecodeOperation.Open
 module Maxp = DecodeCffMaxp
 
 
+type cff_first = {
+  cff_header   : cff_header;
+  cff_name     : string;           (* singleton Name INDEX *)
+  top_dict     : dict;             (* singleton Top DICT INDEX *)
+  string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
+  gsubr_index  : subroutine_index;
+  offset_CFF   : int;
+}
+
+type charstring_info = {
+  gsubr_index             : subroutine_index;
+  private_info            : private_info;
+  offset_CharString_INDEX : offset;
+}
+
+
 let d_cff_header : cff_header decoder =
   let open DecodeOperation in
   d_uint8              >>= fun major ->
@@ -296,7 +312,13 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
       number_of_glyphs;
     }
   in
-  let charstring_info = (gsubr_index, private_info, offset_CharString_INDEX) in
+  let charstring_info =
+    {
+      gsubr_index;
+      private_info;
+      offset_CharString_INDEX;
+    }
+  in
   return (cff_top, charstring_info)
 
 
@@ -892,7 +914,7 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
   aux cstate Alist.empty
 
 
-let initial_charstring_state length =
+let initial_charstring_state (length : int) : charstring_state =
   {
     lexing = {
       remaining = length;
@@ -909,7 +931,7 @@ let initial_charstring_state length =
 let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
   let open ResultMonad in
   make_cff_info cff >>= fun (_, charstring_info) ->
-  let (gsubr_index, private_info, offset_CharString_INDEX) = charstring_info in
+  let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
   fetch_charstring_data cff offset_CharString_INDEX gid >>= function
   | None ->
       return None

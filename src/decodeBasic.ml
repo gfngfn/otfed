@@ -147,15 +147,6 @@ type cff_header = {
   offSize  : offsize;
 }
 
-type cff_first = {
-  cff_header   : cff_header;
-  cff_name     : string;           (* singleton Name INDEX *)
-  top_dict     : dict;             (* singleton Top DICT INDEX *)
-  string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
-  gsubr_index  : subroutine_index;
-  offset_CFF   : int;
-}
-
 (* The type for CIDFont-specific data in Top DICT [CFF p.16, Table 10] *)
 type cff_cid_info = {
   registry          : string;
@@ -199,8 +190,6 @@ type fdselect =
 type private_info =
   | SinglePrivate of single_private
   | FontDicts     of fdarray * fdselect
-
-type charstring_info = subroutine_index * private_info * int
 
 type cs_x = int
 [@@deriving show { with_path = false }]

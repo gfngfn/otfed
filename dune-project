@@ -1,6 +1,9 @@
 (lang dune 2.7)
 (name otfed)
 (version 0.0.0)
+(maintainers "Takashi Suwa")
+(source (github gfngfn/otfed))
+(homepage "https://github.com/gfngfn/otfed")
 (generate_opam_files true)
 
 (package

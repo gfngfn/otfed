@@ -205,13 +205,15 @@ type charstring_operation =
 type charstring = charstring_operation list
 [@@deriving show { with_path = false }]
 
-type cff_first = {
-  cff_header   : cff_header;
-  cff_name     : string;           (* singleton Name INDEX *)
-  top_dict     : dict;             (* singleton Top DICT INDEX *)
-  string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
-  gsubr_index  : subroutine_index;
-  offset_CFF   : int;
+type charstring_info = {
+  gsubr_index             : subroutine_index;
+  private_info            : private_info;
+  offset_CharString_INDEX : offset;
+}
+
+type cff_specific = {
+  cff_top_dict    : cff_top_dict;
+  charstring_info : charstring_info;
 }
 
 type ttf_source = {
@@ -219,8 +221,8 @@ type ttf_source = {
 }
 
 type cff_source = {
-  cff_common : common_source;
-  cff_first  : cff_first;
+  cff_common   : common_source;
+  cff_specific : cff_specific;
 }
 
 type source =

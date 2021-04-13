@@ -8,22 +8,6 @@ open DecodeOperation.Open
 module Maxp = DecodeCffMaxp
 
 
-type cff_first = {
-  cff_header   : cff_header;
-  cff_name     : string;           (* singleton Name INDEX *)
-  top_dict     : dict;             (* singleton Top DICT INDEX *)
-  string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
-  gsubr_index  : subroutine_index;
-  offset_CFF   : int;
-}
-
-type charstring_info = {
-  gsubr_index             : subroutine_index;
-  private_info            : private_info;
-  offset_CharString_INDEX : offset;
-}
-
-
 let d_cff_header : cff_header decoder =
   let open DecodeOperation in
   d_uint8              >>= fun major ->
@@ -44,38 +28,6 @@ let d_charstring_data (length : int) : charstring_data decoder =
   current >>= fun offset ->
   d_skip length >>= fun () ->
   return (CharStringData(offset, length))
-
-
-let fetch_cff_first (cff : cff_source) : cff_first ok =
-  let open ResultMonad in
-  DecodeOperation.seek_required_table cff.cff_common.table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
-  let dec =
-    let open DecodeOperation in
-    (* Header *)
-    d_cff_header >>= fun header ->
-
-    (* Name INDEX (which should contain only one element) *)
-    d_index_singleton d_bytes >>= fun name ->
-
-    (* Top DICT INDEX (which should contain only one DICT) *)
-    d_index_singleton d_dict >>= fun top_dict ->
-
-    (* String INDEX *)
-    d_index d_bytes >>= fun string_index ->
-
-    (* Global Subr INDEX *)
-    d_index d_charstring_data >>= fun gsubr_index ->
-
-    return {
-      cff_header   = header;
-      cff_name     = name;
-      top_dict     = top_dict;
-      string_index = Array.of_list string_index;
-      gsubr_index  = Array.of_list gsubr_index;
-      offset_CFF   = offset_CFF;
-    }
-  in
-  dec |> DecodeOperation.run cff.cff_common.core offset_CFF
 
 
 let get_integer_opt dict key =
@@ -152,9 +104,9 @@ let get_string string_index sid =
     | Invalid_argument(_) -> err @@ Error.SidOutOfBounds(sid)
 
 
-let fetch_number_of_glyphs (cff : cff_source) (offset_CharString_INDEX : offset) : int ok =
+let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX : offset) : int ok =
   let open DecodeOperation in
-  d_uint16 |> run cff.cff_common.core offset_CharString_INDEX
+  d_uint16 |> run core offset_CharString_INDEX
 
 
 let d_single_private (size_private : int) : single_private decoder =
@@ -180,7 +132,7 @@ let d_single_private (size_private : int) : single_private decoder =
   return { default_width_x; nominal_width_x; local_subr_index = Array.of_list lsubr_index }
 
 
-let fetch_single_private (cff : cff_source) (offset_CFF : offset) (dict : dict) : single_private ok =
+let fetch_single_private (core : common_source_core) ~(offset_CFF : offset) (dict : dict) : single_private ok =
   (* Private DICT *)
   let open ResultMonad in
   get_integer_pair_opt dict (ShortKey(18)) >>= function
@@ -190,19 +142,19 @@ let fetch_single_private (cff : cff_source) (offset_CFF : offset) (dict : dict) 
   | Some(size_private, reloffset_private) ->
       let offset_private = offset_CFF + reloffset_private in
       let dec = d_single_private size_private in
-      dec |> DecodeOperation.run cff.cff_common.core offset_private
+      dec |> DecodeOperation.run core offset_private
 
 
-let fetch_fdarray (cff : cff_source) (offset_CFF : offset) (offset_FDArray : offset) : fdarray ok =
+let fetch_fdarray (core : common_source_core) ~(offset_CFF : offset) ~(offset_FDArray : offset) : fdarray ok =
   let dec =
     let open DecodeOperation in
     d_index d_dict >>= fun dicts ->
     dicts |> mapM (fun dict ->
-      transform_result @@ fetch_single_private cff offset_CFF dict
+      transform_result @@ fetch_single_private core ~offset_CFF dict
     ) >>= fun single_privates ->
     return @@ Array.of_list single_privates
   in
-  dec |> DecodeOperation.run cff.cff_common.core offset_FDArray
+  dec |> DecodeOperation.run core offset_FDArray
 
 
 let d_fdselect_format_0 (nGlyphs : int) : fdselect decoder =
@@ -237,25 +189,63 @@ let d_fdselect_format_3 : fdselect decoder =
   aux nRanges 0 Alist.empty
 
 
-let fetch_fdselect (cff : cff_source) (nGlyphs : int) (offset_FDSelect : offset) : fdselect ok =
+let fetch_fdselect (core : common_source_core) ~(number_of_glyphs : int) ~(offset_FDSelect : offset) : fdselect ok =
   let open DecodeOperation in
   let dec =
     d_uint8 >>= function
-    | 0 -> d_fdselect_format_0 nGlyphs
+    | 0 -> d_fdselect_format_0 number_of_glyphs
     | 3 -> d_fdselect_format_3
     | n -> err @@ Error.UnknownFdselectFormat(n)
   in
-  dec |> DecodeOperation.run cff.cff_common.core offset_FDSelect
+  dec |> DecodeOperation.run core offset_FDSelect
 
 
-let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
+type cff_first = {
+  cff_first_header       : cff_header;
+  cff_first_name         : string;           (* singleton Name INDEX *)
+  cff_first_top_dict     : dict;             (* singleton Top DICT INDEX *)
+  cff_first_string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
+  cff_first_gsubr_index  : subroutine_index;
+}
+
+
+let fetch_cff_first ~(offset_CFF : offset) (core : common_source_core) : cff_first ok =
+  let dec =
+    let open DecodeOperation in
+    (* Header *)
+    d_cff_header >>= fun header ->
+
+    (* Name INDEX (which should contain only one element) *)
+    d_index_singleton d_bytes >>= fun name ->
+
+    (* Top DICT INDEX (which should contain only one DICT) *)
+    d_index_singleton d_dict >>= fun top_dict ->
+
+    (* String INDEX *)
+    d_index d_bytes >>= fun string_index ->
+
+    (* Global Subr INDEX *)
+    d_index d_charstring_data >>= fun gsubr_index ->
+
+    return {
+      cff_first_header       = header;
+      cff_first_name         = name;
+      cff_first_top_dict     = top_dict;
+      cff_first_string_index = Array.of_list string_index;
+      cff_first_gsubr_index  = Array.of_list gsubr_index;
+    }
+  in
+  dec |> DecodeOperation.run core offset_CFF
+
+
+let fetch_cff_specific (core : common_source_core) (table_directory : table_directory) : cff_specific ok =
   let open ResultMonad in
-  fetch_cff_first cff >>= fun cff_first ->
-  let font_name    = cff_first.cff_name in
-  let top_dict     = cff_first.top_dict in
-  let string_index = cff_first.string_index in
-  let gsubr_index  = cff_first.gsubr_index in
-  let offset_CFF   = cff_first.offset_CFF in
+  DecodeOperation.seek_required_table table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
+  fetch_cff_first ~offset_CFF core >>= fun cff_first ->
+  let font_name    = cff_first.cff_first_name in
+  let top_dict     = cff_first.cff_first_top_dict in
+  let string_index = cff_first.cff_first_string_index in
+  let gsubr_index  = cff_first.cff_first_gsubr_index in
   get_boolean_with_default top_dict (LongKey(1)) false  >>= fun is_fixed_pitch ->
   get_integer_with_default top_dict (LongKey(2)) 0      >>= fun italic_angle ->
   get_integer_with_default top_dict (LongKey(3)) (-100) >>= fun underline_position ->
@@ -269,7 +259,7 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
     get_integer_with_default top_dict (LongKey(8) ) 0            >>= fun stroke_width ->
     get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
     let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
-    fetch_number_of_glyphs cff offset_CharString_INDEX >>= fun number_of_glyphs ->
+    fetch_number_of_glyphs core ~offset_CharString_INDEX >>= fun number_of_glyphs ->
     begin
       if DictMap.mem (LongKey(30)) top_dict then
       (* If the font is a CIDFont *)
@@ -284,8 +274,8 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
         let offset_FDSelect = offset_CFF + reloffset_FDSelect in
         get_string string_index sid_registry >>= fun registry ->
         get_string string_index sid_ordering >>= fun ordering ->
-        fetch_fdarray cff offset_CFF offset_FDArray >>= fun fdarray ->
-        fetch_fdselect cff number_of_glyphs offset_FDSelect >>= fun fdselect ->
+        fetch_fdarray core ~offset_CFF ~offset_FDArray >>= fun fdarray ->
+        fetch_fdselect core ~number_of_glyphs ~offset_FDSelect >>= fun fdselect ->
         return (Some{
           registry; ordering; supplement;
           cid_font_version;
@@ -295,10 +285,10 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
         }, FontDicts(fdarray, fdselect))
     else
     (* If the font is not a CIDFont *)
-      fetch_single_private cff offset_CFF top_dict >>= fun singlepriv ->
+      fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
       return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->
-  let cff_top =
+  let cff_top_dict =
     {
       font_name;
       is_fixed_pitch;
@@ -319,7 +309,7 @@ let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
       offset_CharString_INDEX;
     }
   in
-  return (cff_top, charstring_info)
+  return { cff_top_dict; charstring_info }
 
 
 let fetch_charstring_data (cff : cff_source) (offset_CharString_INDEX : offset) (gid : glyph_id) =
@@ -930,7 +920,7 @@ let initial_charstring_state (length : int) : charstring_state =
 
 let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
   let open ResultMonad in
-  make_cff_info cff >>= fun (_, charstring_info) ->
+  let { charstring_info; _ } = cff.cff_specific in
   let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
   fetch_charstring_data cff offset_CharString_INDEX gid >>= function
   | None ->

@@ -28,28 +28,6 @@ type common_source = {
   num_h_metrics   : int;
 }
 
-type ttf_source = {
-  ttf_common : common_source;
-}
-
-type cff_source = {
-  cff_common : common_source;
-}
-
-type source =
-  | Ttf of ttf_source
-  | Cff of cff_source
-
-
-let get_common_source = function
-  | Ttf(ttf) -> ttf.ttf_common
-  | Cff(cff) -> cff.cff_common
-
-
-type single_or_collection =
-  | Single     of source
-  | Collection of source list
-
 type cmap_segment =
   | Incremental of Uchar.t * Uchar.t * Value.glyph_id
   | Constant    of Uchar.t * Uchar.t * Value.glyph_id
@@ -226,6 +204,41 @@ type charstring_operation =
 
 type charstring = charstring_operation list
 [@@deriving show { with_path = false }]
+
+type charstring_info = {
+  gsubr_index             : subroutine_index;
+  private_info            : private_info;
+  offset_CharString_INDEX : offset;
+}
+
+type cff_specific = {
+  cff_top_dict    : cff_top_dict;
+  charstring_info : charstring_info;
+}
+
+type ttf_source = {
+  ttf_common : common_source;
+}
+
+type cff_source = {
+  cff_common   : common_source;
+  cff_specific : cff_specific;
+}
+
+type source =
+  | Ttf of ttf_source
+  | Cff of cff_source
+
+
+let get_common_source = function
+  | Ttf(ttf) -> ttf.ttf_common
+  | Cff(cff) -> cff.cff_common
+
+
+type single_or_collection =
+  | Single     of source
+  | Collection of source list
+
 
 module GeneralTable(Info : sig type t end) = struct
 

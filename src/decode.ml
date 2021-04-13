@@ -1,6 +1,5 @@
 
 open Basic
-open Value
 open DecodeOperation.Open
 
 
@@ -9,33 +8,19 @@ include DecodeTable
 include DecodeBasic
 
 
-let fetch_loc_format core table_directory =
-  let open ResultMonad in
-  DecodeOperation.seek_required_table table_directory Tag.table_head >>= fun (offset, _length) ->
-  let open DecodeOperation in
-  d_loc_format |> run core (offset + 50)
-
-
 let fetch_num_glyphs core table_directory =
   let open ResultMonad in
-  DecodeOperation.seek_required_table table_directory Tag.table_maxp >>= fun (offset, _length) ->
+  DecodeOperation.seek_required_table table_directory Value.Tag.table_maxp >>= fun (offset, _length) ->
   let open DecodeOperation in
   d_uint16 |> run core (offset + 4)
-
-
-let fetch_num_h_metrics core table_directory =
-  let open ResultMonad in
-  DecodeOperation.seek_required_table table_directory Tag.table_hhea >>= fun (offset, _length) ->
-  let open DecodeOperation in
-  d_uint16 |> run core (offset + 34)
 
 
 let d_init_ttf (core : common_source_core) : source decoder =
   let open DecodeOperation in
   d_structure >>= fun table_directory ->
-  transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
-  transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
-  transform_result (fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
+  transform_result (Head.fetch_loc_format core table_directory)    >>= fun loc_format ->
+  transform_result (fetch_num_glyphs core table_directory)         >>= fun num_glyphs ->
+  transform_result (Hhea.fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
   let common =
     {
       core            = core;
@@ -45,16 +30,17 @@ let d_init_ttf (core : common_source_core) : source decoder =
       num_h_metrics   = num_h_metrics;
     }
   in
-  let ttf = {ttf_common = common} in
+  let ttf = { ttf_common = common } in
   return @@ Ttf(ttf)
 
 
 let d_init_cff (core : common_source_core) : source decoder =
   let open DecodeOperation in
   d_structure >>= fun table_directory ->
-  transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
-  transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
-  transform_result (fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
+  transform_result (Head.fetch_loc_format core table_directory)    >>= fun loc_format ->
+  transform_result (fetch_num_glyphs core table_directory)         >>= fun num_glyphs ->
+  transform_result (Hhea.fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
+  transform_result (Cff.fetch_cff_specific core table_directory)   >>= fun cff_specific ->
   let common =
     {
       core            = core;
@@ -64,7 +50,12 @@ let d_init_cff (core : common_source_core) : source decoder =
       num_h_metrics   = num_h_metrics;
     }
   in
-  let cff = {cff_common = common} in
+  let cff =
+    {
+      cff_common   = common;
+      cff_specific = cff_specific;
+    }
+  in
   return @@ Cff(cff)
 
 

@@ -8,15 +8,6 @@ open DecodeOperation.Open
 module Maxp = DecodeCffMaxp
 
 
-type cff_first = {
-  cff_header   : cff_header;
-  cff_name     : string;           (* singleton Name INDEX *)
-  top_dict     : dict;             (* singleton Top DICT INDEX *)
-  string_index : string_index;     (* String INDEX [CFF p.17, Section 10] *)
-  gsubr_index  : subroutine_index;
-  offset_CFF   : int;
-}
-
 type charstring_info = {
   gsubr_index             : subroutine_index;
   private_info            : private_info;
@@ -46,9 +37,9 @@ let d_charstring_data (length : int) : charstring_data decoder =
   return (CharStringData(offset, length))
 
 
-let fetch_cff_first (cff : cff_source) : cff_first ok =
+let fetch_cff_first (core : common_source_core) (table_directory : table_directory) : cff_first ok =
   let open ResultMonad in
-  DecodeOperation.seek_required_table cff.cff_common.table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
+  DecodeOperation.seek_required_table table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
   let dec =
     let open DecodeOperation in
     (* Header *)
@@ -75,7 +66,7 @@ let fetch_cff_first (cff : cff_source) : cff_first ok =
       offset_CFF   = offset_CFF;
     }
   in
-  dec |> DecodeOperation.run cff.cff_common.core offset_CFF
+  dec |> DecodeOperation.run core offset_CFF
 
 
 let get_integer_opt dict key =
@@ -250,7 +241,7 @@ let fetch_fdselect (cff : cff_source) (nGlyphs : int) (offset_FDSelect : offset)
 
 let make_cff_info (cff : cff_source) : (cff_top_dict * charstring_info) ok =
   let open ResultMonad in
-  fetch_cff_first cff >>= fun cff_first ->
+  let cff_first = cff.cff_first in
   let font_name    = cff_first.cff_name in
   let top_dict     = cff_first.top_dict in
   let string_index = cff_first.string_index in

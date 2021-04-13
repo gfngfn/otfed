@@ -6,6 +6,8 @@ open DecodeOperation.Open
 
 module Maxp : (module type of DecodeCffMaxp)
 
+val fetch_cff_first : common_source_core -> table_directory -> cff_first ok
+
 type charstring_constant = {
   gsubr_index : subroutine_index;
   lsubr_index : subroutine_index;

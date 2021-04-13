@@ -55,6 +55,7 @@ let d_init_cff (core : common_source_core) : source decoder =
   transform_result (fetch_loc_format core table_directory) >>= fun loc_format ->
   transform_result (fetch_num_glyphs core table_directory) >>= fun num_glyphs ->
   transform_result (fetch_num_h_metrics core table_directory) >>= fun num_h_metrics ->
+  transform_result (Cff.fetch_cff_first core table_directory) >>= fun cff_first ->
   let common =
     {
       core            = core;
@@ -64,7 +65,12 @@ let d_init_cff (core : common_source_core) : source decoder =
       num_h_metrics   = num_h_metrics;
     }
   in
-  let cff = {cff_common = common} in
+  let cff =
+    {
+      cff_common = common;
+      cff_first  = cff_first;
+    }
+  in
   return @@ Cff(cff)
 
 

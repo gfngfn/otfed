@@ -3,6 +3,13 @@ open Basic
 open DecodeBasic
 
 
+let fetch_num_h_metrics (core : common_source_core) (table_directory : table_directory) =
+  let open ResultMonad in
+  DecodeOperation.seek_required_table table_directory Value.Tag.table_hhea >>= fun (offset, _length) ->
+  let open DecodeOperation in
+  d_uint16 |> run core (offset + 34)
+
+
 let get (src : source) : Intermediate.Hhea.t ok =
   let open ResultMonad in
   let common = get_common_source src in

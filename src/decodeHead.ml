@@ -5,6 +5,13 @@ open DecodeBasic
 open DecodeOperation.Open
 
 
+let fetch_loc_format (core : common_source_core) (table_directory : table_directory) =
+  let open ResultMonad in
+  DecodeOperation.seek_required_table table_directory Tag.table_head >>= fun (offset, _length) ->
+  let open DecodeOperation in
+  d_loc_format |> run core (offset + 50)
+
+
 let d_mac_style : Head.mac_style decoder =
   let open DecodeOperation in
   d_uint16 >>= fun u ->

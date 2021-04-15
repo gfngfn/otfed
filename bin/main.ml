@@ -275,7 +275,7 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
               return ()
 
           | Some(aw, _lsb) ->
-              Format.printf "%a@," D.pp_charstring charstring;
+              Format.printf "%a@," I.Cff.pp_charstring charstring;
               D.Cff.path_of_charstring charstring |> inj >>= fun paths ->
               Format.printf "%a@," (pp_list V.pp_cubic_path) paths;
               let data = Svg.make_cff ~units_per_em paths ~aw in

@@ -397,7 +397,7 @@ type charstring_state = {
 }
 
 
-let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
+let d_stem_argument (num_stems : int) : (int * Intermediate.Cff.stem_argument) decoder =
   let open DecodeOperation in
   let arglen =
     if num_stems mod 8 = 0 then
@@ -409,8 +409,9 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
   return (arglen, arg)
 
 
-let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing_state * charstring_element) decoder =
+let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_element) decoder =
   let open DecodeOperation in
+  let open Intermediate.Cff in
   let num_args = lstate.num_args in
   let num_stems = lstate.num_stems in
   let return_simple (step, cselem) =
@@ -621,6 +622,7 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
+  let open Intermediate.Cff in
   d_charstring_element cstate.lexing >>= fun (lstate, cselem) ->
   let cstate = { cstate with lexing = lstate } in
   let stack = cstate.stack in
@@ -892,7 +894,7 @@ and d_subroutine (cconst : charstring_constant) (cstate : charstring_state) (sub
   return (cstate, Alist.to_list acc)
 
 
-and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * charstring_operation Alist.t) decoder =
+and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * Intermediate.Cff.charstring_operation Alist.t) decoder =
   let open DecodeOperation in
   let rec aux (cstate : charstring_state) acc =
     parse_progress cconst cstate >>= fun (cstate, parsed) ->
@@ -923,7 +925,7 @@ let initial_charstring_state (length : int) : charstring_state =
   }
 
 
-let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
+let charstring (cff : cff_source) (gid : glyph_id) : ((int option * Intermediate.Cff.charstring) option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in
   let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
@@ -1051,8 +1053,9 @@ let chop_last_of_list xs =
   | last :: main_rev -> return (List.rev main_rev, last)
 
 
-let path_of_charstring (ops : charstring) : (cubic_path list) ok =
+let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) ok =
   let open ResultMonad in
+  let open Intermediate.Cff in
   ops |> List.fold_left (fun prevres op ->
     prevres >>= fun (curv, state) ->
     match op with

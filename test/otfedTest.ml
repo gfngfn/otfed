@@ -1,5 +1,6 @@
 
 module V = Otfed.Value
+module I = Otfed.Intermediate
 module D = Otfed.Decode
 module E = Otfed.Encode
 module DT = Otfed.Decode.ForTest
@@ -133,10 +134,9 @@ let () =
     let data = Buffer.contents buf in
     (start, data, charstring_length)
   in
-  let pp = D.pp_charstring in
   let res = DT.run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
   assert_match
-    ~pp
+    ~pp:I.Cff.pp_charstring
     ~pp_error:D.Error.pp
     ~message:"cff"
     TestCaseCff1.expected_operations

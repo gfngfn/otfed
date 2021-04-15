@@ -322,6 +322,47 @@ module Intermediate : sig
       }
       [@@deriving show { with_path = false }]
     end
+
+    (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
+    type stem_argument = string
+
+    (** Represents a relative advancement in the direction of the X-axis. *)
+    type cs_x = Value.design_units
+
+    (** Represents a relative advancement in the direction of the Y-axis. *)
+    type cs_y = Value.design_units
+
+    (** Represents a relative vector. *)
+    type cs_point = cs_x * cs_y
+
+    (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
+    type charstring_operation =
+      | HStem     of int * int * cs_point list                                             (** [hstem (1)] *)
+      | VStem     of int * int * cs_point list                                             (** [vstem (3)] *)
+      | VMoveTo   of int                                                                   (** [vmoveto (4)] *)
+      | RLineTo   of cs_point list                                                         (** [rlineto (5)] *)
+      | HLineTo   of int list                                                              (** [hlineto (6)] *)
+      | VLineTo   of int list                                                              (** [vlineto (7)] *)
+      | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (** [rrcurveto (8)] *)
+      | HStemHM   of int * int * cs_point list                                             (** [hstemhm (18)] *)
+      | HintMask  of stem_argument                                                         (** [hintmask (19)] *)
+      | CntrMask  of stem_argument                                                         (** [cntrmask (20)] *)
+      | RMoveTo   of cs_point                                                              (** [rmoveto (21)] *)
+      | HMoveTo   of int                                                                   (** [hmoveto (22)] *)
+      | VStemHM   of int * int * cs_point list                                             (** [vstemhm (23)] *)
+      | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (** [vvcurveto (26)] *)
+      | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (** [hhcurveto (27)] *)
+      | VHCurveTo of (int * cs_point * int) list * int option                              (** [vhcurveto (30)] *)
+      | HVCurveTo of (int * cs_point * int) list * int option                              (** [hvcurveto (31)] *)
+      | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (** [flex (12 35)] *)
+      | HFlex     of int * cs_point * int * int * int * int                                (** [hflex (12 34)] *)
+      | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (** [hflex1 (12 36)] *)
+      | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
+    [@@deriving show { with_path = false }]
+
+    (** Represents a CharString. *)
+    type charstring = charstring_operation list
+    [@@deriving show { with_path = false }]
   end
 end
 
@@ -354,47 +395,6 @@ module Decode : sig
   type cmap_segment =
     | Incremental of Uchar.t * Uchar.t * Value.glyph_id
     | Constant    of Uchar.t * Uchar.t * Value.glyph_id
-
-  (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
-  type stem_argument = string
-
-  (** Represents a relative advancement in the direction of the X-axis. *)
-  type cs_x = Value.design_units
-
-  (** Represents a relative advancement in the direction of the Y-axis. *)
-  type cs_y = Value.design_units
-
-  (** Represents a relative vector. *)
-  type cs_point = cs_x * cs_y
-
-  (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
-  type charstring_operation =
-    | HStem     of int * int * cs_point list                                             (** [hstem (1)] *)
-    | VStem     of int * int * cs_point list                                             (** [vstem (3)] *)
-    | VMoveTo   of int                                                                   (** [vmoveto (4)] *)
-    | RLineTo   of cs_point list                                                         (** [rlineto (5)] *)
-    | HLineTo   of int list                                                              (** [hlineto (6)] *)
-    | VLineTo   of int list                                                              (** [vlineto (7)] *)
-    | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (** [rrcurveto (8)] *)
-    | HStemHM   of int * int * cs_point list                                             (** [hstemhm (18)] *)
-    | HintMask  of stem_argument                                                         (** [hintmask (19)] *)
-    | CntrMask  of stem_argument                                                         (** [cntrmask (20)] *)
-    | RMoveTo   of cs_point                                                              (** [rmoveto (21)] *)
-    | HMoveTo   of int                                                                   (** [hmoveto (22)] *)
-    | VStemHM   of int * int * cs_point list                                             (** [vstemhm (23)] *)
-    | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (** [vvcurveto (26)] *)
-    | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (** [hhcurveto (27)] *)
-    | VHCurveTo of (int * cs_point * int) list * int option                              (** [vhcurveto (30)] *)
-    | HVCurveTo of (int * cs_point * int) list * int option                              (** [hvcurveto (31)] *)
-    | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (** [flex (12 35)] *)
-    | HFlex     of int * cs_point * int * int * int * int                                (** [hflex (12 34)] *)
-    | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (** [hflex1 (12 36)] *)
-    | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
-  [@@deriving show { with_path = false }]
-
-  (** Represents a CharString. *)
-  type charstring = charstring_operation list
-  [@@deriving show { with_path = false }]
 
   (** The type for CIDFont-specific data in Top DICT (CFF p.16, Table 10) *)
   type cff_cid_info = {
@@ -618,9 +618,9 @@ module Decode : sig
 
     val top_dict : cff_source -> cff_top_dict ok
 
-    val charstring : cff_source -> Value.glyph_id -> ((int option * charstring) option) ok
+    val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
 
-    val path_of_charstring : charstring -> (Value.cubic_path list) ok
+    val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end
 
   type charstring_data = CharStringData of int * int
@@ -634,7 +634,7 @@ module Decode : sig
     val run_d_charstring :
       gsubr_index:subroutine_index ->
       lsubr_index:subroutine_index ->
-      string -> start:int -> charstring_length:int -> (charstring_operation list) ok
+      string -> start:int -> charstring_length:int -> (Intermediate.Cff.charstring_operation list) ok
   end
 end
 

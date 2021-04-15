@@ -363,6 +363,31 @@ module Intermediate : sig
     (** Represents a CharString. *)
     type charstring = charstring_operation list
     [@@deriving show { with_path = false }]
+
+    (** The type for CIDFont-specific data in Top DICT (CFF p.16, Table 10) *)
+    type cid_info = {
+      registry          : string;
+      ordering          : string;
+      supplement        : int;
+      cid_font_version  : float;
+      cid_font_revision : int;
+      cid_font_type     : int;
+      cid_count         : int;
+    }
+
+    (** The type for Top DICT (CFF p.16, Table 10). *)
+    type top_dict = {
+      font_name           : string;
+      is_fixed_pitch      : bool;
+      italic_angle        : int;
+      underline_position  : int;
+      underline_thickness : int;
+      paint_type          : int;
+      font_bbox           : int * int * int * int;
+      stroke_width        : int;
+      cid_info            : cid_info option;
+      number_of_glyphs    : int;
+    }
   end
 end
 
@@ -395,31 +420,6 @@ module Decode : sig
   type cmap_segment =
     | Incremental of Uchar.t * Uchar.t * Value.glyph_id
     | Constant    of Uchar.t * Uchar.t * Value.glyph_id
-
-  (** The type for CIDFont-specific data in Top DICT (CFF p.16, Table 10) *)
-  type cff_cid_info = {
-    registry          : string;
-    ordering          : string;
-    supplement        : int;
-    cid_font_version  : float;
-    cid_font_revision : int;
-    cid_font_type     : int;
-    cid_count         : int;
-  }
-
-  (** The type for Top DICT in *)
-  type cff_top_dict = {
-    font_name           : string;
-    is_fixed_pitch      : bool;
-    italic_angle        : int;
-    underline_position  : int;
-    underline_thickness : int;
-    paint_type          : int;
-    font_bbox           : int * int * int * int;
-    stroke_width        : int;
-    cid_info            : cff_cid_info option;
-    number_of_glyphs    : int;
-  }
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
@@ -616,7 +616,7 @@ module Decode : sig
       val get : cff_source -> Intermediate.Cff.Maxp.t ok
     end
 
-    val top_dict : cff_source -> cff_top_dict ok
+    val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
     val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
 

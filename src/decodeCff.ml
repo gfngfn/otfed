@@ -238,7 +238,7 @@ let fetch_cff_first ~(offset_CFF : offset) (core : common_source_core) : cff_fir
   dec |> DecodeOperation.run core offset_CFF
 
 
-let fetch_cff_specific (core : common_source_core) (table_directory : table_directory) : cff_specific ok =
+let fetch_cff_specific (core : common_source_core) (table_directory : table_directory) : cff_specific_source ok =
   let open ResultMonad in
   DecodeOperation.seek_required_table table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
   fetch_cff_first ~offset_CFF core >>= fun cff_first ->
@@ -276,20 +276,20 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
         get_string string_index sid_ordering >>= fun ordering ->
         fetch_fdarray core ~offset_CFF ~offset_FDArray >>= fun fdarray ->
         fetch_fdselect core ~number_of_glyphs ~offset_FDSelect >>= fun fdselect ->
-        return (Some{
+        return (Some(Intermediate.Cff.{
           registry; ordering; supplement;
           cid_font_version;
           cid_font_revision;
           cid_font_type;
           cid_count;
-        }, FontDicts(fdarray, fdselect))
+        }), FontDicts(fdarray, fdselect))
     else
     (* If the font is not a CIDFont *)
       fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
       return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->
   let cff_top_dict =
-    {
+    Intermediate.Cff.{
       font_name;
       is_fixed_pitch;
       italic_angle;
@@ -312,7 +312,7 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   return { cff_top_dict; charstring_info }
 
 
-let top_dict (cff : cff_source) : cff_top_dict ok =
+let top_dict (cff : cff_source) : Intermediate.Cff.top_dict ok =
   let open ResultMonad in
   return cff.cff_specific.cff_top_dict
 

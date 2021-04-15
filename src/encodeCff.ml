@@ -190,7 +190,7 @@ let e_dict (dict : dict) =
   e_list e_dict_entry entries
 
 
-let e_lexical_charstring (_tokens : lexical_charstring) =
+let e_subroutine (_subr : lexical_charstring) =
   failwith "TODO: e_lexical_charstring"
 
 
@@ -205,15 +205,59 @@ let e_cff_header : unit encoder =
   e_offsize offsize
 
 
-let make_dict_from_top_dict (_top_dict : top_dict) : dict =
-  failwith "TODO: make_dict_from_top_dict"
+let make_dict_from_top_dict (top_dict : top_dict) : dict ok =
+  let open ResultMonad in
+  let sid_version = failwith "TODO" in
+  let sid_notice = failwith "TODO" in
+  let sid_copyright = failwith "TODO" in
+  let sid_full_name = failwith "TODO" in
+  let sid_family_name = failwith "TODO" in
+  let sid_weight = failwith "TODO" in
+  let zero_offset_CharString_INDEX = failwith "TODO" in
+  let
+    {
+      font_name = _;
+      is_fixed_pitch;
+      italic_angle;
+      underline_position;
+      underline_thickness;
+      paint_type;
+      font_bbox = (bbox_elem1, bbox_elem2, bbox_elem3, bbox_elem4);
+      stroke_width;
+      cid_info = _;
+      number_of_glyphs = _;
+    } = top_dict
+  in
+  let charstring_type = 2 in
+  let dict =
+    List.fold_left (fun dict (key, values) ->
+      dict |> DictMap.add key values
+    ) DictMap.empty [
+      (ShortKey(0),  [Integer(sid_version)]);
+      (ShortKey(1),  [Integer(sid_notice)]);
+      (LongKey(0),   [Integer(sid_copyright)]);
+      (ShortKey(2),  [Integer(sid_full_name)]);
+      (ShortKey(3),  [Integer(sid_family_name)]);
+      (ShortKey(4),  [Integer(sid_weight)]);
+      (LongKey(1),   [Integer(if is_fixed_pitch then 1 else 0)]);
+      (LongKey(2),   [Integer(italic_angle)]);
+      (LongKey(3),   [Integer(underline_position)]);
+      (LongKey(4),   [Integer(underline_thickness)]);
+      (LongKey(5),   [Integer(paint_type)]);
+      (LongKey(6),   [Integer(charstring_type)]);
+      (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
+      (LongKey(8),   [Integer(stroke_width)]);
+      (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
+    ]
+  in
+  return dict
 
 
-let e_cff_first (name : string) (top_dict : top_dict) (string_index : string list) (global_subrs : lexical_charstring list) =
+let e_cff_first (name : string) (top_dict : top_dict) (string_index : string list) (gsubrs : lexical_charstring list) =
   let open EncodeOperation in
-  let dict = make_dict_from_top_dict top_dict in
-  e_cff_header >>= fun () ->
+  transform_result @@ make_dict_from_top_dict top_dict >>= fun dict ->
+  e_cff_header                   >>= fun () ->
   e_index_singleton e_bytes name >>= fun () ->
-  e_index_singleton e_dict dict >>= fun () ->
-  e_index e_bytes string_index >>= fun () ->
-  e_index e_lexical_charstring global_subrs
+  e_index_singleton e_dict dict  >>= fun () ->
+  e_index e_bytes string_index   >>= fun () ->
+  e_index e_subroutine gsubrs

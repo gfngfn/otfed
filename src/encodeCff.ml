@@ -79,8 +79,63 @@ let e_index (enc : 'a -> unit encoder) (xs : 'a list) : unit encoder =
       e_bytes contents
 
 
-let e_dict (_dict : dict) =
-  failwith "TODO: e_dict"
+let e_twoscompl2 (_n : int) =
+  failwith "TODO: e_twoscompl2"
+
+
+let e_twoscompl4 (_n : int) =
+  failwith "TODO: e_twoscompl4"
+
+
+let e_value (value : value) : unit encoder =
+  let open EncodeOperation in
+  match value with
+  | Integer(n) ->
+      if -107 <= n && n <= 107 then
+        e_uint8 (n + 139)
+      else if 108 <= n && n <= 1131 then
+        let u = n - 108 in
+        let c0 = u lsr 8 in
+        let b0 = c0 + 247 in
+        let b1 = u - (c0 lsl 8) in
+        e_uint8 b0 >>= fun () ->
+        e_uint8 b1
+      else if -1131 <= n && n <= 108 then
+        let u = - (n + 108) in
+        let c0 = u lsr 8 in
+        let b0 = c0 + 251 in
+        let b1 = u - (c0 lsl 8) in
+        e_uint8 b0 >>= fun () ->
+        e_uint8 b1
+      else if -32768 <= n && n <= 32767 then
+        e_uint8 28 >>= fun () ->
+        e_twoscompl2 n
+      else if - (1 lsl 31) <= n && n <= (1 lsl 31) - 1 then
+        e_uint8 29 >>= fun () ->
+        e_twoscompl4 n
+      else
+        err @@ Error.NotEncodableAsDictValue(n)
+
+  | Real(_r) ->
+      failwith "TODO: e_value, Real"
+
+
+let e_dict_entry ((key, values) : key * value list) : unit encoder =
+  let open EncodeOperation in
+  e_list e_value values >>= fun () ->
+  match key with
+  | ShortKey(n) ->
+      e_uint8 n
+
+  | LongKey(n) ->
+      e_uint8 12 >>= fun () ->
+      e_uint8 n
+
+
+let e_dict (dict : dict) =
+  let open EncodeOperation in
+  let entries = DictMap.bindings dict in
+  e_list e_dict_entry entries
 
 
 let e_lexical_charstring (_tokens : lexical_charstring) =

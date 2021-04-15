@@ -13,4 +13,5 @@ type t =
   | NotA10BytePanose        of string
   | NotA4ByteAchVendId      of string
   | TooLargeToDetermineOffSize of int
+  | NotEncodableAsDictValue    of int
 [@@deriving show { with_path = false }]

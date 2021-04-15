@@ -312,6 +312,11 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   return { cff_top_dict; charstring_info }
 
 
+let top_dict (cff : cff_source) : cff_top_dict ok =
+  let open ResultMonad in
+  return cff.cff_specific.cff_top_dict
+
+
 let fetch_charstring_data (cff : cff_source) (offset_CharString_INDEX : offset) (gid : glyph_id) =
   let open DecodeOperation in
   let dec = d_index_access d_charstring_data gid in

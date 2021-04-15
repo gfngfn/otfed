@@ -1,6 +1,7 @@
 
 open Basic
 open Value
+open EncodeBasic
 
 
 include EncodeOperationCore
@@ -62,6 +63,12 @@ let foldM (enc : 'b -> 'a -> 'b encoder) (xs : 'a list) (acc : 'b) =
         aux acc xs
   in
   aux acc xs
+
+
+let transform_result (res : 'a ok) : 'a encoder =
+  match res with
+  | Ok(v)    -> return v
+  | Error(e) -> err e
 
 
 let e_list (enc : 'a -> 'b encoder) (xs : 'a list) =

@@ -12,4 +12,5 @@ type t =
   | NotEncodableAsTimestamp of wint
   | NotA10BytePanose        of string
   | NotA4ByteAchVendId      of string
+  | TooLargeToDetermineOffSize of int
 [@@deriving show { with_path = false }]

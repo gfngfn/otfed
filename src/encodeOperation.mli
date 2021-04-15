@@ -1,5 +1,5 @@
 
-open Value
+open EncodeBasic
 
 include module type of EncodeOperationCore
 
@@ -21,13 +21,15 @@ val e_f2dot14 : float -> unit encoder
 val e_bmp_code_point : Uchar.t -> unit encoder
 
 (** Writes a 4cc tag. *)
-val e_tag : Tag.t -> unit encoder
+val e_tag : Value.Tag.t -> unit encoder
 
 (** [mapM enc xs] writes [xs] by using [enc] for each element of [xs]. *)
 val mapM : ('a -> 'b encoder) -> 'a list -> ('b list) encoder
 
 (** [foldM enc xs acc] writes [xs] by using [enc] and folds [xs] by using the initial accumulator [acc]. *)
 val foldM : ('b -> 'a -> 'b encoder) -> 'a list -> 'b -> 'b encoder
+
+val transform_result : 'a ok -> 'a encoder
 
 (** [e_list enc xs] is the same as [mapM enc xs >>= fun _ -> return ()]. *)
 val e_list : ('a -> unit encoder) -> 'a list -> unit encoder

@@ -79,12 +79,64 @@ let e_index (enc : 'a -> unit encoder) (xs : 'a list) : unit encoder =
       e_bytes contents
 
 
-let e_twoscompl2 (_n : int) =
-  failwith "TODO: e_twoscompl2"
+let e_twoscompl2 (n : int) =
+  let open EncodeOperation in
+  e_int16 n
 
 
-let e_twoscompl4 (_n : int) =
-  failwith "TODO: e_twoscompl4"
+let e_twoscompl4 (n : int) =
+  let open EncodeOperation in
+  e_int32 (!% n)
+
+
+let quad_dot     = 0xa
+let quad_e_plus  = 0xb
+let quad_e_minus = 0xc
+let quad_minus   = 0xe
+
+
+let e_real (r : float) =
+  let rec aux (acc : int Alist.t) = function
+    | [] ->
+        Alist.to_list acc
+
+    | 'e' :: '+' :: chs ->
+        aux (Alist.extend acc quad_e_plus) chs
+
+    | 'e' :: '-' :: chs ->
+        aux (Alist.extend acc quad_e_minus) chs
+
+    | '-' :: chs ->
+        aux (Alist.extend acc quad_minus) chs
+
+    | '.' :: chs ->
+        aux (Alist.extend acc quad_dot) chs
+
+    | ch :: chs ->
+        if '0' <= ch && ch <= '9' then
+          let q = (Char.code ch - Char.code '0') in
+          aux (Alist.extend acc q) chs
+        else
+          assert false
+  in
+  let open EncodeOperation in
+  let rec e_quads = function
+    | [] ->
+        e_uint8 0xff
+
+    | [q] ->
+        e_uint8 ((q lsl 4) lor 0xf)
+
+    | q1 :: q2 :: qs ->
+        e_uint8 ((q1 lsl 4) lor q2) >>= fun () ->
+        e_quads qs
+  in
+  let s = Printf.sprintf "%e" r in
+  let chs = Core_kernel.String.to_list s in
+  let qs = aux Alist.empty chs in
+  e_uint8 30 >>= fun () ->
+  e_quads qs
+
 
 
 let e_value (value : value) : unit encoder =
@@ -116,8 +168,8 @@ let e_value (value : value) : unit encoder =
       else
         err @@ Error.NotEncodableAsDictValue(n)
 
-  | Real(_r) ->
-      failwith "TODO: e_value, Real"
+  | Real(r) ->
+      e_real r
 
 
 let e_dict_entry ((key, values) : key * value list) : unit encoder =

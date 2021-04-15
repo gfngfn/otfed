@@ -32,35 +32,6 @@ type cmap_segment =
   | Incremental of Uchar.t * Uchar.t * Value.glyph_id
   | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
-type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
-
-type cff_key =
-  | ShortKey of int
-  | LongKey  of int
-[@@deriving show { with_path = false }]
-
-type cff_value =
-  | Integer of int
-  | Real    of float
-
-type dict_element =
-  | Value of cff_value
-  | Key   of cff_key
-
-module DictMap = Map.Make
-  (struct
-    type t = cff_key
-    let compare kt1 kt2 =
-      match (kt1, kt2) with
-      | (ShortKey(i1), ShortKey(i2)) -> Int.compare i1 i2
-      | (ShortKey(_), LongKey(_))    -> -1
-      | (LongKey(_), ShortKey(_))    -> 1
-      | (LongKey(i1), LongKey(i2))   -> Int.compare i1 i2
-  end)
-
-(* The type for DICT data [CFF p.9, Section 4] *)
-type dict = (cff_value list) DictMap.t
-
 (* The type for String INDEXes [CFF p.17, Section 10] *)
 type string_index = string array
 
@@ -78,7 +49,7 @@ type cff_header = {
   major    : int;
   minor    : int;
   hdrSize  : int;
-  offSize  : offsize;
+  offSize  : Intermediate.Cff.offsize;
 }
 
 (* The type for Private DICT [CFF p.23, Section 15] *)

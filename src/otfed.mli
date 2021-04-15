@@ -323,6 +323,26 @@ module Intermediate : sig
       [@@deriving show { with_path = false }]
     end
 
+    type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
+
+    type key =
+      | ShortKey of int
+      | LongKey  of int
+    [@@deriving show { with_path = false }]
+
+    type value =
+      | Integer of int
+      | Real    of float
+
+    type dict_element =
+      | Value of value
+      | Key   of key
+
+    module DictMap : Map.S
+
+    (** The type for DICT data (CFF p.9, Section 4) *)
+    type dict = (value list) DictMap.t
+
     (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
     type stem_argument = string
 

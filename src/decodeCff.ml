@@ -3,6 +3,8 @@ open Basic
 open Value
 open DecodeBasic
 open DecodeOperation.Open
+open DecodeOperationCff
+open Intermediate.Cff
 
 
 module Maxp = DecodeCffMaxp
@@ -53,12 +55,12 @@ let get_integer dict key =
   | None    -> err @@ Error.RequiredKeyNotFound
 
 
-let get_real_with_default dictmap key dflt =
+let get_real_with_default dictmap key default =
   let open ResultMonad in
   match DictMap.find_opt key dictmap with
   | Some(Real(r) :: []) -> return r
   | Some(_)             -> err Error.NotARealInDict
-  | None                -> return dflt
+  | None                -> return default
 
 
 let get_integer_pair_opt dictmap key =

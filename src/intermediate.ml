@@ -120,6 +120,35 @@ module Cff = struct
     [@@deriving show { with_path = false }]
   end
 
+  type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
+
+  type key =
+    | ShortKey of int
+    | LongKey  of int
+  [@@deriving show { with_path = false }]
+
+  type value =
+    | Integer of int
+    | Real    of float
+
+  type dict_element =
+    | Value of value
+    | Key   of key
+
+  module DictMap = Map.Make
+    (struct
+      type t = key
+      let compare kt1 kt2 =
+        match (kt1, kt2) with
+        | (ShortKey(i1), ShortKey(i2)) -> Int.compare i1 i2
+        | (ShortKey(_), LongKey(_))    -> -1
+        | (LongKey(_), ShortKey(_))    -> 1
+        | (LongKey(i1), LongKey(i2))   -> Int.compare i1 i2
+    end)
+
+  (* The type for DICT data [CFF p.9, Section 4] *)
+  type dict = (value list) DictMap.t
+
   (* Represents a bit vector of arbitrary finite length *)
   type stem_argument = string
   [@@deriving show { with_path = false }]

@@ -14,6 +14,14 @@ let d_uint32_int : int decoder =
   return @@ WideInt.to_int n
 
 
+let d_int32_int : int decoder =
+  d_uint32_int >>= fun n ->
+  if n >= (1 lsl 31) then
+    return @@ n - (1 lsl 32)
+  else
+    return n
+
+
 let d_code_point : Uchar.t decoder =
   d_uint32_int >>= fun n ->
   if Uchar.is_valid n then

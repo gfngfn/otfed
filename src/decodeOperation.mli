@@ -11,6 +11,8 @@ open DecodeOperationCore.Open
     Strictly speaking, this function is not valid under 32-bit environments. *)
 val d_uint32_int : int decoder
 
+val d_int32_int : int decoder
+
 (** Reads 4 bytes as a Unicode code point. *)
 val d_code_point : Uchar.t decoder
 

@@ -24,31 +24,11 @@ let d_cff_offset (offsize : offsize) : wint decoder =
 
 
 let d_twoscompl2 =
-  d_uint8 >>= fun b1 ->
-  d_uint8 >>= fun b2 ->
-  let iraw = (b1 lsl 8) lor b2 in
-  let ret =
-    if iraw >= (1 lsl 15) then
-      iraw - (1 lsl 16)
-    else
-      iraw
-  in
-  return ret
+  d_int16
 
 
 let d_twoscompl4 =
-  d_uint8 >>= fun b1 ->
-  d_uint8 >>= fun b2 ->
-  d_uint8 >>= fun b3 ->
-  d_uint8 >>= fun b4 ->
-  let iraw = (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4 in
-  let ret =
-    if iraw >= (1 lsl 31) then
-      iraw - (1 lsl 32)
-    else
-      iraw
-  in
-  return ret
+  d_int32_int
 
 
 let d_cff_real =

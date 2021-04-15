@@ -409,7 +409,7 @@ let d_stem_argument (num_stems : int) : (int * Intermediate.Cff.stem_argument) d
   return (arglen, arg)
 
 
-let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_element) decoder =
+let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_token) decoder =
   let open DecodeOperation in
   let open Intermediate.Cff in
   let num_args = lstate.num_args in
@@ -623,7 +623,7 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
   let open Intermediate.Cff in
-  d_charstring_element cstate.lexing >>= fun (lstate, cselem) ->
+  d_charstring_token cstate.lexing >>= fun (lstate, cselem) ->
   let cstate = { cstate with lexing = lstate } in
   let stack = cstate.stack in
   match cselem with

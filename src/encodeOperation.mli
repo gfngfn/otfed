@@ -34,6 +34,9 @@ val transform_result : 'a ok -> 'a encoder
 (** [e_list enc xs] is the same as [mapM enc xs >>= fun _ -> return ()]. *)
 val e_list : ('a -> unit encoder) -> 'a list -> unit encoder
 
+(** Adds a sequence of null bytes of the given length. *)
+val e_paddings : int -> unit encoder
+
 (** Adds null bytes if needed so that
     the next position is set to be long-aligned (i.e. multiples of 4). *)
 val pad_to_long_aligned : unit encoder

@@ -229,8 +229,8 @@ let e_dict (dict : dict) =
   e_list e_dict_entry entries
 
 
-let e_subroutine (_subr : lexical_charstring) =
-  failwith "TODO: e_lexical_charstring"
+let e_charstring (_lcs : lexical_charstring) =
+  failwith "TODO: e_charstring"
 
 
 let e_cff_header : unit encoder =
@@ -244,9 +244,8 @@ let e_cff_header : unit encoder =
   e_offsize offsize
 
 
-let make_dict_from_top_dict (string_index : StringIndex.t) (top_dict : top_dict) : (StringIndex.t * dict) ok =
-  let open ResultMonad in
-  let zero_offset_CharString_INDEX = failwith "TODO" in
+let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) (lcharstrings : lexical_charstring list) =
+  let open EncodeOperation in
   let
     {
       font_name = _;
@@ -273,8 +272,32 @@ let make_dict_from_top_dict (string_index : StringIndex.t) (top_dict : top_dict)
   let (string_index, sid_full_name)   = string_index |> StringIndex.add full_name in
   let (string_index, sid_family_name) = string_index |> StringIndex.add family_name in
   let (string_index, sid_weight)      = string_index |> StringIndex.add weight in
-  let charstring_type = 2 in
+  let strings = StringIndex.to_list string_index in
+  transform_result @@ run e_cff_header                        >>= fun (contents_header, ()) ->
+  transform_result @@ run (e_index_singleton e_bytes name)    >>= fun (contents_name_index, ()) ->
+  transform_result @@ run (e_index e_bytes strings)           >>= fun (contents_string_index, ()) ->
+  transform_result @@ run (e_index e_charstring lcharstrings) >>= fun (contents_charstring_index, ()) ->
+  transform_result @@ run (e_index e_charstring gsubrs)       >>= fun (contents_gsubrs_index, ()) ->
+  let length_upper_bound_of_top_dict_index =
+    List.fold_left ( + ) 0 [
+      2;      (* count *)
+      1;      (* offsize *)
+      8;      (* a couple of offsets *)
+      15 * 2; (* keys *)
+      18 * 5; (* values *)
+    ]
+  in
+  let zero_offset_CharString_INDEX =
+    List.fold_left ( + ) 0 [
+      String.length contents_header;
+      String.length contents_name_index;
+      length_upper_bound_of_top_dict_index;
+      String.length contents_string_index;
+      String.length contents_gsubrs_index;
+    ]
+  in
   let dict =
+    let charstring_type = 2 in
     List.fold_left (fun dict (key, values) ->
       dict |> DictMap.add key values
     ) DictMap.empty [
@@ -295,14 +318,12 @@ let make_dict_from_top_dict (string_index : StringIndex.t) (top_dict : top_dict)
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
     ]
   in
-  return (string_index, dict)
-
-
-let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) (gsubrs : lexical_charstring list) =
-  let open EncodeOperation in
-  transform_result @@ make_dict_from_top_dict string_index top_dict >>= fun (string_index, dict) ->
-  e_cff_header                                                      >>= fun () ->
-  e_index_singleton e_bytes name                                    >>= fun () ->
-  e_index_singleton e_dict dict                                     >>= fun () ->
-  e_index e_bytes (StringIndex.to_list string_index)                >>= fun () ->
-  e_index e_subroutine gsubrs
+  transform_result @@ run (e_index_singleton e_dict dict) >>= fun (contents_top_dict_index, ()) ->
+  let length_for_padding = length_upper_bound_of_top_dict_index - String.length contents_top_dict_index in
+  e_bytes contents_header         >>= fun () ->
+  e_bytes contents_name_index     >>= fun () ->
+  e_bytes contents_top_dict_index >>= fun () ->
+  e_paddings length_for_padding   >>= fun () ->
+  e_bytes contents_string_index   >>= fun () ->
+  e_bytes contents_gsubrs_index   >>= fun () ->
+  e_bytes contents_charstring_index

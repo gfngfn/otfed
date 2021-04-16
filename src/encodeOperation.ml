@@ -76,6 +76,10 @@ let e_list (enc : 'a -> 'b encoder) (xs : 'a list) =
   return ()
 
 
+let e_paddings (len : int) : unit encoder =
+  e_bytes (String.make len (Char.chr 0))
+
+
 let pad_to_long_aligned : unit encoder =
   current >>= fun length ->
   match length mod 4 with

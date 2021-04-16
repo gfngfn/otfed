@@ -248,6 +248,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   let top_dict     = cff_first.cff_first_top_dict in
   let string_index = cff_first.cff_first_string_index in
   let gsubr_index  = cff_first.cff_first_gsubr_index in
+  get_integer              top_dict (ShortKey(0))       >>= fun sid_version ->
+  get_integer              top_dict (ShortKey(1))       >>= fun sid_notice ->
+  get_integer              top_dict (LongKey(0))        >>= fun sid_copyright ->
+  get_integer              top_dict (ShortKey(2))       >>= fun sid_full_name ->
+  get_integer              top_dict (ShortKey(3))       >>= fun sid_family_name ->
+  get_integer              top_dict (ShortKey(4))       >>= fun sid_weight ->
   get_boolean_with_default top_dict (LongKey(1)) false  >>= fun is_fixed_pitch ->
   get_integer_with_default top_dict (LongKey(2)) 0      >>= fun italic_angle ->
   get_integer_with_default top_dict (LongKey(3)) (-100) >>= fun underline_position ->
@@ -262,6 +268,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
     get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
     let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
     fetch_number_of_glyphs core ~offset_CharString_INDEX >>= fun number_of_glyphs ->
+    get_string string_index sid_version     >>= fun version ->
+    get_string string_index sid_notice      >>= fun notice ->
+    get_string string_index sid_copyright   >>= fun copyright ->
+    get_string string_index sid_full_name   >>= fun full_name ->
+    get_string string_index sid_family_name >>= fun family_name ->
+    get_string string_index sid_weight      >>= fun weight ->
     begin
       if DictMap.mem (LongKey(30)) top_dict then
       (* If the font is a CIDFont *)
@@ -293,6 +305,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   let cff_top_dict =
     Intermediate.Cff.{
       font_name;
+      version;
+      notice;
+      copyright;
+      full_name;
+      family_name;
+      weight;
       is_fixed_pitch;
       italic_angle;
       underline_position;

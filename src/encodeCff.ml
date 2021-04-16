@@ -8,6 +8,45 @@ open Intermediate.Cff
 module Maxp = EncodeCffMaxp
 
 
+module StringIndex : sig
+  type sid = int
+  type t
+  val empty : t
+  val add : string -> t -> t * sid
+  val to_list : t -> string list
+end = struct
+
+  type sid = int
+
+  type t = {
+    next_sid : sid;
+    strings  : string Alist.t;
+  }
+
+
+  let empty = {
+    next_sid = 390;
+    strings  = Alist.empty;
+  }
+
+
+  let add (s : string) (index : t) : t * sid =
+    let sid = index.next_sid in
+    let index =
+      {
+        next_sid = sid + 1;
+        strings  = Alist.extend index.strings s;
+      }
+    in
+    (index, sid)
+
+
+  let to_list (index : t) : string list =
+    index.strings |> Alist.to_list
+
+end
+
+
 let e_offsize (offsize : offsize) : unit encoder =
   let open EncodeOperation in
   let u =
@@ -205,18 +244,18 @@ let e_cff_header : unit encoder =
   e_offsize offsize
 
 
-let make_dict_from_top_dict (top_dict : top_dict) : dict ok =
+let make_dict_from_top_dict (string_index : StringIndex.t) (top_dict : top_dict) : (StringIndex.t * dict) ok =
   let open ResultMonad in
-  let sid_version = failwith "TODO" in
-  let sid_notice = failwith "TODO" in
-  let sid_copyright = failwith "TODO" in
-  let sid_full_name = failwith "TODO" in
-  let sid_family_name = failwith "TODO" in
-  let sid_weight = failwith "TODO" in
   let zero_offset_CharString_INDEX = failwith "TODO" in
   let
     {
       font_name = _;
+      version;
+      notice;
+      copyright;
+      full_name;
+      family_name;
+      weight;
       is_fixed_pitch;
       italic_angle;
       underline_position;
@@ -228,6 +267,12 @@ let make_dict_from_top_dict (top_dict : top_dict) : dict ok =
       number_of_glyphs = _;
     } = top_dict
   in
+  let (string_index, sid_version)     = string_index |> StringIndex.add version in
+  let (string_index, sid_notice)      = string_index |> StringIndex.add notice in
+  let (string_index, sid_copyright)   = string_index |> StringIndex.add copyright in
+  let (string_index, sid_full_name)   = string_index |> StringIndex.add full_name in
+  let (string_index, sid_family_name) = string_index |> StringIndex.add family_name in
+  let (string_index, sid_weight)      = string_index |> StringIndex.add weight in
   let charstring_type = 2 in
   let dict =
     List.fold_left (fun dict (key, values) ->
@@ -250,14 +295,14 @@ let make_dict_from_top_dict (top_dict : top_dict) : dict ok =
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
     ]
   in
-  return dict
+  return (string_index, dict)
 
 
-let e_cff_first (name : string) (top_dict : top_dict) (string_index : string list) (gsubrs : lexical_charstring list) =
+let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) (gsubrs : lexical_charstring list) =
   let open EncodeOperation in
-  transform_result @@ make_dict_from_top_dict top_dict >>= fun dict ->
-  e_cff_header                   >>= fun () ->
-  e_index_singleton e_bytes name >>= fun () ->
-  e_index_singleton e_dict dict  >>= fun () ->
-  e_index e_bytes string_index   >>= fun () ->
+  transform_result @@ make_dict_from_top_dict string_index top_dict >>= fun (string_index, dict) ->
+  e_cff_header                                                      >>= fun () ->
+  e_index_singleton e_bytes name                                    >>= fun () ->
+  e_index_singleton e_dict dict                                     >>= fun () ->
+  e_index e_bytes (StringIndex.to_list string_index)                >>= fun () ->
   e_index e_subroutine gsubrs

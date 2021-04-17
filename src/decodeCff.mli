@@ -22,4 +22,14 @@ val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff
 
 val initial_charstring_state : int -> charstring_state
 
+module LexicalSubroutineIndex : sig
+  type t
+  val empty : t
+  val add : int -> Intermediate.Cff.lexical_charstring -> t -> t
+  val mem : int -> t -> bool
+  val find : int -> t -> Intermediate.Cff.lexical_charstring option
+end
+
+val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
+
 val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok

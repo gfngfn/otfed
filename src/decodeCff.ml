@@ -969,6 +969,164 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * Intermediate
       | WidthDecided(wopt) -> return @@ Some((wopt, Alist.to_list acc))
 
 
+module LexicalSubroutineIndex : sig
+  type t
+  val empty : t
+  val add : int -> lexical_charstring -> t -> t
+  val add_flag : int -> t -> t
+  val mem : int -> t -> bool
+  val find : int -> t -> lexical_charstring option
+end = struct
+
+  module Impl = Map.Make(Int)
+
+  type t = (lexical_charstring option) Impl.t
+
+  let empty = Impl.empty
+
+  let add i lcs = Impl.add i (Some(lcs))
+
+  let add_flag i = Impl.add i None
+
+  let mem = Impl.mem
+
+  let find i map =
+    match map |> Impl.find_opt i with
+    | None            -> None
+    | Some(None)      -> assert false
+    | Some(Some(lcs)) -> Some(lcs)
+end
+
+
+type lexical_charstring_state = {
+  lexical_lexing : charstring_lexing_state;
+  lexical_gsubrs : LexicalSubroutineIndex.t;
+  lexical_lsubrs : LexicalSubroutineIndex.t;
+  last_number    : int option;
+}
+
+
+let rec d_lexical_charstring (cconst : charstring_constant) (lcstate : lexical_charstring_state) =
+  let open DecodeOperation in
+  let open Intermediate.Cff in
+  let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token Alist.t) =
+    d_charstring_token lcstate.lexical_lexing >>= fun (lstate, cstoken) ->
+    let acc = Alist.extend acc cstoken in
+    let remaining = lstate.remaining in
+    begin
+      match cstoken with
+      | OpCallSubr ->
+          begin
+            match lcstate.last_number with
+            | None ->
+                err @@ Error.InvalidCharstring
+
+            | Some(i) ->
+                if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
+                  return { lcstate with last_number = None }
+                else
+                  d_lexical_subroutine ~local:true cconst lcstate i
+          end
+
+      | OpCallGSubr ->
+          begin
+            match lcstate.last_number with
+            | None ->
+                err @@ Error.InvalidCharstring
+
+            | Some(i) ->
+                if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then
+                  return { lcstate with last_number = None }
+                else
+                  d_lexical_subroutine ~local:false cconst lcstate i
+          end
+
+      | ArgumentInteger(n) ->
+          return { lcstate with last_number = Some(n) }
+
+      | _ ->
+          return { lcstate with last_number = None }
+
+    end >>= fun lcstate ->
+    if remaining = 0 then
+      return (lcstate, acc)
+    else if remaining < 0 then
+      err @@ Error.InvalidCharstring
+    else
+      aux lcstate acc
+
+  in
+  aux lcstate Alist.empty
+
+
+and d_lexical_subroutine ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
+  let open DecodeOperation in
+
+  let remaining = lcstate.lexical_lexing.remaining in
+
+  (* Adds a flag firstly for avoiding infinite loops. *)
+  let (subrs, lcstate) =
+    if local then
+      (cconst.lsubr_index,
+        { lcstate with
+          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add_flag i
+        })
+    else
+      (cconst.gsubr_index,
+        { lcstate with
+          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add_flag i
+        })
+  in
+
+  transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+  let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
+  pick offset (d_lexical_charstring cconst lcstate) >>= fun (lcstate, acc) ->
+  let lcs = Alist.to_list acc in
+
+  (* Adds the tokenized CharString and resets the remaining byte length. *)
+  let lcstate =
+    if local then
+      { lcstate with
+        lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+      }
+    else
+      { lcstate with
+        lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+      }
+  in
+  return lcstate
+
+
+let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~(lsubrs : LexicalSubroutineIndex.t) (gid : glyph_id) : ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * lexical_charstring) option) ok =
+  let open ResultMonad in
+  let { charstring_info; _ } = cff.cff_specific in
+  let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
+  fetch_charstring_data cff offset_CharString_INDEX gid >>= function
+  | None ->
+      return None
+
+  | Some(CharStringData(offset, length)) ->
+      select_local_subr_index private_info gid >>= fun lsubr_index ->
+      let cconst = { gsubr_index; lsubr_index } in
+      let lcstate =
+        {
+          lexical_lexing = {
+            remaining = length;
+            num_args  = 0;
+            num_stems = 0;
+          };
+          lexical_gsubrs = gsubrs;
+          lexical_lsubrs = lsubrs;
+          last_number = None;
+        }
+      in
+      let dec = d_lexical_charstring cconst lcstate in
+      dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (lcstate, acc) ->
+      return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
+
+
 let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)
 
 let ( +@- ) (x, y) dx = (x + dx, y)

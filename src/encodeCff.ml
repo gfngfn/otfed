@@ -325,7 +325,7 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       underline_position;
       underline_thickness;
       paint_type;
-      font_bbox = (bbox_elem1, bbox_elem2, bbox_elem3, bbox_elem4);
+      font_bbox;
       stroke_width;
       cid_info = _;
       number_of_glyphs = _;
@@ -376,6 +376,7 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
     ]
   in
   let dict =
+    let (bbox_elem1, bbox_elem2, bbox_elem3, bbox_elem4) = font_bbox in
     let charstring_type = 2 in
     List.fold_left (fun dict (key, values) ->
       dict |> DictMap.add key values

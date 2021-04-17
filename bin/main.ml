@@ -16,6 +16,7 @@ type config = {
   kern   : bool;
   post   : bool;
   name   : bool;
+  cfftop : bool;
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
@@ -318,6 +319,20 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
           return ()
 
 
+let print_cff_top (source : D.source) =
+  let open ResultMonad in
+  Format.printf "CFF Top DICT:@,";
+  match source with
+  | D.Ttf(_) ->
+      Format.printf "  not a CFF@,";
+      return ()
+
+  | D.Cff(cff) ->
+      D.Cff.top_dict cff |> inj >>= fun top_dict ->
+      Format.printf "  %a@," I.Cff.pp_top_dict top_dict;
+      return ()
+
+
 let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
@@ -548,6 +563,8 @@ let parse_args () =
       | "post"   -> aux n { acc with post = true } (i + 1)
       | "name"   -> aux n { acc with name = true } (i + 1)
 
+      | "cff_top" -> aux n { acc with cfftop = true } (i + 1)
+
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
           aux n { acc with hmtx = Alist.extend acc.hmtx gid } (i + 2)
@@ -605,6 +622,7 @@ let parse_args () =
         kern   = false;
         post   = false;
         name   = false;
+        cfftop = false;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -650,6 +668,7 @@ let _ =
           kern;
           post;
           name;
+          cfftop;
           hmtx;
           cmap;
           glyf;
@@ -684,6 +703,9 @@ let _ =
         end >>= fun () ->
         begin
           if name then print_name source else return ()
+        end >>= fun () ->
+        begin
+          if cfftop then print_cff_top source else return ()
         end >>= fun () ->
         hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid

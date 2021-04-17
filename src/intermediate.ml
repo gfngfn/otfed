@@ -242,6 +242,7 @@ module Cff = struct
     cid_font_type     : int;
     cid_count         : int;
   }
+  [@@deriving show { with_path = false }]
 
   type top_dict = {
     font_name           : string;
@@ -261,4 +262,5 @@ module Cff = struct
     cid_info            : cid_info option;
     number_of_glyphs    : int;
   }
+  [@@deriving show { with_path = false }]
 end

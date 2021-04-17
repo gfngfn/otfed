@@ -975,6 +975,7 @@ module LexicalSubroutineIndex : sig
   val add_flag : int -> t -> t
   val mem : int -> t -> bool
   val find : int -> t -> lexical_charstring option
+  val fold : (int -> lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
 end = struct
 
   module Impl = Map.Make(Int)
@@ -994,6 +995,13 @@ end = struct
     | None            -> None
     | Some(None)      -> assert false
     | Some(Some(lcs)) -> Some(lcs)
+
+  let fold f map acc =
+    Impl.fold (fun i opt acc ->
+      match opt with
+      | None      -> assert false
+      | Some(lcs) -> f i lcs acc
+    ) map acc
 end
 
 

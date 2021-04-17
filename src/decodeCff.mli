@@ -28,6 +28,7 @@ module LexicalSubroutineIndex : sig
   val add : int -> Intermediate.Cff.lexical_charstring -> t -> t
   val mem : int -> t -> bool
   val find : int -> t -> Intermediate.Cff.lexical_charstring option
+  val fold : (int -> Intermediate.Cff.lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
 end
 
 (** Gets the FD index for the given glyph ID.

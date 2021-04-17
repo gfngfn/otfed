@@ -700,6 +700,7 @@ module Decode : sig
       val add : int -> Intermediate.Cff.lexical_charstring -> t -> t
       val mem : int -> t -> bool
       val find : int -> t -> Intermediate.Cff.lexical_charstring option
+      val fold : (int -> Intermediate.Cff.lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
     end
 
     val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok

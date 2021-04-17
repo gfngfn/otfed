@@ -73,7 +73,6 @@ let d_cff_length_list offsize count =
     else
       d_cff_offset offsize >>= fun offset ->
       let len = WideInt.to_int (offset -% offset_prev) in
-      if i < 5 then Format.printf "!!! D len: %d@," len; (* for debug *)
       aux offset (Alist.extend acc len) (i + 1)
   in
   d_cff_offset offsize >>= fun offset1 ->
@@ -94,12 +93,10 @@ fun ldec ->
         aux (Alist.extend acc v) lengths
   in
   d_uint16 >>= fun count ->
-  Format.printf "!!! index count: %d@," count; (* for debug *)
   if count = 0 then
     return []
   else
     d_offsize >>= fun offsize ->
-    Format.printf "!!! offsize: %a@," Intermediate.Cff.pp_offsize offsize; (* for debug *)
     d_cff_length_list offsize count >>= fun lengths ->
     aux Alist.empty lengths
 
@@ -116,12 +113,10 @@ let d_cff_offset_singleton offsize ldec =
 let d_index_singleton : 'a. (int -> 'a decoder) -> 'a decoder =
 fun ldec ->
   d_uint16 >>= fun count ->
-  Format.printf "!!! index count: %d@," count; (* for debug *)
   if count <> 1 then
     err @@ NotASingletonIndex
   else
     d_offsize >>= fun offsize ->
-    Format.printf "!!! offsize: %a@," Intermediate.Cff.pp_offsize offsize; (* for debug *)
     d_cff_offset_singleton offsize ldec
 
 
@@ -212,7 +207,6 @@ let d_dict len : dict decoder =
       err InconsistentDictLength
     else
       d_dict_keyval >>= fun (step, vs, k) ->
-      Format.printf "!!! D dict (step: %d, values: %a, key: %a)@," step (Format.pp_print_list pp_value) vs pp_key k;
       aux (mapacc |> DictMap.add k vs) (len - step)
   in
   aux DictMap.empty len

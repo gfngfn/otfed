@@ -97,13 +97,11 @@ let d_bytes (length : int) : string decoder =
   fun state ->
     if miss state length then
       err Error.UnexpectedEnd
+    else if length < 0 then
+      err @@ Error.NegativeLengthForBytes(length)
     else
-      try
-        let s = String.sub state.source.data state.position length in
-        return (advance state length, s)
-      with
-      | _ ->
-          failwith (Printf.sprintf "position: %d, length: %d, total: %d" state.position length (String.length state.source.data))
+      let s = String.sub state.source.data state.position length in
+      return (advance state length, s)
 
 
 let d_skip (n : int) : unit decoder =

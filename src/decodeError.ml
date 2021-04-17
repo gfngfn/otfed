@@ -54,6 +54,7 @@ type t =
   | TtfContainsCffMaxpTable
   | UnexpectedMacStyle        of int
   | UnknownCharstringToken    of int
+  | NegativeLengthForBytes    of int
 
   | InconsistentNumberOfPoints of {
       num_points : int;

@@ -105,7 +105,6 @@ let e_index (enc : 'a -> unit encoder) (xs : 'a list) : unit encoder =
         foldM (fun (pos_acc, _pos_prev, count) x ->
           enc x >>= fun () ->
           current >>= fun pos ->
-          Format.printf "!!! E pos: %d@," pos; (* for debug *)
           return @@ (Alist.extend pos_acc pos, pos, count + 1)
         ) xs (Alist.empty, 0, 0) >>= fun (pos_acc, pos_last, count) ->
         transform_result @@ make_offsize (pos_last + 1) >>= fun offsize ->
@@ -341,9 +340,6 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
   let (string_index, sid_family_name_opt) = string_index |> add_string_if_exists family_name in
   let (string_index, sid_weight_opt)      = string_index |> add_string_if_exists weight in
   let strings = StringIndex.to_list string_index in
-
-  Format.printf "!!! size of String INDEX: %d@," (List.length strings); (* for debug *)
-
   transform_result @@ run e_cff_header                       >>= fun (contents_header, ()) ->
   transform_result @@ run (e_index_singleton e_bytes name)   >>= fun (contents_name_index, ()) ->
   transform_result @@ run (e_index e_bytes strings)          >>= fun (contents_string_index, ()) ->

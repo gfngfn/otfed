@@ -40,7 +40,7 @@ val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
     - [lsubrs] is a map that stores already lexed local subroutines with non-biased indices,
     - [gid] is a glyph ID,
     - [gsubrs1] is a map gained by extending [gsubrs] with new global subroutines used by the glyph of [gid],
-    - [lsubrs1] is a map gained by extending [lsubrs] with new global subroutines used by the glyph of [gid], and
+    - [lsubrs1] is a map gained by extending [lsubrs] with new local subroutines used by the glyph of [gid], and
     - [lcs] is the tokenized CharString of the glyph of [gid].
 
     Note that local subroutines differ depending on [gid] if the font is CID font;

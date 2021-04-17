@@ -26,7 +26,7 @@ let update_bounding_box ~current ~new_one =
   }
 
 
-let get_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
+let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
   let open ResultMonad in
   inj_dec @@ Decode.Ttf.loca ttf gid >>= function
   | None      -> err @@ GlyphNotFound(gid)
@@ -36,21 +36,21 @@ let get_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
 type glyph_accumulator = ttf_glyph_info Alist.t * bounding_box
 
 
-let folding_glyph (ttf : Decode.ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
+let folding_ttf_glyph (ttf : Decode.ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
-  get_glyph ttf gid >>= fun g ->
+  get_ttf_glyph ttf gid >>= fun g ->
   return (Alist.extend gs g, update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
 
 
-let get_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
+let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
       err NoGlyphGiven
 
   | gid_first :: gids_tail ->
-      get_glyph ttf gid_first >>= fun g_first ->
-      foldM (folding_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
+      get_ttf_glyph ttf gid_first >>= fun g_first ->
+      foldM (folding_ttf_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
       let gs = g_first :: Alist.to_list gs_tail in
       return (gs, bbox_all)
 
@@ -115,7 +115,7 @@ type hmtx_result = {
 }
 
 
-let make_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
+let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with
@@ -300,7 +300,7 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   let num_glyphs = List.length gids in
 
   (* Make `glyf` and `loca`. *)
-  get_glyphs ttf gids >>= fun (gs, bbox_all) ->
+  get_ttf_glyphs ttf gids >>= fun (gs, bbox_all) ->
   inj_enc @@ Encode.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
   inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
@@ -312,9 +312,14 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   inj_enc @@ Encode.Ttf.Maxp.make maxp >>= fun table_maxp ->
 
   (* Make `hmtx` and get derived data for `hhea`. *)
-  make_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
+  make_ttf_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
 
-  make_common ~omit_cmap ~bbox_all ~index_to_loc_format ~hmtx_result src gids >>= fun common_tables ->
+  make_common
+    ~omit_cmap
+    ~bbox_all
+    ~index_to_loc_format
+    ~hmtx_result
+    src gids >>= fun common_tables ->
 
   inj_enc @@ Encode.make_font_data_from_tables @@
     List.append common_tables [
@@ -324,8 +329,102 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
     ]
 
 
-let make_cff_subset ~omit_cmap:(_ : bool) (_cff : Decode.cff_source) (_gids : glyph_id list) : string ok =
-  failwith "Encode.Subset.make_cff"
+module Lsi = Decode.Cff.LexicalSubroutineIndex
+
+
+module LsiMap = Map.Make(Int)
+
+
+type local_subrs_info =
+  | SingleLsubrs of Lsi.t
+  | FDLsubrs     of Lsi.t LsiMap.t
+
+
+let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
+  let open ResultMonad in
+
+  let src = Decode.Cff(cff) in
+  let num_glyphs = List.length gids in
+
+  let maxp = Intermediate.Cff.Maxp.{ num_glyphs = num_glyphs } in
+  inj_enc @@ Encode.Cff.Maxp.make maxp >>= fun table_maxp ->
+
+  inj_dec @@ Decode.Cff.top_dict cff >>= fun top_dict ->
+  begin
+    match gids with
+    | [] ->
+        err @@ NoGlyphGiven
+
+    | gid :: _ ->
+        begin
+          inj_dec @@ Decode.Cff.fdindex cff gid >>= function
+          | None    -> return @@ SingleLsubrs(Lsi.empty)
+          | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
+        end
+  end >>= fun lsubrs_info ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : Intermediate.Cff.lexical_charstring Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+      match lsubrs_info with
+      | SingleLsubrs(lsubrs) ->
+          begin
+            inj_dec @@ Decode.Cff.fdindex cff gid >>= function
+            | Some(_fdindex) ->
+                assert false
+
+            | None ->
+                begin
+                  inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
+                  | None ->
+                      err @@ GlyphNotFound(gid)
+
+                  | Some(gsubrs, lsubrs, lcs) ->
+                      return (Alist.extend lcsacc lcs, gsubrs, SingleLsubrs(lsubrs))
+                end
+          end
+
+      | FDLsubrs(lsubrs_map) ->
+          begin
+            inj_dec @@ Decode.Cff.fdindex cff gid >>= function
+            | None ->
+                assert false
+
+            | Some(fdindex) ->
+                let lsubrs =
+                  match lsubrs_map |> LsiMap.find_opt fdindex with
+                  | None         -> Lsi.empty
+                  | Some(lsubrs) -> lsubrs
+                in
+                inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
+                | None ->
+                    err @@ GlyphNotFound(gid)
+
+                | Some(gsubrs, lsubrs, lcs) ->
+                    let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
+                    return (Alist.extend lcsacc lcs, gsubrs, FDLsubrs(lsubrs_map))
+          end
+    ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (lcsacc, _gsubrs_old, _lsubrs_map_old) ->
+  let charstrings =
+    let _charstrings_old = Alist.to_list lcsacc in
+    failwith "Encode.Subset.make_cff_subset, charstrings"
+    (* TODO: renumber subroutine indices and replace local subroutines with global ones *)
+  in
+  let gsubrs = failwith "Encode.Subset.make_cff_subset, gsubrs" in
+  inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings >>= fun table_cff ->
+
+  let bbox_all = failwith "Encode.Subset.make_cff_subset, bbox_all" in
+  let hmtx_result = failwith "Encode.Subset.make_cff_subset, hmtx_result" in
+
+  make_common
+    ~omit_cmap
+    ~bbox_all
+    ~index_to_loc_format:Intermediate.ShortLocFormat
+    ~hmtx_result
+    src gids >>= fun common_tables ->
+
+  inj_enc @@ Encode.make_font_data_from_tables @@
+    List.append common_tables [
+      table_maxp;
+      table_cff;
+    ]
 
 
 let make ?(omit_cmap = false) (src : Decode.source) (gids : glyph_id list) : string ok =

@@ -302,12 +302,12 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
           Format.printf "  %a@," I.Cff.pp_lexical_charstring lcharstring;
           Format.printf "  dependent gsubrs:@,";
           D.Cff.LexicalSubroutineIndex.fold (fun i lcs () ->
-            Format.printf "  - (non-biased number: %d):@," i;
+            Format.printf "  - non-biased number: %d:@," i;
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs
           ) gsubrs ();
           Format.printf "  dependent lsubrs:@,";
           D.Cff.LexicalSubroutineIndex.fold (fun i lcs () ->
-            Format.printf "  - (non-biased number: %d):@," i;
+            Format.printf "  - non-biased number: %d:@," i;
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs
           ) lsubrs ();
           return ()

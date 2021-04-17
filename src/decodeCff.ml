@@ -1022,11 +1022,6 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
     let acc = Alist.extend acc cstoken in
     let remaining = lstate.remaining in
 
-    Format.printf "!!! %s(%d): %a@,"
-      (String.make (depth * 2) ' ')
-      remaining
-      pp_charstring_token cstoken;
-
     begin
       match cstoken with
       | OpCallSubr ->
@@ -1092,17 +1087,10 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
         })
   in
 
-  Format.printf "!!! %s %s, number: %d {@,"
-    (String.make (depth * 2) ' ')
-    (if local then "local" else "global")
-    i;
-
   transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
   let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
   pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
   let lcs = Alist.to_list acc in
-
-  Format.printf "!!! %s}@," (String.make (depth * 2) ' ');
 
   (* Adds the tokenized CharString and resets the remaining byte length. *)
   let lcstate =

@@ -51,6 +51,7 @@ type cff_header = {
   hdrSize  : int;
   offSize  : Intermediate.Cff.offsize;
 }
+[@@deriving show { with_path = false }]
 
 (* The type for Private DICT [CFF p.23, Section 15] *)
 type single_private = {
@@ -72,9 +73,20 @@ type private_info =
   | SinglePrivate of single_private
   | FontDicts     of fdarray * fdselect
 
+type predefined_charset =
+  | IsoAdobeCharset
+  | ExpertCharset
+  | ExpertSubsetCharset
+
+type charset =
+  | PredefinedCharset of predefined_charset
+  | CharsetData       of offset
+
 type charstring_info = {
   gsubr_index             : subroutine_index;
   private_info            : private_info;
+  charset                 : charset;
+  string_index            : string_index;
   offset_CharString_INDEX : offset;
 }
 

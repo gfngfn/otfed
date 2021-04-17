@@ -121,6 +121,7 @@ module Cff = struct
   end
 
   type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
+  [@@deriving show { with_path = false }]
 
   type key =
     | ShortKey of int
@@ -130,10 +131,12 @@ module Cff = struct
   type value =
     | Integer of int
     | Real    of float
+  [@@deriving show { with_path = false }]
 
   type dict_element =
     | Value of value
     | Key   of key
+  [@@deriving show { with_path = false }]
 
   module DictMap = Map.Make
     (struct

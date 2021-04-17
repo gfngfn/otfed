@@ -40,10 +40,10 @@ let d_cff_real =
     | 10                                        -> return "."
     | 11                                        -> return "e"
     | 12                                        -> return "e-"
-    | 13                                        -> err NotACffDictElement
+    | 13                                        -> err @@ NotANibbleElement(13)
     | 14                                        -> return "-"
     | 15                                        -> return ""
-    | _                                         -> err NotACffDictElement
+    | d                                         -> err @@ NotANibbleElement(d)
   in
   let rec aux step acc =
     d_uint8 >>= fun raw ->
@@ -53,7 +53,7 @@ let d_cff_real =
       if q2 = 15 then
         return (step + 1, to_float (Alist.to_list acc))
       else
-        err NotACffDictElement
+        err @@ InvalidEndOfReal(q2)
     else
       if q2 = 15 then
         nibble q1 >>= fun nb1 ->
@@ -181,8 +181,8 @@ let d_dict_element : (int * dict_element) decoder =
       d_uint8 >>= fun b1 ->
       return (2, Value(Integer(-(b0 - 251) * 256 - b1 - 108)))
 
-  | _ ->
-      err @@ Error.NotACffDictElement
+  | b ->
+      err @@ Error.NotACffDictElement(b)
 
 
 (* `d_dict_keyval d` returns `(steps, vs, key)` where:

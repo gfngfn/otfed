@@ -692,6 +692,8 @@ module Decode : sig
 
     val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
+    val access_charset : cff_source -> Value.glyph_id -> (string option) ok
+
     val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
 
     val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
@@ -749,7 +751,7 @@ module Encode : sig
       On the other hand, it does NOT perform, for example:
       - checking whether all the required tables are present, or
       - checking that some derived data encoded in given tables are consistent with master data. *)
-  val make_font_data_from_tables : table list -> string ok
+  val make_font_data_from_tables : ttf:bool -> table list -> string ok
 
   module Head : sig
     val make : Intermediate.Head.t -> table ok
@@ -793,6 +795,8 @@ module Encode : sig
     module Maxp : sig
       val make : Intermediate.Cff.Maxp.t -> table ok
     end
+
+    val make : Intermediate.Cff.top_dict -> gsubrs:(Intermediate.Cff.lexical_charstring list) -> names_and_charstrings:((string * Intermediate.Cff.lexical_charstring) list) -> table ok
   end
 
   module ForTest : sig
@@ -810,6 +814,7 @@ module Subset : sig
     | GlyphNotFound of Value.glyph_id
     | DecodeError   of Decode.Error.t
     | EncodeError   of Encode.Error.t
+    | NonexplicitSubroutineNumber
   [@@deriving show { with_path = false }]
 
   type 'a ok = ('a, error) result

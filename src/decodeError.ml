@@ -22,7 +22,9 @@ type t =
   | InvalidOffsize            of int
   | InvalidFirstOffsetInIndex of wint
   | NotASingletonIndex
-  | NotACffDictElement
+  | NotACffDictElement        of int
+  | NotANibbleElement         of int
+  | InvalidEndOfReal          of int
   | InconsistentDictLength
   | NotAnIntegerInDict
   | NotARealInDict
@@ -52,6 +54,7 @@ type t =
   | TtfContainsCffMaxpTable
   | UnexpectedMacStyle        of int
   | UnknownCharstringToken    of int
+  | NegativeLengthForBytes    of int
 
   | InconsistentNumberOfPoints of {
       num_points : int;

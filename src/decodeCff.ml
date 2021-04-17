@@ -129,21 +129,20 @@ let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX
 
 let d_single_private (size_private : int) : single_private decoder =
   let open DecodeOperation in
-  let ( !@ ) = transform_result in
   current >>= fun offset_private ->
   d_dict size_private >>= fun dict_private ->
-  !@ (get_integer_opt          dict_private (ShortKey(19)))   >>= fun selfoffset_lsubrs_opt ->
-  !@ (get_integer_with_default dict_private (ShortKey(20)) 0) >>= fun default_width_x ->
-  !@ (get_integer_with_default dict_private (ShortKey(21)) 0) >>= fun nominal_width_x ->
+  transform_result @@ get_integer_opt          dict_private (ShortKey(19))   >>= fun self_offset_lsubrs_opt ->
+  transform_result @@ get_integer_with_default dict_private (ShortKey(20)) 0 >>= fun default_width_x ->
+  transform_result @@ get_integer_with_default dict_private (ShortKey(21)) 0 >>= fun nominal_width_x ->
 
   (* Local Subr INDEX *)
   begin
-    match selfoffset_lsubrs_opt with
+    match self_offset_lsubrs_opt with
     | None ->
         return []
 
-    | Some(selfoffset_lsubrs) ->
-        let offset_lsubrs = offset_private + selfoffset_lsubrs in
+    | Some(self_offset_lsubrs) ->
+        let offset_lsubrs = offset_private + self_offset_lsubrs in
         seek offset_lsubrs >>= fun () ->
         d_index d_charstring_data
   end >>= fun lsubr_index ->
@@ -157,8 +156,8 @@ let fetch_single_private (core : common_source_core) ~(offset_CFF : offset) (dic
   | None ->
       err Error.NoPrivateDict
 
-  | Some(size_private, reloffset_private) ->
-      let offset_private = offset_CFF + reloffset_private in
+  | Some(size_private, zero_offset_private) ->
+      let offset_private = offset_CFF + zero_offset_private in
       let dec = d_single_private size_private in
       dec |> DecodeOperation.run core offset_private
 
@@ -281,8 +280,16 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   else
     get_iquad_opt            top_dict (ShortKey(5)) (0, 0, 0, 0) >>= fun font_bbox ->
     get_integer_with_default top_dict (LongKey(8) ) 0            >>= fun stroke_width ->
-    get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
-    let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
+    get_integer_with_default top_dict (ShortKey(15)) 0           >>= fun charset_number ->
+    let charset =
+      match charset_number with
+      | 0           -> PredefinedCharset(IsoAdobeCharset)
+      | 1           -> PredefinedCharset(ExpertCharset)
+      | 2           -> PredefinedCharset(ExpertCharset)
+      | zero_offset -> CharsetData(offset_CFF + zero_offset)
+    in
+    get_integer              top_dict (ShortKey(17))             >>= fun zero_offset_CharString_INDEX ->
+    let offset_CharString_INDEX = offset_CFF + zero_offset_CharString_INDEX in
     fetch_number_of_glyphs core ~offset_CharString_INDEX >>= fun number_of_glyphs ->
     get_string_opt string_index sid_version_opt     >>= fun version ->
     get_string_opt string_index sid_notice_opt      >>= fun notice ->
@@ -298,10 +305,10 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
         get_integer_with_default top_dict (LongKey(32)) 0    >>= fun cid_font_revision ->
         get_integer_with_default top_dict (LongKey(33)) 0    >>= fun cid_font_type ->
         get_integer_with_default top_dict (LongKey(34)) 8720 >>= fun cid_count ->
-        get_integer              top_dict (LongKey(36))      >>= fun reloffset_FDArray ->
-        get_integer              top_dict (LongKey(37))      >>= fun reloffset_FDSelect ->
-        let offset_FDArray = offset_CFF + reloffset_FDArray in
-        let offset_FDSelect = offset_CFF + reloffset_FDSelect in
+        get_integer              top_dict (LongKey(36))      >>= fun zero_offset_FDArray ->
+        get_integer              top_dict (LongKey(37))      >>= fun zero_offset_FDSelect ->
+        let offset_FDArray = offset_CFF + zero_offset_FDArray in
+        let offset_FDSelect = offset_CFF + zero_offset_FDSelect in
         get_string string_index sid_registry >>= fun registry ->
         get_string string_index sid_ordering >>= fun ordering ->
         fetch_fdarray core ~offset_CFF ~offset_FDArray >>= fun fdarray ->
@@ -342,6 +349,8 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
     {
       gsubr_index;
       private_info;
+      charset;
+      string_index;
       offset_CharString_INDEX;
     }
   in
@@ -351,6 +360,61 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
 let top_dict (cff : cff_source) : Intermediate.Cff.top_dict ok =
   let open ResultMonad in
   return cff.cff_specific.cff_top_dict
+
+
+let rec d_access_charset_sub (d_num_left : int decoder) (i : int) : int decoder =
+  let open DecodeOperation in
+  d_uint16   >>= fun sid_first ->
+  d_num_left >>= fun num_left ->
+  if i < num_left + 1 then
+    return @@ sid_first + i
+  else
+    d_access_charset_sub d_num_left (i - num_left - 1)
+
+
+let d_access_charset (string_index : string_index) (gid : glyph_id) : (string option) decoder =
+  (* Here we can assume `0 <= gid <= numGlyphs`. *)
+  let open DecodeOperation in
+  if gid = 0 then
+    return @@ Some(".notdef")
+  else
+    d_uint8 >>= fun format ->
+    begin
+      match format with
+      | 0 ->
+          d_skip ((gid - 1) * 2) >>= fun () ->
+          d_uint16
+
+      | 1 ->
+          d_access_charset_sub d_uint8 (gid - 1)
+
+      | 2 ->
+          d_access_charset_sub d_uint16 (gid - 1)
+
+      | _ ->
+          err @@ Error.UnknownFormatNumber(format)
+    end >>= fun sid ->
+    transform_result @@ begin
+      let open ResultMonad in
+      match get_string string_index sid with
+      | Error(_) -> return @@ None
+      | Ok(s)    -> return @@ Some(s)
+    end
+
+
+let access_charset (cff : cff_source) (gid : glyph_id) : (string option) ok =
+  let open ResultMonad in
+  let { charstring_info; _ } = cff.cff_specific in
+  let { string_index; charset; _ } = charstring_info in
+  if gid < 0 || gid >= cff.cff_common.num_glyphs then
+    return None
+  else
+    match charset with
+    | PredefinedCharset(_) ->
+        return None
+
+    | CharsetData(offset_charset) ->
+        d_access_charset string_index gid |> DecodeOperation.run cff.cff_common.core offset_charset
 
 
 let fetch_charstring_data (cff : cff_source) (offset_CharString_INDEX : offset) (gid : glyph_id) =
@@ -963,7 +1027,7 @@ let initial_charstring_state (length : int) : charstring_state =
 let charstring (cff : cff_source) (gid : glyph_id) : ((int option * Intermediate.Cff.charstring) option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in
-  let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
+  let { gsubr_index; private_info; offset_CharString_INDEX; _ } = charstring_info in
   fetch_charstring_data cff offset_CharString_INDEX gid >>= function
   | None ->
       return None
@@ -987,6 +1051,7 @@ module LexicalSubroutineIndex : sig
   val mem : int -> t -> bool
   val find : int -> t -> lexical_charstring option
   val fold : (int -> lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
+  val cardinal : t -> int
 end = struct
 
   module Impl = Map.Make(Int)
@@ -1013,6 +1078,8 @@ end = struct
       | None      -> assert false
       | Some(lcs) -> f i lcs acc
     ) map acc
+
+  let cardinal = Impl.cardinal
 end
 
 
@@ -1135,7 +1202,7 @@ let fdindex (cff : cff_source) (gid : glyph_id) : (fdindex option) ok =
 let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~(lsubrs : LexicalSubroutineIndex.t) (gid : glyph_id) : ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * lexical_charstring) option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in
-  let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
+  let { gsubr_index; private_info; offset_CharString_INDEX; _ } = charstring_info in
   fetch_charstring_data cff offset_CharString_INDEX gid >>= function
   | None ->
       return None

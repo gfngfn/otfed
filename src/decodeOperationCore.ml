@@ -97,6 +97,8 @@ let d_bytes (length : int) : string decoder =
   fun state ->
     if miss state length then
       err Error.UnexpectedEnd
+    else if length < 0 then
+      err @@ Error.NegativeLengthForBytes(length)
     else
       let s = String.sub state.source.data state.position length in
       return (advance state length, s)

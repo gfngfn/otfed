@@ -9,6 +9,8 @@ val fetch_cff_specific : common_source_core -> table_directory -> cff_specific_s
 
 val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
+val access_charset : cff_source -> Value.glyph_id -> (string option) ok
+
 type charstring_constant = {
   gsubr_index : subroutine_index;
   lsubr_index : subroutine_index;
@@ -29,6 +31,7 @@ module LexicalSubroutineIndex : sig
   val mem : int -> t -> bool
   val find : int -> t -> Intermediate.Cff.lexical_charstring option
   val fold : (int -> Intermediate.Cff.lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
+  val cardinal : t -> int
 end
 
 (** Gets the FD index for the given glyph ID.

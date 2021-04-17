@@ -8,6 +8,7 @@ type error =
   | GlyphNotFound of glyph_id
   | DecodeError   of DecodeError.t
   | EncodeError   of EncodeError.t
+  | NonexplicitSubroutineNumber
 [@@deriving show { with_path = false }]
 
 type 'a ok = ('a, error) result
@@ -375,9 +376,39 @@ end
 module RenumberMap = Map.Make(Old)
 
 
-let renumber_subroutine ~(bias : int) (_renumber_map : int RenumberMap.t) (_lcs : Intermediate.Cff.lexical_charstring) =
-  let _ = bias in
-  failwith "TODO: renumber_subroutine"
+let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
+  let open ResultMonad in
+  let open Intermediate.Cff in
+  let rec aux token_new_acc = function
+    | [] ->
+        return @@ Alist.to_list token_new_acc
+
+    | ArgumentInteger(i_old) :: OpCallGSubr :: tokens ->
+        let i_new_biased =
+          match renumber_map |> RenumberMap.find_opt (Old.Global(i_old)) with
+          | None        -> assert false
+          | Some(i_new) -> i_new - bias
+        in
+        aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
+
+    | _ :: OpCallGSubr :: _ ->
+        err @@ NonexplicitSubroutineNumber
+
+    | ArgumentInteger(i_old) :: OpCallSubr :: tokens ->
+        let i_new_biased =
+          match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old)) with
+          | None        -> assert false
+          | Some(i_new) -> i_new - bias
+        in
+        aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
+
+    | _ :: OpCallSubr :: _ ->
+        err @@ NonexplicitSubroutineNumber
+
+    | token :: tokens ->
+        aux (Alist.extend token_new_acc token) tokens
+  in
+  aux Alist.empty tokens_old
 
 
 let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
@@ -402,7 +433,7 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
           | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
         end
   end >>= fun lsubrs_info ->
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : Intermediate.Cff.lexical_charstring Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Decode.fdindex option) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->
           begin
@@ -417,7 +448,7 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
                       err @@ GlyphNotFound(gid)
 
                   | Some(gsubrs, lsubrs, lcs) ->
-                      return (Alist.extend lcsacc lcs, gsubrs, SingleLsubrs(lsubrs))
+                      return (Alist.extend lcsacc (lcs, None), gsubrs, SingleLsubrs(lsubrs))
                 end
           end
 
@@ -439,10 +470,9 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
 
                 | Some(gsubrs, lsubrs, lcs) ->
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
-                    return (Alist.extend lcsacc lcs, gsubrs, FDLsubrs(lsubrs_map))
+                    return (Alist.extend lcsacc (lcs, Some(fdindex)), gsubrs, FDLsubrs(lsubrs_map))
           end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
-
   let (num_subrs, renumber_map, subrs_old) =
     let acc =
       Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
@@ -479,15 +509,16 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
     else
       32768
   in
-  let gsubrs = subrs_old |> List.map (renumber_subroutine ~bias renumber_map) in
-  let charstrings =
-    let charstrings_old = Alist.to_list charstring_acc_old in
-    charstrings_old |> List.map (renumber_subroutine ~bias renumber_map)
-  in
+  subrs_old |> mapM (renumber_subroutine ~fdindex_opt:None ~bias renumber_map) >>= fun gsubrs ->
+    (* Assume here that no global subroutines are dependent on local subroutines. *)
+  let charstrings_old = Alist.to_list charstring_acc_old in
+  charstrings_old |> mapM (fun (lcs, fdindex_opt) ->
+    renumber_subroutine ~fdindex_opt ~bias renumber_map lcs
+  ) >>= fun charstrings ->
   inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings >>= fun table_cff ->
 
-  let bbox_all = failwith "Encode.Subset.make_cff_subset, bbox_all" in
-  let hmtx_result = failwith "Encode.Subset.make_cff_subset, hmtx_result" in
+  let bbox_all = failwith "TODO: Encode.Subset.make_cff_subset, bbox_all" in
+  let hmtx_result = failwith "TODO: Encode.Subset.make_cff_subset, hmtx_result" in
 
   make_common
     ~omit_cmap

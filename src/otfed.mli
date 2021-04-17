@@ -812,6 +812,7 @@ module Subset : sig
     | GlyphNotFound of Value.glyph_id
     | DecodeError   of Decode.Error.t
     | EncodeError   of Encode.Error.t
+    | NonexplicitSubroutineNumber
   [@@deriving show { with_path = false }]
 
   type 'a ok = ('a, error) result

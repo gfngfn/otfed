@@ -45,7 +45,7 @@ let lsubrs = (264, [
 
 
 let expected_operations =
-  let open Otfed.Decode in
+  let open Otfed.Intermediate.Cff in
   [
     HStem(-11, 25, [(217, 21); (174, 22)]);
     VStem(28, 83, [(238, 66)]);

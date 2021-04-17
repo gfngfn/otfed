@@ -29,7 +29,7 @@ type t =
   | NotAnIntegerPairInDict
   | NotAQuadrupleInDict
   | UnknownCharstringType     of int
-  | RequiredKeyNotFound
+  | RequiredKeyNotFound       of Intermediate.Cff.key
   | InvalidRos
   | SidOutOfBounds            of int
   | NoPrivateDict
@@ -51,6 +51,7 @@ type t =
   | CffContainsTtfMaxpTable
   | TtfContainsCffMaxpTable
   | UnexpectedMacStyle        of int
+  | UnknownCharstringToken    of int
 
   | InconsistentNumberOfPoints of {
       num_points : int;

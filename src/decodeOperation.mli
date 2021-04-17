@@ -11,6 +11,8 @@ open DecodeOperationCore.Open
     Strictly speaking, this function is not valid under 32-bit environments. *)
 val d_uint32_int : int decoder
 
+val d_int32_int : int decoder
+
 (** Reads 4 bytes as a Unicode code point. *)
 val d_code_point : Uchar.t decoder
 
@@ -88,26 +90,6 @@ val d_fetch_coverage_and_values : int -> 'a decoder -> ((glyph_id * 'a) list) de
 
 (** Reads a Device table (page 142). *)
 val d_device : device decoder
-
-(** Reads an OffSize value. *)
-val d_offsize : offsize decoder
-
-(** Reads an offset in CFF tables based on the given OffSize. *)
-val d_cff_offset : offsize -> wint decoder
-
-val d_twoscompl2 : int decoder
-
-val d_twoscompl4 : int decoder
-
-val d_cff_real : (int * float) decoder
-
-val d_index : (int -> 'a decoder) -> ('a list) decoder
-
-val d_index_singleton : (int -> 'a decoder) -> 'a decoder
-
-val d_index_access : (int -> 'a decoder) -> int -> ('a option) decoder
-
-val d_dict : int -> dict decoder
 
 (** Given a table directory [td] and a table tag [tag], [seek_required_table td tag] returns
     the pair of the offset and the length of the table. *)

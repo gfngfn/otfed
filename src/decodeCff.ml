@@ -3,6 +3,8 @@ open Basic
 open Value
 open DecodeBasic
 open DecodeOperation.Open
+open DecodeOperationCff
+open Intermediate.Cff
 
 
 module Maxp = DecodeCffMaxp
@@ -50,15 +52,15 @@ let get_integer dict key =
   let open ResultMonad in
   get_integer_opt dict key >>= function
   | Some(i) -> return i
-  | None    -> err @@ Error.RequiredKeyNotFound
+  | None    -> err @@ Error.RequiredKeyNotFound(key)
 
 
-let get_real_with_default dictmap key dflt =
+let get_real_with_default dictmap key default =
   let open ResultMonad in
   match DictMap.find_opt key dictmap with
   | Some(Real(r) :: []) -> return r
   | Some(_)             -> err Error.NotARealInDict
-  | None                -> return dflt
+  | None                -> return default
 
 
 let get_integer_pair_opt dictmap key =
@@ -97,11 +99,27 @@ let get_boolean_with_default dict key dflt =
 let get_string string_index sid =
   let open ResultMonad in
   let nStdString = 391 in
-  if sid < nStdString then
-    failwith "a standard string; remains to be supported."
+  if sid < 0 then
+    err @@ Error.SidOutOfBounds(sid)
+  else if sid < nStdString then
+    match CffStandardString.get sid with
+    | None    -> assert false
+    | Some(s) -> return s
   else
     try return string_index.(sid - nStdString) with
-    | Invalid_argument(_) -> err @@ Error.SidOutOfBounds(sid)
+    | Invalid_argument(_) ->
+        err @@ Error.SidOutOfBounds(sid)
+
+
+let get_string_opt string_index sid_opt =
+  let open ResultMonad in
+  match sid_opt with
+  | None ->
+      return None
+
+  | Some(sid) ->
+      get_string string_index sid >>= fun s ->
+      return @@ Some(s)
 
 
 let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX : offset) : int ok =
@@ -238,7 +256,7 @@ let fetch_cff_first ~(offset_CFF : offset) (core : common_source_core) : cff_fir
   dec |> DecodeOperation.run core offset_CFF
 
 
-let fetch_cff_specific (core : common_source_core) (table_directory : table_directory) : cff_specific ok =
+let fetch_cff_specific (core : common_source_core) (table_directory : table_directory) : cff_specific_source ok =
   let open ResultMonad in
   DecodeOperation.seek_required_table table_directory Tag.table_cff >>= fun (offset_CFF, _length) ->
   fetch_cff_first ~offset_CFF core >>= fun cff_first ->
@@ -246,6 +264,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   let top_dict     = cff_first.cff_first_top_dict in
   let string_index = cff_first.cff_first_string_index in
   let gsubr_index  = cff_first.cff_first_gsubr_index in
+  get_integer_opt          top_dict (ShortKey(0))       >>= fun sid_version_opt ->
+  get_integer_opt          top_dict (ShortKey(1))       >>= fun sid_notice_opt ->
+  get_integer_opt          top_dict (LongKey(0))        >>= fun sid_copyright_opt ->
+  get_integer_opt          top_dict (ShortKey(2))       >>= fun sid_full_name_opt ->
+  get_integer_opt          top_dict (ShortKey(3))       >>= fun sid_family_name_opt ->
+  get_integer_opt          top_dict (ShortKey(4))       >>= fun sid_weight_opt ->
   get_boolean_with_default top_dict (LongKey(1)) false  >>= fun is_fixed_pitch ->
   get_integer_with_default top_dict (LongKey(2)) 0      >>= fun italic_angle ->
   get_integer_with_default top_dict (LongKey(3)) (-100) >>= fun underline_position ->
@@ -260,6 +284,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
     get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
     let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
     fetch_number_of_glyphs core ~offset_CharString_INDEX >>= fun number_of_glyphs ->
+    get_string_opt string_index sid_version_opt     >>= fun version ->
+    get_string_opt string_index sid_notice_opt      >>= fun notice ->
+    get_string_opt string_index sid_copyright_opt   >>= fun copyright ->
+    get_string_opt string_index sid_full_name_opt   >>= fun full_name ->
+    get_string_opt string_index sid_family_name_opt >>= fun family_name ->
+    get_string_opt string_index sid_weight_opt      >>= fun weight ->
     begin
       if DictMap.mem (LongKey(30)) top_dict then
       (* If the font is a CIDFont *)
@@ -276,21 +306,27 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
         get_string string_index sid_ordering >>= fun ordering ->
         fetch_fdarray core ~offset_CFF ~offset_FDArray >>= fun fdarray ->
         fetch_fdselect core ~number_of_glyphs ~offset_FDSelect >>= fun fdselect ->
-        return (Some{
+        return (Some(Intermediate.Cff.{
           registry; ordering; supplement;
           cid_font_version;
           cid_font_revision;
           cid_font_type;
           cid_count;
-        }, FontDicts(fdarray, fdselect))
+        }), FontDicts(fdarray, fdselect))
     else
     (* If the font is not a CIDFont *)
       fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
       return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->
   let cff_top_dict =
-    {
+    Intermediate.Cff.{
       font_name;
+      version;
+      notice;
+      copyright;
+      full_name;
+      family_name;
+      weight;
       is_fixed_pitch;
       italic_angle;
       underline_position;
@@ -312,7 +348,7 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   return { cff_top_dict; charstring_info }
 
 
-let top_dict (cff : cff_source) : cff_top_dict ok =
+let top_dict (cff : cff_source) : Intermediate.Cff.top_dict ok =
   let open ResultMonad in
   return cff.cff_specific.cff_top_dict
 
@@ -352,7 +388,7 @@ let select_fd_index (fdselect : fdselect) (gid : glyph_id) : fdindex ok =
         end
 
 
-let select_local_subr_index (private_info : private_info) (gid : glyph_id) =
+let select_local_subr_index (private_info : private_info) (gid : glyph_id) : subroutine_index ok =
   let open ResultMonad in
   match private_info with
   | SinglePrivate(singlepriv) ->
@@ -397,7 +433,7 @@ type charstring_state = {
 }
 
 
-let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
+let d_stem_argument (num_stems : int) : (int * Intermediate.Cff.stem_argument) decoder =
   let open DecodeOperation in
   let arglen =
     if num_stems mod 8 = 0 then
@@ -409,8 +445,9 @@ let d_stem_argument (num_stems : int) : (int * stem_argument) decoder =
   return (arglen, arg)
 
 
-let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing_state * charstring_element) decoder =
+let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_token) decoder =
   let open DecodeOperation in
+  let open Intermediate.Cff in
   let num_args = lstate.num_args in
   let num_stems = lstate.num_stems in
   let return_simple (step, cselem) =
@@ -530,9 +567,8 @@ let d_charstring_element (lstate : charstring_lexing_state) : (charstring_lexing
       let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
       return_argument (5, ArgumentReal(ret))
 
-  | _ ->
-      assert false
-      (* `uint8`-typed value must be in [0 .. 255] *)
+  | n ->
+      err @@ Error.UnknownCharstringToken(n)
 
 
 let pop_mandatory (stack : stack) : (stack * int) decoder =
@@ -621,7 +657,8 @@ let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
   let open DecodeOperation in
-  d_charstring_element cstate.lexing >>= fun (lstate, cselem) ->
+  let open Intermediate.Cff in
+  d_charstring_token cstate.lexing >>= fun (lstate, cselem) ->
   let cstate = { cstate with lexing = lstate } in
   let stack = cstate.stack in
   match cselem with
@@ -892,7 +929,7 @@ and d_subroutine (cconst : charstring_constant) (cstate : charstring_state) (sub
   return (cstate, Alist.to_list acc)
 
 
-and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * charstring_operation Alist.t) decoder =
+and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (charstring_state * Intermediate.Cff.charstring_operation Alist.t) decoder =
   let open DecodeOperation in
   let rec aux (cstate : charstring_state) acc =
     parse_progress cconst cstate >>= fun (cstate, parsed) ->
@@ -923,7 +960,7 @@ let initial_charstring_state (length : int) : charstring_state =
   }
 
 
-let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) option) ok =
+let charstring (cff : cff_source) (gid : glyph_id) : ((int option * Intermediate.Cff.charstring) option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in
   let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
@@ -933,18 +970,194 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * charstring) 
 
   | Some(CharStringData(offset, length)) ->
       select_local_subr_index private_info gid >>= fun lsubr_index ->
-      let cconst =
-        {
-          gsubr_index;
-          lsubr_index;
-        }
-      in
+      let cconst = { gsubr_index; lsubr_index } in
       let cstate = initial_charstring_state length in
       let dec = d_charstring cconst cstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (cstate, acc) ->
       match cstate.width with
       | LookingForWidth    -> err @@ Error.CharstringWithoutWidth
       | WidthDecided(wopt) -> return @@ Some((wopt, Alist.to_list acc))
+
+
+module LexicalSubroutineIndex : sig
+  type t
+  val empty : t
+  val add : int -> lexical_charstring -> t -> t
+  val add_flag : int -> t -> t
+  val mem : int -> t -> bool
+  val find : int -> t -> lexical_charstring option
+  val fold : (int -> lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
+end = struct
+
+  module Impl = Map.Make(Int)
+
+  type t = (lexical_charstring option) Impl.t
+
+  let empty = Impl.empty
+
+  let add i lcs = Impl.add i (Some(lcs))
+
+  let add_flag i = Impl.add i None
+
+  let mem = Impl.mem
+
+  let find i map =
+    match map |> Impl.find_opt i with
+    | None            -> None
+    | Some(None)      -> assert false
+    | Some(Some(lcs)) -> Some(lcs)
+
+  let fold f map acc =
+    Impl.fold (fun i opt acc ->
+      match opt with
+      | None      -> assert false
+      | Some(lcs) -> f i lcs acc
+    ) map acc
+end
+
+
+type lexical_charstring_state = {
+  lexical_lexing : charstring_lexing_state;
+  lexical_gsubrs : LexicalSubroutineIndex.t;
+  lexical_lsubrs : LexicalSubroutineIndex.t;
+  last_number    : int option;
+}
+
+
+let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcstate : lexical_charstring_state) =
+  let open DecodeOperation in
+  let open Intermediate.Cff in
+  let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token Alist.t) =
+    d_charstring_token lcstate.lexical_lexing >>= fun (lstate, cstoken) ->
+    let lcstate = { lcstate with lexical_lexing = lstate } in
+    let acc = Alist.extend acc cstoken in
+    let remaining = lstate.remaining in
+
+    begin
+      match cstoken with
+      | OpCallSubr ->
+          begin
+            match lcstate.last_number with
+            | None ->
+                err @@ Error.InvalidCharstring
+
+            | Some(i) ->
+                if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
+                  return { lcstate with last_number = None }
+                else
+                  d_lexical_subroutine ~depth ~local:true cconst lcstate i
+          end
+
+      | OpCallGSubr ->
+          begin
+            match lcstate.last_number with
+            | None ->
+                err @@ Error.InvalidCharstring
+
+            | Some(i) ->
+                if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then
+                  return { lcstate with last_number = None }
+                else
+                  d_lexical_subroutine ~depth ~local:false cconst lcstate i
+          end
+
+      | ArgumentInteger(n) ->
+          return { lcstate with last_number = Some(n) }
+
+      | _ ->
+          return { lcstate with last_number = None }
+
+    end >>= fun lcstate ->
+    if remaining = 0 then
+      return (lcstate, acc)
+    else if remaining < 0 then
+      err @@ Error.InvalidCharstring
+    else
+      aux lcstate acc
+
+  in
+  aux lcstate Alist.empty
+
+
+and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
+  let open DecodeOperation in
+
+  let remaining = lcstate.lexical_lexing.remaining in
+
+  (* Adds a flag firstly for avoiding infinite loops. *)
+  let (subrs, lcstate) =
+    if local then
+      (cconst.lsubr_index,
+        { lcstate with
+          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add_flag i
+        })
+    else
+      (cconst.gsubr_index,
+        { lcstate with
+          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add_flag i
+        })
+  in
+
+  transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+  let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
+  pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
+  let lcs = Alist.to_list acc in
+
+  (* Adds the tokenized CharString and resets the remaining byte length. *)
+  let lcstate =
+    if local then
+      { lcstate with
+        lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+      }
+    else
+      { lcstate with
+        lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+      }
+  in
+  return lcstate
+
+
+let fdindex (cff : cff_source) (gid : glyph_id) : (fdindex option) ok =
+  let open ResultMonad in
+  let { charstring_info; _ } = cff.cff_specific in
+  let { private_info; _ } = charstring_info in
+  match private_info with
+  | SinglePrivate(_) ->
+      return None
+
+  | FontDicts(_, fdselect) ->
+      select_fd_index fdselect gid >>= fun fdindex ->
+      return @@ Some(fdindex)
+
+
+let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~(lsubrs : LexicalSubroutineIndex.t) (gid : glyph_id) : ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * lexical_charstring) option) ok =
+  let open ResultMonad in
+  let { charstring_info; _ } = cff.cff_specific in
+  let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
+  fetch_charstring_data cff offset_CharString_INDEX gid >>= function
+  | None ->
+      return None
+
+  | Some(CharStringData(offset, length)) ->
+      select_local_subr_index private_info gid >>= fun lsubr_index ->
+      let cconst = { gsubr_index; lsubr_index } in
+      let lcstate =
+        {
+          lexical_lexing = {
+            remaining = length;
+            num_args  = 0;
+            num_stems = 0;
+          };
+          lexical_gsubrs = gsubrs;
+          lexical_lsubrs = lsubrs;
+          last_number = None;
+        }
+      in
+      let dec = d_lexical_charstring ~depth:0 cconst lcstate in
+      dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (lcstate, acc) ->
+      return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
 
 
 let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)
@@ -1051,8 +1264,9 @@ let chop_last_of_list xs =
   | last :: main_rev -> return (List.rev main_rev, last)
 
 
-let path_of_charstring (ops : charstring) : (cubic_path list) ok =
+let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) ok =
   let open ResultMonad in
+  let open Intermediate.Cff in
   ops |> List.fold_left (fun prevres op ->
     prevres >>= fun (curv, state) ->
     match op with

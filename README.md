@@ -1,5 +1,5 @@
 
-# [WIP] `otfed`: OpenType Font Format Encoder & Decoder
+# `otfed`: OpenType Font Format Encoder & Decoder
 
 This library is intended to be a reformulation and extension of [`otfm`](https://github.com/dbuenzli/otfm).
 
@@ -38,6 +38,7 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
   | cff_lex <glyph-id>                 # Prints the tokenized CharString of the glyph of ID <glyph-id>.
   | cff_top                            # Prints the Top DICT in the `CFF␣` table.
+  | charset <glyph-id>                 # Prints the name of the glyph by consulting the charset in `CFF␣`.
   | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
   | gpos <script> <langsys> <feature>  # Prints the contents of `GPOS` subtables.
   | subset <glyph-ids> <output-ttf>    # Makes a subset font by using given glyph IDs (TrueType-based font only).
@@ -102,7 +103,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="3">CFF</td>
-      <td>CFF␣</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>
+      <td>CFF␣</td><td>v</td><td>o</td><td>v</td><td>v</td></tr>
   <tr><td>CFF2</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>VORG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 

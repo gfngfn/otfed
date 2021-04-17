@@ -366,7 +366,6 @@ let rec d_access_charset_sub (d_num_left : int decoder) (i : int) : int decoder 
   let open DecodeOperation in
   d_uint16   >>= fun sid_first ->
   d_num_left >>= fun num_left ->
-  Format.printf "!!! sid_first: %d, num_left %d@," sid_first num_left; (* for debug *)
   if i < num_left + 1 then
     return @@ sid_first + i
   else
@@ -380,7 +379,6 @@ let d_access_charset (string_index : string_index) (gid : glyph_id) : (string op
     return @@ Some(".notdef")
   else
     d_uint8 >>= fun format ->
-    Format.printf "!!! format %d@," format; (* for debug *)
     begin
       match format with
       | 0 ->

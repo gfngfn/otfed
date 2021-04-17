@@ -129,21 +129,20 @@ let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX
 
 let d_single_private (size_private : int) : single_private decoder =
   let open DecodeOperation in
-  let ( !@ ) = transform_result in
   current >>= fun offset_private ->
   d_dict size_private >>= fun dict_private ->
-  !@ (get_integer_opt          dict_private (ShortKey(19)))   >>= fun selfoffset_lsubrs_opt ->
-  !@ (get_integer_with_default dict_private (ShortKey(20)) 0) >>= fun default_width_x ->
-  !@ (get_integer_with_default dict_private (ShortKey(21)) 0) >>= fun nominal_width_x ->
+  transform_result @@ get_integer_opt          dict_private (ShortKey(19))   >>= fun self_offset_lsubrs_opt ->
+  transform_result @@ get_integer_with_default dict_private (ShortKey(20)) 0 >>= fun default_width_x ->
+  transform_result @@ get_integer_with_default dict_private (ShortKey(21)) 0 >>= fun nominal_width_x ->
 
   (* Local Subr INDEX *)
   begin
-    match selfoffset_lsubrs_opt with
+    match self_offset_lsubrs_opt with
     | None ->
         return []
 
-    | Some(selfoffset_lsubrs) ->
-        let offset_lsubrs = offset_private + selfoffset_lsubrs in
+    | Some(self_offset_lsubrs) ->
+        let offset_lsubrs = offset_private + self_offset_lsubrs in
         seek offset_lsubrs >>= fun () ->
         d_index d_charstring_data
   end >>= fun lsubr_index ->
@@ -157,8 +156,8 @@ let fetch_single_private (core : common_source_core) ~(offset_CFF : offset) (dic
   | None ->
       err Error.NoPrivateDict
 
-  | Some(size_private, reloffset_private) ->
-      let offset_private = offset_CFF + reloffset_private in
+  | Some(size_private, zero_offset_private) ->
+      let offset_private = offset_CFF + zero_offset_private in
       let dec = d_single_private size_private in
       dec |> DecodeOperation.run core offset_private
 

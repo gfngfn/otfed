@@ -30,8 +30,21 @@ module LexicalSubroutineIndex : sig
   val find : int -> t -> Intermediate.Cff.lexical_charstring option
 end
 
+(** Gets the FD index for the given glyph ID.
+    Returns nothing for non-CID fonts (i.e. for the case where the font has only one local subroutine). *)
 val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
 
+(** [lexical_charstring cff ~gsubrs ~lsubrs gid] returns [Ok(gsubrs1, lsubrs1, lcs)] where:
+    - [cff] is the source,
+    - [gsubrs] is a map that stores already lexed global subroutines with non-biased indices,
+    - [lsubrs] is a map that stores already lexed local subroutines with non-biased indices,
+    - [gid] is a glyph ID,
+    - [gsubrs1] is a map gained by extending [gsubrs] with new global subroutines used by the glyph of [gid],
+    - [lsubrs1] is a map gained by extending [lsubrs] with new global subroutines used by the glyph of [gid], and
+    - [lcs] is the tokenized CharString of the glyph of [gid].
+
+    Note that local subroutines differ depending on [gid] if the font is CID font;
+    use [fdindex] to track correct local subroutines for each set of glyphs. *)
 val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
 val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok

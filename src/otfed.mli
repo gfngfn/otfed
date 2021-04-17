@@ -442,12 +442,12 @@ module Intermediate : sig
     (** The type for Top DICT (CFF p.16, Table 10). *)
     type top_dict = {
       font_name           : string;
-      version             : string;
-      notice              : string;
-      copyright           : string;
-      full_name           : string;
-      family_name         : string;
-      weight              : string;
+      version             : string option;
+      notice              : string option;
+      copyright           : string option;
+      full_name           : string option;
+      family_name         : string option;
+      weight              : string option;
       is_fixed_pitch      : bool;
       italic_angle        : int;
       underline_position  : int;

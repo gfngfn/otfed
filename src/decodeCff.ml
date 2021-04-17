@@ -52,7 +52,7 @@ let get_integer dict key =
   let open ResultMonad in
   get_integer_opt dict key >>= function
   | Some(i) -> return i
-  | None    -> err @@ Error.RequiredKeyNotFound
+  | None    -> err @@ Error.RequiredKeyNotFound(key)
 
 
 let get_real_with_default dictmap key default =
@@ -109,6 +109,17 @@ let get_string string_index sid =
     try return string_index.(sid - nStdString) with
     | Invalid_argument(_) ->
         err @@ Error.SidOutOfBounds(sid)
+
+
+let get_string_opt string_index sid_opt =
+  let open ResultMonad in
+  match sid_opt with
+  | None ->
+      return None
+
+  | Some(sid) ->
+      get_string string_index sid >>= fun s ->
+      return @@ Some(s)
 
 
 let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX : offset) : int ok =
@@ -253,12 +264,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   let top_dict     = cff_first.cff_first_top_dict in
   let string_index = cff_first.cff_first_string_index in
   let gsubr_index  = cff_first.cff_first_gsubr_index in
-  get_integer              top_dict (ShortKey(0))       >>= fun sid_version ->
-  get_integer              top_dict (ShortKey(1))       >>= fun sid_notice ->
-  get_integer              top_dict (LongKey(0))        >>= fun sid_copyright ->
-  get_integer              top_dict (ShortKey(2))       >>= fun sid_full_name ->
-  get_integer              top_dict (ShortKey(3))       >>= fun sid_family_name ->
-  get_integer              top_dict (ShortKey(4))       >>= fun sid_weight ->
+  get_integer_opt          top_dict (ShortKey(0))       >>= fun sid_version_opt ->
+  get_integer_opt          top_dict (ShortKey(1))       >>= fun sid_notice_opt ->
+  get_integer_opt          top_dict (LongKey(0))        >>= fun sid_copyright_opt ->
+  get_integer_opt          top_dict (ShortKey(2))       >>= fun sid_full_name_opt ->
+  get_integer_opt          top_dict (ShortKey(3))       >>= fun sid_family_name_opt ->
+  get_integer_opt          top_dict (ShortKey(4))       >>= fun sid_weight_opt ->
   get_boolean_with_default top_dict (LongKey(1)) false  >>= fun is_fixed_pitch ->
   get_integer_with_default top_dict (LongKey(2)) 0      >>= fun italic_angle ->
   get_integer_with_default top_dict (LongKey(3)) (-100) >>= fun underline_position ->
@@ -273,12 +284,12 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
     get_integer              top_dict (ShortKey(17))             >>= fun reloffset_CharString_INDEX ->
     let offset_CharString_INDEX = offset_CFF + reloffset_CharString_INDEX in
     fetch_number_of_glyphs core ~offset_CharString_INDEX >>= fun number_of_glyphs ->
-    get_string string_index sid_version     >>= fun version ->
-    get_string string_index sid_notice      >>= fun notice ->
-    get_string string_index sid_copyright   >>= fun copyright ->
-    get_string string_index sid_full_name   >>= fun full_name ->
-    get_string string_index sid_family_name >>= fun family_name ->
-    get_string string_index sid_weight      >>= fun weight ->
+    get_string_opt string_index sid_version_opt     >>= fun version ->
+    get_string_opt string_index sid_notice_opt      >>= fun notice ->
+    get_string_opt string_index sid_copyright_opt   >>= fun copyright ->
+    get_string_opt string_index sid_full_name_opt   >>= fun full_name ->
+    get_string_opt string_index sid_family_name_opt >>= fun family_name ->
+    get_string_opt string_index sid_weight_opt      >>= fun weight ->
     begin
       if DictMap.mem (LongKey(30)) top_dict then
       (* If the font is a CIDFont *)

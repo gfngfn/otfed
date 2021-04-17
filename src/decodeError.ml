@@ -29,7 +29,7 @@ type t =
   | NotAnIntegerPairInDict
   | NotAQuadrupleInDict
   | UnknownCharstringType     of int
-  | RequiredKeyNotFound
+  | RequiredKeyNotFound       of Intermediate.Cff.key
   | InvalidRos
   | SidOutOfBounds            of int
   | NoPrivateDict

@@ -299,6 +299,16 @@ let e_cff_header : unit encoder =
   e_offsize offsize
 
 
+let add_string_if_exists (s_opt : string option) (string_index : StringIndex.t) =
+  match s_opt with
+  | None ->
+      (string_index, None)
+
+  | Some(s) ->
+      let (string_index, sid) = string_index |> StringIndex.add s in
+      (string_index, Some(sid))
+
+
 let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
   let open EncodeOperation in
   let
@@ -321,12 +331,12 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       number_of_glyphs = _;
     } = top_dict
   in
-  let (string_index, sid_version)     = string_index |> StringIndex.add version in
-  let (string_index, sid_notice)      = string_index |> StringIndex.add notice in
-  let (string_index, sid_copyright)   = string_index |> StringIndex.add copyright in
-  let (string_index, sid_full_name)   = string_index |> StringIndex.add full_name in
-  let (string_index, sid_family_name) = string_index |> StringIndex.add family_name in
-  let (string_index, sid_weight)      = string_index |> StringIndex.add weight in
+  let (string_index, sid_version_opt)     = string_index |> add_string_if_exists version in
+  let (string_index, sid_notice_opt)      = string_index |> add_string_if_exists notice in
+  let (string_index, sid_copyright_opt)   = string_index |> add_string_if_exists copyright in
+  let (string_index, sid_full_name_opt)   = string_index |> add_string_if_exists full_name in
+  let (string_index, sid_family_name_opt) = string_index |> add_string_if_exists family_name in
+  let (string_index, sid_weight_opt)      = string_index |> add_string_if_exists weight in
   let strings = StringIndex.to_list string_index in
   transform_result @@ run e_cff_header                       >>= fun (contents_header, ()) ->
   transform_result @@ run (e_index_singleton e_bytes name)   >>= fun (contents_name_index, ()) ->
@@ -351,17 +361,25 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       String.length contents_gsubrs_index;
     ]
   in
+  let optional_entries =
+    List.fold_left (fun entries (key, sid_opt) ->
+      match sid_opt with
+      | None      -> entries
+      | Some(sid) -> (key, [Integer(sid)]) :: entries
+    ) [] [
+      (ShortKey(0),  sid_version_opt);
+      (ShortKey(1),  sid_notice_opt);
+      (LongKey(0),   sid_copyright_opt);
+      (ShortKey(2),  sid_full_name_opt);
+      (ShortKey(3),  sid_family_name_opt);
+      (ShortKey(4),  sid_weight_opt);
+    ]
+  in
   let dict =
     let charstring_type = 2 in
     List.fold_left (fun dict (key, values) ->
       dict |> DictMap.add key values
-    ) DictMap.empty [
-      (ShortKey(0),  [Integer(sid_version)]);
-      (ShortKey(1),  [Integer(sid_notice)]);
-      (LongKey(0),   [Integer(sid_copyright)]);
-      (ShortKey(2),  [Integer(sid_full_name)]);
-      (ShortKey(3),  [Integer(sid_family_name)]);
-      (ShortKey(4),  [Integer(sid_weight)]);
+    ) DictMap.empty (List.append optional_entries [
       (LongKey(1),   [Integer(if is_fixed_pitch then 1 else 0)]);
       (LongKey(2),   [Integer(italic_angle)]);
       (LongKey(3),   [Integer(underline_position)]);
@@ -371,7 +389,7 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
       (LongKey(8),   [Integer(stroke_width)]);
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
-    ]
+    ])
   in
   transform_result @@ run (e_index_singleton e_dict dict) >>= fun (contents_top_dict_index, ()) ->
   let length_for_padding = length_upper_bound_of_top_dict_index - String.length contents_top_dict_index in

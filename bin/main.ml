@@ -293,6 +293,7 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
 
   | D.Cff(cff) ->
       let empty = D.Cff.LexicalSubroutineIndex.empty in
+      D.Cff.fdindex cff gid |> inj >>= fun fdindex_opt ->
       D.Cff.lexical_charstring cff ~gsubrs:empty ~lsubrs:empty gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";
@@ -305,7 +306,11 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
             Format.printf "  - non-biased number: %d:@," i;
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs
           ) gsubrs ();
-          Format.printf "  dependent lsubrs:@,";
+          begin
+            match fdindex_opt with
+            | None          -> Format.printf "  dependent lsubrs (non-CID):@,"
+            | Some(fdindex) -> Format.printf "  dependent lsubrs (CID, fdindex: %d):@," fdindex
+          end;
           D.Cff.LexicalSubroutineIndex.fold (fun i lcs () ->
             Format.printf "  - non-biased number: %d:@," i;
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs

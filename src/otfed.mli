@@ -749,7 +749,7 @@ module Encode : sig
       On the other hand, it does NOT perform, for example:
       - checking whether all the required tables are present, or
       - checking that some derived data encoded in given tables are consistent with master data. *)
-  val make_font_data_from_tables : table list -> string ok
+  val make_font_data_from_tables : ttf:bool -> table list -> string ok
 
   module Head : sig
     val make : Intermediate.Head.t -> table ok

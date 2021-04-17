@@ -491,7 +491,7 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
     ~hmtx_result
     src gids >>= fun common_tables ->
 
-  inj_enc @@ Encode.make_font_data_from_tables @@
+  inj_enc @@ Encode.make_font_data_from_tables ~ttf:true @@
     List.append common_tables [
       table_maxp;
       table_loca;
@@ -700,7 +700,7 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
     ~hmtx_result
     src gids >>= fun common_tables ->
 
-  inj_enc @@ Encode.make_font_data_from_tables @@
+  inj_enc @@ Encode.make_font_data_from_tables ~ttf:false @@
     List.append common_tables [
       table_maxp;
       table_cff;

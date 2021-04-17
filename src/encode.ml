@@ -140,20 +140,26 @@ let update_checksum_adjustment ~checksum_offset ~checksum_value (contents : stri
 
 
 (* Writes the 12-byte header of the entire TrueType-based OpenType font. *)
-let enc_header (numTables : int) =
+let enc_header ~(ttf : bool) (numTables : int) =
   let open EncodeOperation in
+  let enc_version =
+    if ttf then
+      e_uint32 (!% 0x00010000)
+    else
+      e_bytes "OTTO"
+  in
   let entrySelector = Stdlib.(truncate (log (float_of_int numTables) /. log 2.0)) in
   let searchRange = (1 lsl entrySelector) * 16 in
   let rangeShift = numTables * 16 - searchRange in
-  e_uint32 (!% 0x00010000) >>= fun () ->
-  e_uint16 numTables       >>= fun () ->
-  e_uint16 searchRange     >>= fun () ->
-  e_uint16 entrySelector   >>= fun () ->
-  e_uint16 rangeShift      >>= fun () ->
+  enc_version            >>= fun () ->
+  e_uint16 numTables     >>= fun () ->
+  e_uint16 searchRange   >>= fun () ->
+  e_uint16 entrySelector >>= fun () ->
+  e_uint16 rangeShift    >>= fun () ->
   return ()
 
 
-let make_font_data_from_tables (tables : table list) : string ok =
+let make_font_data_from_tables ~(ttf : bool) (tables : table list) : string ok =
   let tables = tables |> List.sort compare_table in
   let numTables = List.length tables in
   let first_offset = 12 + numTables * 16 in
@@ -162,7 +168,7 @@ let make_font_data_from_tables (tables : table list) : string ok =
   enc_tables tables |> EncodeOperation.run >>= fun (table_contents, (checksum_reloffset, entries)) ->
   let enc =
     let open EncodeOperation in
-    enc_header numTables                              >>= fun () ->
+    enc_header ~ttf numTables                         >>= fun () ->
     enc_table_directory_entries ~first_offset entries >>= fun all_table_checksum ->
     e_bytes table_contents                            >>= fun () ->
     return all_table_checksum

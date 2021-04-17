@@ -232,17 +232,27 @@ let fetch_cff_first ~(offset_CFF : offset) (core : common_source_core) : cff_fir
     (* Header *)
     d_cff_header >>= fun header ->
 
+    Format.printf "!!! ==== end header %a@," pp_cff_header header; (* for debug *)
+
     (* Name INDEX (which should contain only one element) *)
     d_index_singleton d_bytes >>= fun name ->
+
+    Format.printf "!!! ==== end Name INDEX@,"; (* for debug *)
 
     (* Top DICT INDEX (which should contain only one DICT) *)
     d_index_singleton d_dict >>= fun top_dict ->
 
+    Format.printf "!!! ==== end Top DICT INDEX@,"; (* for debug *)
+
     (* String INDEX *)
     d_index d_bytes >>= fun string_index ->
 
+    Format.printf "!!! ==== end String INDEX@,"; (* for debug *)
+
     (* Global Subr INDEX *)
     d_index d_charstring_data >>= fun gsubr_index ->
+
+    Format.printf "!!! ==== end Global Subr INDEX@,"; (* for debug *)
 
     return {
       cff_first_header       = header;
@@ -314,6 +324,7 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
         }), FontDicts(fdarray, fdselect))
     else
     (* If the font is not a CIDFont *)
+      let () = Format.printf "!!! ==== Private DICT:@," in (* for debug *)
       fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
       return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->

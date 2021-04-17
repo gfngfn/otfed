@@ -51,6 +51,7 @@ type cff_header = {
   hdrSize  : int;
   offSize  : Intermediate.Cff.offsize;
 }
+[@@deriving show { with_path = false }]
 
 (* The type for Private DICT [CFF p.23, Section 15] *)
 type single_private = {

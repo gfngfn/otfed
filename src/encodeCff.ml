@@ -87,8 +87,9 @@ let e_index_singleton (enc : 'a -> unit encoder) (x : 'a) : unit encoder =
   transform_result (enc x |> EncodeOperation.run) >>= fun (contents, ()) ->
   let len = String.length contents in
   transform_result (make_offsize len) >>= fun offsize ->
-  e_uint16 1                    >>= fun () ->
+  e_uint16 1                    >>= fun () -> (* The number of entries *)
   e_offsize offsize             >>= fun () ->
+  e_reloffset offsize 1         >>= fun () -> (* The first offset *)
   e_reloffset offsize (len + 1) >>= fun () ->
   e_bytes contents
 
@@ -101,19 +102,20 @@ let e_index (enc : 'a -> unit encoder) (xs : 'a list) : unit encoder =
 
   | _ :: _ ->
       let enc =
-        foldM (fun (len_acc, pos_prev, count) x ->
+        foldM (fun (pos_acc, _pos_prev, count) x ->
           enc x >>= fun () ->
           current >>= fun pos ->
-          let len = pos - pos_prev in
-          return @@ (Alist.extend len_acc len, pos, count + 1)
-        ) xs (Alist.empty, 0, 0) >>= fun (len_acc, pos_last, count) ->
+          Format.printf "!!! E pos: %d@," pos; (* for debug *)
+          return @@ (Alist.extend pos_acc pos, pos, count + 1)
+        ) xs (Alist.empty, 0, 0) >>= fun (pos_acc, pos_last, count) ->
         transform_result @@ make_offsize (pos_last + 1) >>= fun offsize ->
-        return @@ (Alist.to_list len_acc, offsize, count)
+        return @@ (Alist.to_list pos_acc, offsize, count)
       in
-      transform_result (enc |> EncodeOperation.run) >>= fun (contents, (lens, offsize, count)) ->
-      let reloffsets = 1 :: lens |> List.map (fun len -> len + 1) in
+      transform_result (enc |> EncodeOperation.run) >>= fun (contents, (poss, offsize, count)) ->
+      let reloffsets = poss |> List.map (fun pos -> pos + 1) in
       e_uint16 count                          >>= fun () ->
       e_offsize offsize                       >>= fun () ->
+      e_reloffset offsize 1                   >>= fun () -> (* The first offset *)
       e_list (e_reloffset offsize) reloffsets >>= fun () ->
       e_bytes contents
 
@@ -339,6 +341,9 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
   let (string_index, sid_family_name_opt) = string_index |> add_string_if_exists family_name in
   let (string_index, sid_weight_opt)      = string_index |> add_string_if_exists weight in
   let strings = StringIndex.to_list string_index in
+
+  Format.printf "!!! size of String INDEX: %d@," (List.length strings); (* for debug *)
+
   transform_result @@ run e_cff_header                       >>= fun (contents_header, ()) ->
   transform_result @@ run (e_index_singleton e_bytes name)   >>= fun (contents_name_index, ()) ->
   transform_result @@ run (e_index e_bytes strings)          >>= fun (contents_string_index, ()) ->
@@ -393,7 +398,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
       (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
       (LongKey(8),   [Integer(stroke_width)]);
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
-      (ShortKey(18), [Integer(zero_offset_private); Integer(String.length contents_private)]);
+      (ShortKey(18), [Integer(String.length contents_private); Integer(zero_offset_private)]);
     ])
   in
   transform_result @@ run (e_index_singleton e_dict dict) >>= fun (contents_top_dict_index, ()) ->
@@ -401,9 +406,9 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
   e_bytes contents_header           >>= fun () ->
   e_bytes contents_name_index       >>= fun () ->
   e_bytes contents_top_dict_index   >>= fun () ->
-  e_paddings length_for_padding     >>= fun () ->
   e_bytes contents_string_index     >>= fun () ->
   e_bytes contents_gsubrs_index     >>= fun () ->
+  e_paddings length_for_padding     >>= fun () ->
   e_bytes contents_charstring_index >>= fun () ->
   e_bytes contents_private
 

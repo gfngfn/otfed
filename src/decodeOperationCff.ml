@@ -40,10 +40,10 @@ let d_cff_real =
     | 10                                        -> return "."
     | 11                                        -> return "e"
     | 12                                        -> return "e-"
-    | 13                                        -> err NotACffDictElement
+    | 13                                        -> err @@ NotANibbleElement(13)
     | 14                                        -> return "-"
     | 15                                        -> return ""
-    | _                                         -> err NotACffDictElement
+    | d                                         -> err @@ NotANibbleElement(d)
   in
   let rec aux step acc =
     d_uint8 >>= fun raw ->
@@ -53,7 +53,7 @@ let d_cff_real =
       if q2 = 15 then
         return (step + 1, to_float (Alist.to_list acc))
       else
-        err NotACffDictElement
+        err @@ InvalidEndOfReal(q2)
     else
       if q2 = 15 then
         nibble q1 >>= fun nb1 ->
@@ -73,6 +73,7 @@ let d_cff_length_list offsize count =
     else
       d_cff_offset offsize >>= fun offset ->
       let len = WideInt.to_int (offset -% offset_prev) in
+      if i < 5 then Format.printf "!!! D len: %d@," len; (* for debug *)
       aux offset (Alist.extend acc len) (i + 1)
   in
   d_cff_offset offsize >>= fun offset1 ->
@@ -93,10 +94,12 @@ fun ldec ->
         aux (Alist.extend acc v) lengths
   in
   d_uint16 >>= fun count ->
+  Format.printf "!!! index count: %d@," count; (* for debug *)
   if count = 0 then
     return []
   else
     d_offsize >>= fun offsize ->
+    Format.printf "!!! offsize: %a@," Intermediate.Cff.pp_offsize offsize; (* for debug *)
     d_cff_length_list offsize count >>= fun lengths ->
     aux Alist.empty lengths
 
@@ -113,10 +116,12 @@ let d_cff_offset_singleton offsize ldec =
 let d_index_singleton : 'a. (int -> 'a decoder) -> 'a decoder =
 fun ldec ->
   d_uint16 >>= fun count ->
+  Format.printf "!!! index count: %d@," count; (* for debug *)
   if count <> 1 then
     err @@ NotASingletonIndex
   else
     d_offsize >>= fun offsize ->
+    Format.printf "!!! offsize: %a@," Intermediate.Cff.pp_offsize offsize; (* for debug *)
     d_cff_offset_singleton offsize ldec
 
 
@@ -181,8 +186,8 @@ let d_dict_element : (int * dict_element) decoder =
       d_uint8 >>= fun b1 ->
       return (2, Value(Integer(-(b0 - 251) * 256 - b1 - 108)))
 
-  | _ ->
-      err @@ Error.NotACffDictElement
+  | b ->
+      err @@ Error.NotACffDictElement(b)
 
 
 (* `d_dict_keyval d` returns `(steps, vs, key)` where:
@@ -207,6 +212,7 @@ let d_dict len : dict decoder =
       err InconsistentDictLength
     else
       d_dict_keyval >>= fun (step, vs, k) ->
+      Format.printf "!!! D dict (step: %d, values: %a, key: %a)@," step (Format.pp_print_list pp_value) vs pp_key k;
       aux (mapacc |> DictMap.add k vs) (len - step)
   in
   aux DictMap.empty len

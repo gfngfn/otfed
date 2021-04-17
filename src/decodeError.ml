@@ -22,7 +22,9 @@ type t =
   | InvalidOffsize            of int
   | InvalidFirstOffsetInIndex of wint
   | NotASingletonIndex
-  | NotACffDictElement
+  | NotACffDictElement        of int
+  | NotANibbleElement         of int
+  | InvalidEndOfReal          of int
   | InconsistentDictLength
   | NotAnIntegerInDict
   | NotARealInDict

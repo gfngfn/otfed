@@ -692,6 +692,8 @@ module Decode : sig
 
     val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
+    val access_charset : cff_source -> Value.glyph_id -> (string option) ok
+
     val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
 
     val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok

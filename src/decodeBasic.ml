@@ -73,9 +73,20 @@ type private_info =
   | SinglePrivate of single_private
   | FontDicts     of fdarray * fdselect
 
+type predefined_charset =
+  | IsoAdobeCharset
+  | ExpertCharset
+  | ExpertSubsetCharset
+
+type charset =
+  | PredefinedCharset of predefined_charset
+  | CharsetData       of offset
+
 type charstring_info = {
   gsubr_index             : subroutine_index;
   private_info            : private_info;
+  charset                 : charset;
+  string_index            : string_index;
   offset_CharString_INDEX : offset;
 }
 

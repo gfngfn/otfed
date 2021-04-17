@@ -21,6 +21,7 @@ type config = {
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
   cfflex : V.glyph_id Alist.t;
+  charset : V.glyph_id Alist.t;
   gsub   : (string * string * string) Alist.t;
   gpos   : (string * string * string) Alist.t;
   subset : (V.glyph_id list * string) Alist.t;
@@ -333,6 +334,25 @@ let print_cff_top (source : D.source) =
       return ()
 
 
+let print_charset (source : D.source) (gid : V.glyph_id) =
+  let open ResultMonad in
+  Format.printf "CFF charset:@,";
+  match source with
+  | D.Ttf(_) ->
+      Format.printf "  not a CFF@,";
+      return ()
+
+  | D.Cff(cff) ->
+      D.Cff.access_charset cff gid |> inj >>= function
+      | None ->
+          Format.printf "  not defined@,";
+          return ()
+
+      | Some(s) ->
+          Format.printf "  %s@," s;
+          return ()
+
+
 let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
@@ -583,6 +603,10 @@ let parse_args () =
           let gid = int_of_string (Sys.argv.(i + 1)) in
           aux n { acc with cfflex = Alist.extend acc.cfflex gid } (i + 2)
 
+      | "charset" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with charset = Alist.extend acc.charset gid } (i + 2)
+
       | "gsub" ->
           let script  = Sys.argv.(i + 1) in
           let langsys = Sys.argv.(i + 2) in
@@ -623,6 +647,7 @@ let parse_args () =
         post   = false;
         name   = false;
         cfftop = false;
+        charset = Alist.empty;
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
@@ -674,6 +699,7 @@ let _ =
           glyf;
           cff;
           cfflex;
+          charset;
           gsub;
           gpos;
           subset;
@@ -721,6 +747,9 @@ let _ =
         ) >>= fun _ ->
         cfflex |> Alist.to_list |> mapM (fun gid ->
           print_cff_lex source gid
+        ) >>= fun _ ->
+        charset |> Alist.to_list |> mapM (fun gid ->
+          print_charset source gid
         ) >>= fun _ ->
         gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gsub source script langsys feature |> inj

@@ -404,7 +404,6 @@ let d_access_charset (string_index : string_index) (gid : glyph_id) : (string op
     end
 
 
-
 let access_charset (cff : cff_source) (gid : glyph_id) : (string option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in

@@ -25,7 +25,7 @@ end = struct
 
 
   let empty = {
-    next_sid = 390;
+    next_sid = 391;
     strings  = Alist.empty;
   }
 
@@ -310,9 +310,37 @@ let add_string_if_exists (s_opt : string option) (string_index : StringIndex.t) 
       (string_index, Some(sid))
 
 
-let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
+let e_charset ~(sid_first_opt : int option) ~(num_glyphs : int) =
+  let open EncodeOperation in
+  match sid_first_opt with
+  | None ->
+      return ()
+
+  | Some(sid_first) ->
+      e_uint8 2           >>= fun () -> (* Format number *)
+      e_uint16 sid_first  >>= fun () ->
+      e_uint16 (num_glyphs - 1)
+
+
+let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(names_and_charstrings : (string * lexical_charstring) list) =
   let open EncodeOperation in
   let string_index = StringIndex.empty in
+  let (string_index, sid_first_opt, lcs_acc, num_glyphs) =
+    names_and_charstrings |> List.fold_left (fun (string_index, sid_first_opt, lcs_acc, i) ((name, lcs) : string * lexical_charstring) ->
+      let (string_index, sid_first_opt) =
+        if i = 0 then
+          (string_index, None)
+        else if i = 1 then
+          let (string_index, sid) = string_index |> StringIndex.add name in
+          (string_index, Some(sid))
+        else
+          let (string_index, _) = string_index |> StringIndex.add name in
+          (string_index, sid_first_opt)
+      in
+      (string_index, sid_first_opt, Alist.extend lcs_acc lcs, i + 1)
+    ) (string_index, None, Alist.empty, 0)
+  in
+  let charstrings = Alist.to_list lcs_acc in
   let
     {
       font_name = name;
@@ -346,6 +374,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
   transform_result @@ run (e_index e_charstring charstrings) >>= fun (contents_charstring_index, ()) ->
   transform_result @@ run (e_index e_charstring gsubrs)      >>= fun (contents_gsubrs_index, ()) ->
   transform_result @@ run (e_dict DictMap.empty)             >>= fun (contents_private, ()) ->
+  transform_result @@ run (e_charset ~sid_first_opt ~num_glyphs) >>= fun (contents_charset, ()) ->
   let length_upper_bound_of_top_dict_index =
     List.fold_left ( + ) 0 [
       2;      (* count *)
@@ -365,6 +394,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
     ]
   in
   let zero_offset_private = zero_offset_CharString_INDEX + String.length contents_charstring_index in
+  let zero_offset_charset = zero_offset_private + String.length contents_private in
   let optional_entries =
     List.fold_left (fun entries (key, sid_opt) ->
       match sid_opt with
@@ -393,6 +423,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
       (LongKey(6),   [Integer(charstring_type)]);
       (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
       (LongKey(8),   [Integer(stroke_width)]);
+      (ShortKey(15), [Integer(zero_offset_charset)]);
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
       (ShortKey(18), [Integer(String.length contents_private); Integer(zero_offset_private)]);
     ])
@@ -406,12 +437,13 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstring
   e_bytes contents_gsubrs_index     >>= fun () ->
   e_paddings length_for_padding     >>= fun () ->
   e_bytes contents_charstring_index >>= fun () ->
-  e_bytes contents_private
+  e_bytes contents_private          >>= fun () ->
+  e_bytes contents_charset
 
 
-let make (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
+let make (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(names_and_charstrings : (string * lexical_charstring) list) =
   let open ResultMonad in
-  e_cff top_dict ~gsubrs ~charstrings |> EncodeOperation.run >>= fun (contents, ()) ->
+  e_cff top_dict ~gsubrs ~names_and_charstrings |> EncodeOperation.run >>= fun (contents, ()) ->
   return {
     tag = Value.Tag.table_cff;
     contents;

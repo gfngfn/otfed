@@ -580,7 +580,18 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
   aux Alist.empty tokens_old
 
 
-let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
+let get_glyph_name (cff : Decode.cff_source) (gid : glyph_id) : string ok =
+  let open ResultMonad in
+  inj_dec @@ Decode.Cff.access_charset cff gid >>= fun name_opt ->
+  let name =
+    match name_opt with
+    | Some(name) -> name
+    | None       -> Printf.sprintf "from%d" gid
+  in
+  return name
+
+
+let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list) =
   let open ResultMonad in
   inj_dec @@ Decode.Cff.top_dict cff >>= fun top_dict ->
   begin
@@ -595,7 +606,8 @@ let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
           | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
         end
   end >>= fun lsubrs_info ->
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Decode.fdindex option) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Decode.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+      get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->
           begin
@@ -610,7 +622,7 @@ let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
                       err @@ GlyphNotFound(gid)
 
                   | Some(gsubrs, lsubrs, lcs) ->
-                      return (Alist.extend lcsacc (lcs, None), gsubrs, SingleLsubrs(lsubrs))
+                      return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
                 end
           end
 
@@ -632,7 +644,7 @@ let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
 
                 | Some(gsubrs, lsubrs, lcs) ->
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
-                    return (Alist.extend lcsacc (lcs, Some(fdindex)), gsubrs, FDLsubrs(lsubrs_map))
+                    return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
           end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
   let (num_subrs, renumber_map, subrs_old) =
@@ -674,10 +686,11 @@ let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
   subrs_old |> mapM (renumber_subroutine ~fdindex_opt:None ~bias renumber_map) >>= fun gsubrs ->
     (* Assume here that no global subroutines are dependent on local subroutines. *)
   let charstrings_old = Alist.to_list charstring_acc_old in
-  charstrings_old |> mapM (fun (lcs, fdindex_opt) ->
-    renumber_subroutine ~fdindex_opt ~bias renumber_map lcs
-  ) >>= fun charstrings ->
-  inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings
+  charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
+    renumber_subroutine ~fdindex_opt ~bias renumber_map lcs >>= fun charstring ->
+    return (name, charstring)
+  ) >>= fun names_and_charstrings ->
+  inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings
 
 
 let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
@@ -689,7 +702,7 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
   let maxp = Intermediate.Cff.Maxp.{ num_glyphs = num_glyphs } in
   inj_enc @@ Encode.Cff.Maxp.make maxp >>= fun table_maxp ->
 
-  make_cff cff gids >>= fun table_cff ->
+  make_cff ~num_glyphs cff gids >>= fun table_cff ->
 
   make_cff_hmtx cff gids >>= fun (hmtx_result, bbox_all) ->
 

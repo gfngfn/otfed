@@ -309,7 +309,7 @@ let add_string_if_exists (s_opt : string option) (string_index : StringIndex.t) 
       (string_index, Some(sid))
 
 
-let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
+let e_cff (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
   let open EncodeOperation in
   let
     {
@@ -343,13 +343,14 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
   transform_result @@ run (e_index e_bytes strings)          >>= fun (contents_string_index, ()) ->
   transform_result @@ run (e_index e_charstring charstrings) >>= fun (contents_charstring_index, ()) ->
   transform_result @@ run (e_index e_charstring gsubrs)      >>= fun (contents_gsubrs_index, ()) ->
+  transform_result @@ run (e_dict DictMap.empty)             >>= fun (contents_private, ()) ->
   let length_upper_bound_of_top_dict_index =
     List.fold_left ( + ) 0 [
       2;      (* count *)
       1;      (* offsize *)
       8;      (* a couple of offsets *)
-      15 * 2; (* keys *)
-      18 * 5; (* values *)
+      2 * 16; (* keys *)
+      5 * 20; (* values *)
     ]
   in
   let zero_offset_CharString_INDEX =
@@ -361,6 +362,7 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       String.length contents_gsubrs_index;
     ]
   in
+  let zero_offset_private = zero_offset_CharString_INDEX + String.length contents_charstring_index in
   let optional_entries =
     List.fold_left (fun entries (key, sid_opt) ->
       match sid_opt with
@@ -390,14 +392,16 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
       (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
       (LongKey(8),   [Integer(stroke_width)]);
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);
+      (ShortKey(18), [Integer(zero_offset_private); Integer(String.length contents_private)]);
     ])
   in
   transform_result @@ run (e_index_singleton e_dict dict) >>= fun (contents_top_dict_index, ()) ->
   let length_for_padding = length_upper_bound_of_top_dict_index - String.length contents_top_dict_index in
-  e_bytes contents_header         >>= fun () ->
-  e_bytes contents_name_index     >>= fun () ->
-  e_bytes contents_top_dict_index >>= fun () ->
-  e_paddings length_for_padding   >>= fun () ->
-  e_bytes contents_string_index   >>= fun () ->
-  e_bytes contents_gsubrs_index   >>= fun () ->
-  e_bytes contents_charstring_index
+  e_bytes contents_header           >>= fun () ->
+  e_bytes contents_name_index       >>= fun () ->
+  e_bytes contents_top_dict_index   >>= fun () ->
+  e_paddings length_for_padding     >>= fun () ->
+  e_bytes contents_string_index     >>= fun () ->
+  e_bytes contents_gsubrs_index     >>= fun () ->
+  e_bytes contents_charstring_index >>= fun () ->
+  e_bytes contents_private

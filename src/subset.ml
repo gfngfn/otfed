@@ -227,20 +227,16 @@ let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uch
   return (table_cmap, uch_min, uch_max)
 
 
-let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok =
+let make_common
+    ~(omit_cmap : bool)
+    ~(bbox_all : bounding_box)
+    ~(index_to_loc_format : Intermediate.loc_format)
+    ~(hmtx_result : hmtx_result)
+    (src : Decode.source) (gids : glyph_id list) =
   let open ResultMonad in
-
-  let src = Decode.Ttf(ttf) in
-
-  let num_glyphs = List.length gids in
 
   (* Make `cmap`. *)
   make_cmap src gids >>= fun (table_cmap, first_char, last_char) ->
-
-  (* Make `glyf` and `loca`. *)
-  get_glyphs ttf gids >>= fun (gs, bbox_all) ->
-  inj_enc @@ Encode.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
-  inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
   (* Make `post`. *)
   inj_dec @@ Decode.Post.get src >>= fun post ->
@@ -250,8 +246,6 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   inj_dec @@ Decode.Name.get src >>= fun name ->
   inj_enc @@ Encode.Name.make name >>= fun table_name ->
 
-  (* Make `hmtx` and get derived data for `hhea`. *)
-  make_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
   let { table_hmtx; hhea_derived; number_of_h_metrics; average_char_width; } = hmtx_result in
 
   (* Make `OS/2`. *)
@@ -268,21 +262,14 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   in
   inj_enc @@ Encode.Hhea.make ~number_of_h_metrics ihhea >>= fun table_hhea ->
 
-  (* Make `maxp` *)
-  inj_dec @@ Decode.Ttf.Maxp.get ttf >>= fun maxp ->
-  let maxp =
-    { maxp with num_glyphs = num_glyphs }  (* TODO: set more accurate data *)
-  in
-  inj_enc @@ Encode.Ttf.Maxp.make maxp >>= fun table_maxp ->
-
   (* Make `head`. *)
   inj_dec @@ Decode.Head.get src >>= fun { value = head_value; _ } ->
   let head_derived =
     Intermediate.Head.{
-      x_min = bbox_all.x_min;
-      y_min = bbox_all.y_min;
-      x_max = bbox_all.x_max;
-      y_max = bbox_all.y_max;
+      x_min = bbox_all.Value.x_min;
+      y_min = bbox_all.Value.y_min;
+      x_max = bbox_all.Value.x_max;
+      y_max = bbox_all.Value.y_max;
       index_to_loc_format;
     }
   in
@@ -293,20 +280,48 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
     }
   in
   inj_enc @@ Encode.Head.make ihead >>= fun table_head ->
-  inj_enc @@ Encode.make_font_data_from_tables @@ List.concat [
+  return @@ List.concat [
     [
       table_head;
       table_hhea;
       table_hmtx;
-      table_maxp;
       table_post;
       table_name;
       table_os2;
-      table_loca;
-      table_glyf;
     ];
     if omit_cmap then [] else [table_cmap];
   ]
+
+
+let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_id list) : string ok =
+  let open ResultMonad in
+
+  let src = Decode.Ttf(ttf) in
+  let num_glyphs = List.length gids in
+
+  (* Make `glyf` and `loca`. *)
+  get_glyphs ttf gids >>= fun (gs, bbox_all) ->
+  inj_enc @@ Encode.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
+  inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
+
+  (* Make `maxp` *)
+  inj_dec @@ Decode.Ttf.Maxp.get ttf >>= fun maxp ->
+  let maxp =
+    { maxp with num_glyphs = num_glyphs }  (* TODO: set more accurate data *)
+  in
+  inj_enc @@ Encode.Ttf.Maxp.make maxp >>= fun table_maxp ->
+
+  (* Make `hmtx` and get derived data for `hhea`. *)
+  make_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
+
+  make_common ~omit_cmap ~bbox_all ~index_to_loc_format ~hmtx_result src gids >>= fun common_tables ->
+
+  inj_enc @@ Encode.make_font_data_from_tables @@
+    List.append common_tables [
+      table_maxp;
+      table_loca;
+      table_glyf;
+    ]
 
 
 let make_cff_subset ~omit_cmap:(_ : bool) (_cff : Decode.cff_source) (_gids : glyph_id list) : string ok =

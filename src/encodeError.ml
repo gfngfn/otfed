@@ -1,6 +1,10 @@
 
 open Basic
 
+type unsupported_report =
+  | LocalSubrOperation
+[@@deriving show { with_path = false }]
+
 type t =
   | NotEncodableAsUint8     of int
   | NotEncodableAsInt8      of int
@@ -14,4 +18,5 @@ type t =
   | NotA4ByteAchVendId      of string
   | TooLargeToDetermineOffSize of int
   | NotEncodableAsDictValue    of int
+  | Unsupported                of unsupported_report
 [@@deriving show { with_path = false }]

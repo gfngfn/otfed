@@ -134,7 +134,35 @@ let quad_e_minus = 0xc
 let quad_minus   = 0xe
 
 
-let e_real (r : float) =
+let e_integer_value (n : int) : unit encoder =
+  let open EncodeOperation in
+  if -107 <= n && n <= 107 then
+    e_uint8 (n + 139)
+  else if 108 <= n && n <= 1131 then
+    let u = n - 108 in
+    let c0 = u lsr 8 in
+    let b0 = c0 + 247 in
+    let b1 = u - (c0 lsl 8) in
+    e_uint8 b0 >>= fun () ->
+    e_uint8 b1
+  else if -1131 <= n && n <= 108 then
+    let u = - (n + 108) in
+    let c0 = u lsr 8 in
+    let b0 = c0 + 251 in
+    let b1 = u - (c0 lsl 8) in
+    e_uint8 b0 >>= fun () ->
+    e_uint8 b1
+  else if -32768 <= n && n <= 32767 then
+    e_uint8 28 >>= fun () ->
+    e_twoscompl2 n
+  else if - (1 lsl 31) <= n && n <= (1 lsl 31) - 1 then
+    e_uint8 29 >>= fun () ->
+    e_twoscompl4 n
+  else
+    err @@ Error.NotEncodableAsDictValue(n)
+
+
+let e_real_value (r : float) : unit encoder =
   let rec aux (acc : int Alist.t) = function
     | [] ->
         Alist.to_list acc
@@ -177,50 +205,29 @@ let e_real (r : float) =
   e_quads qs
 
 
-
 let e_value (value : value) : unit encoder =
-  let open EncodeOperation in
   match value with
-  | Integer(n) ->
-      if -107 <= n && n <= 107 then
-        e_uint8 (n + 139)
-      else if 108 <= n && n <= 1131 then
-        let u = n - 108 in
-        let c0 = u lsr 8 in
-        let b0 = c0 + 247 in
-        let b1 = u - (c0 lsl 8) in
-        e_uint8 b0 >>= fun () ->
-        e_uint8 b1
-      else if -1131 <= n && n <= 108 then
-        let u = - (n + 108) in
-        let c0 = u lsr 8 in
-        let b0 = c0 + 251 in
-        let b1 = u - (c0 lsl 8) in
-        e_uint8 b0 >>= fun () ->
-        e_uint8 b1
-      else if -32768 <= n && n <= 32767 then
-        e_uint8 28 >>= fun () ->
-        e_twoscompl2 n
-      else if - (1 lsl 31) <= n && n <= (1 lsl 31) - 1 then
-        e_uint8 29 >>= fun () ->
-        e_twoscompl4 n
-      else
-        err @@ Error.NotEncodableAsDictValue(n)
+  | Integer(n) -> e_integer_value n
+  | Real(r)    -> e_real_value r
 
-  | Real(r) ->
-      e_real r
+
+let e_short_key (n : int) : unit encoder =
+  let open EncodeOperation in
+  e_uint8 n
+
+
+let e_long_key (n : int) : unit encoder =
+  let open EncodeOperation in
+  e_uint8 12 >>= fun () ->
+  e_uint8 n
 
 
 let e_dict_entry ((key, values) : key * value list) : unit encoder =
   let open EncodeOperation in
   e_list e_value values >>= fun () ->
   match key with
-  | ShortKey(n) ->
-      e_uint8 n
-
-  | LongKey(n) ->
-      e_uint8 12 >>= fun () ->
-      e_uint8 n
+  | ShortKey(n) -> e_short_key n
+  | LongKey(n)  -> e_long_key n
 
 
 let e_dict (dict : dict) =
@@ -229,8 +236,56 @@ let e_dict (dict : dict) =
   e_list e_dict_entry entries
 
 
-let e_charstring (_lcs : lexical_charstring) =
-  failwith "TODO: e_charstring"
+let e_charstring_token (ctoken : charstring_token) : unit encoder =
+  let open EncodeOperation in
+  match ctoken with
+  | ArgumentInteger(n) -> e_integer_value n
+  | ArgumentReal(r)    -> e_real_value r
+
+  | OpHStem   -> e_short_key 1
+  | OpVStem   -> e_short_key 3
+  | OpHStemHM -> e_short_key 18
+  | OpVStemHM -> e_short_key 23
+
+  | OpRMoveTo -> e_short_key 21
+  | OpHMoveTo -> e_short_key 22
+  | OpVMoveTo -> e_short_key 4
+
+  | OpRLineTo -> e_short_key 5
+  | OpHLineTo -> e_short_key 6
+  | OpVLineTo -> e_short_key 7
+
+  | OpCallSubr  -> err @@ Error.Unsupported(Error.LocalSubrOperation)
+  | OpCallGSubr -> e_short_key 29
+
+  | OpReturn  -> e_short_key 11
+  | OpEndChar -> e_short_key 14
+
+  | OpHintMask(stem_arg) ->
+      e_short_key 19 >>= fun () ->
+      e_bytes stem_arg
+
+  | OpCntrMask(stem_arg) ->
+      e_short_key 20 >>= fun () ->
+      e_bytes stem_arg
+
+  | OpRCurveLine -> e_short_key 24
+  | OpRLineCurve -> e_short_key 25
+  | OpRRCurveTo  -> e_short_key 8
+  | OpVVCurveTo  -> e_short_key 26
+  | OpHHCurveTo  -> e_short_key 27
+  | OpVHCurveTo  -> e_short_key 30
+  | OpHVCurveTo  -> e_short_key 31
+
+  | OpHFlex  -> e_long_key 34
+  | OpFlex   -> e_long_key 35
+  | OpHFlex1 -> e_long_key 36
+  | OpFlex1  -> e_long_key 37
+
+
+let e_charstring (charstring : lexical_charstring) : unit encoder =
+  let open EncodeOperation in
+  e_list e_charstring_token charstring
 
 
 let e_cff_header : unit encoder =
@@ -244,7 +299,7 @@ let e_cff_header : unit encoder =
   e_offsize offsize
 
 
-let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) (lcharstrings : lexical_charstring list) =
+let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
   let open EncodeOperation in
   let
     {
@@ -273,11 +328,11 @@ let e_cff_first (name : string) (top_dict : top_dict) (string_index : StringInde
   let (string_index, sid_family_name) = string_index |> StringIndex.add family_name in
   let (string_index, sid_weight)      = string_index |> StringIndex.add weight in
   let strings = StringIndex.to_list string_index in
-  transform_result @@ run e_cff_header                        >>= fun (contents_header, ()) ->
-  transform_result @@ run (e_index_singleton e_bytes name)    >>= fun (contents_name_index, ()) ->
-  transform_result @@ run (e_index e_bytes strings)           >>= fun (contents_string_index, ()) ->
-  transform_result @@ run (e_index e_charstring lcharstrings) >>= fun (contents_charstring_index, ()) ->
-  transform_result @@ run (e_index e_charstring gsubrs)       >>= fun (contents_gsubrs_index, ()) ->
+  transform_result @@ run e_cff_header                       >>= fun (contents_header, ()) ->
+  transform_result @@ run (e_index_singleton e_bytes name)   >>= fun (contents_name_index, ()) ->
+  transform_result @@ run (e_index e_bytes strings)          >>= fun (contents_string_index, ()) ->
+  transform_result @@ run (e_index e_charstring charstrings) >>= fun (contents_charstring_index, ()) ->
+  transform_result @@ run (e_index e_charstring gsubrs)      >>= fun (contents_gsubrs_index, ()) ->
   let length_upper_bound_of_top_dict_index =
     List.fold_left ( + ) 0 [
       2;      (* count *)

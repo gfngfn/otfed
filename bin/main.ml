@@ -19,6 +19,7 @@ type config = {
   hmtx   : V.glyph_id Alist.t;
   glyf   : (V.glyph_id * string) Alist.t;
   cff    : (V.glyph_id * string) Alist.t;
+  cfflex : V.glyph_id Alist.t;
   gsub   : (string * string * string) Alist.t;
   gpos   : (string * string * string) Alist.t;
   subset : (V.glyph_id list * string) Alist.t;
@@ -282,6 +283,26 @@ let print_cff (source : D.source) (gid : V.glyph_id) (path : string) =
               write_file path ~data
 
 
+let print_cff_lex (source : D.source) (gid : V.glyph_id) =
+  let open ResultMonad in
+  Format.printf "CFF (glyph ID: %d):@," gid;
+  match source with
+  | D.Ttf(_) ->
+      Format.printf "  not a CFF@,";
+      return ()
+
+  | D.Cff(cff) ->
+      let empty = D.Cff.LexicalSubroutineIndex.empty in
+      D.Cff.lexical_charstring cff ~gsubrs:empty ~lsubrs:empty gid |> inj >>= function
+      | None ->
+          Format.printf "  not defined@,";
+          return ()
+
+      | Some((_, _, lcharstring)) ->
+          Format.printf "  %a@," I.Cff.pp_lexical_charstring lcharstring;
+          return ()
+
+
 let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
@@ -526,6 +547,10 @@ let parse_args () =
           let path = Sys.argv.(i + 2) in
           aux n { acc with cff = Alist.extend acc.cff (gid, path) } (i + 3)
 
+      | "cff_lex" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with cfflex = Alist.extend acc.cfflex gid } (i + 2)
+
       | "gsub" ->
           let script  = Sys.argv.(i + 1) in
           let langsys = Sys.argv.(i + 2) in
@@ -568,6 +593,7 @@ let parse_args () =
         hmtx   = Alist.empty;
         glyf   = Alist.empty;
         cff    = Alist.empty;
+        cfflex = Alist.empty;
         gsub   = Alist.empty;
         gpos   = Alist.empty;
         subset = Alist.empty;
@@ -613,6 +639,7 @@ let _ =
           cmap;
           glyf;
           cff;
+          cfflex;
           gsub;
           gpos;
           subset;
@@ -654,6 +681,9 @@ let _ =
         ) >>= fun _ ->
         cff |> Alist.to_list |> mapM (fun (gid, path) ->
           print_cff source gid path
+        ) >>= fun _ ->
+        cfflex |> Alist.to_list |> mapM (fun gid ->
+          print_cff_lex source gid
         ) >>= fun _ ->
         gsub |> Alist.to_list |> mapM (fun (script, langsys, feature) ->
           print_gsub source script langsys feature |> inj

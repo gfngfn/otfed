@@ -396,6 +396,9 @@ module Intermediate : sig
       | OpFlex1  (** [flex1 (12 37)] *)
     [@@deriving show { with_path = false }]
 
+    type lexical_charstring = charstring_token list
+    [@@deriving show { with_path = false }]
+
     (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
     type charstring_operation =
       | HStem     of int * int * cs_point list                                             (** [hstem (1)] *)
@@ -487,6 +490,8 @@ module Decode : sig
   type cmap_segment =
     | Incremental of Uchar.t * Uchar.t * Value.glyph_id
     | Constant    of Uchar.t * Uchar.t * Value.glyph_id
+
+  type fdindex = int
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
@@ -686,6 +691,18 @@ module Decode : sig
     val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
     val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
+
+    val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
+
+    module LexicalSubroutineIndex : sig
+      type t
+      val empty : t
+      val add : int -> Intermediate.Cff.lexical_charstring -> t -> t
+      val mem : int -> t -> bool
+      val find : int -> t -> Intermediate.Cff.lexical_charstring option
+    end
+
+    val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end

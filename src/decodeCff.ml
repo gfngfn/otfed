@@ -99,11 +99,16 @@ let get_boolean_with_default dict key dflt =
 let get_string string_index sid =
   let open ResultMonad in
   let nStdString = 391 in
-  if sid < nStdString then
-    failwith "a standard string; remains to be supported."
+  if sid < 0 then
+    err @@ Error.SidOutOfBounds(sid)
+  else if sid < nStdString then
+    match CffStandardString.get sid with
+    | None    -> assert false
+    | Some(s) -> return s
   else
     try return string_index.(sid - nStdString) with
-    | Invalid_argument(_) -> err @@ Error.SidOutOfBounds(sid)
+    | Invalid_argument(_) ->
+        err @@ Error.SidOutOfBounds(sid)
 
 
 let fetch_number_of_glyphs (core : common_source_core) ~(offset_CharString_INDEX : offset) : int ok =
@@ -551,9 +556,8 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
       let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
       return_argument (5, ArgumentReal(ret))
 
-  | _ ->
-      assert false
-      (* `uint8`-typed value must be in [0 .. 255] *)
+  | n ->
+      err @@ Error.UnknownCharstringToken(n)
 
 
 let pop_mandatory (stack : stack) : (stack * int) decoder =
@@ -1001,13 +1005,20 @@ type lexical_charstring_state = {
 }
 
 
-let rec d_lexical_charstring (cconst : charstring_constant) (lcstate : lexical_charstring_state) =
+let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcstate : lexical_charstring_state) =
   let open DecodeOperation in
   let open Intermediate.Cff in
   let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token Alist.t) =
     d_charstring_token lcstate.lexical_lexing >>= fun (lstate, cstoken) ->
+    let lcstate = { lcstate with lexical_lexing = lstate } in
     let acc = Alist.extend acc cstoken in
     let remaining = lstate.remaining in
+
+    Format.printf "!!! %s(%d): %a@,"
+      (String.make (depth * 2) ' ')
+      remaining
+      pp_charstring_token cstoken;
+
     begin
       match cstoken with
       | OpCallSubr ->
@@ -1020,7 +1031,7 @@ let rec d_lexical_charstring (cconst : charstring_constant) (lcstate : lexical_c
                 if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
                   return { lcstate with last_number = None }
                 else
-                  d_lexical_subroutine ~local:true cconst lcstate i
+                  d_lexical_subroutine ~depth ~local:true cconst lcstate i
           end
 
       | OpCallGSubr ->
@@ -1033,7 +1044,7 @@ let rec d_lexical_charstring (cconst : charstring_constant) (lcstate : lexical_c
                 if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then
                   return { lcstate with last_number = None }
                 else
-                  d_lexical_subroutine ~local:false cconst lcstate i
+                  d_lexical_subroutine ~depth ~local:false cconst lcstate i
           end
 
       | ArgumentInteger(n) ->
@@ -1054,7 +1065,7 @@ let rec d_lexical_charstring (cconst : charstring_constant) (lcstate : lexical_c
   aux lcstate Alist.empty
 
 
-and d_lexical_subroutine ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
+and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
   let open DecodeOperation in
 
   let remaining = lcstate.lexical_lexing.remaining in
@@ -1073,10 +1084,17 @@ and d_lexical_subroutine ~(local : bool) (cconst : charstring_constant) (lcstate
         })
   in
 
+  Format.printf "!!! %s %s, number: %d {@,"
+    (String.make (depth * 2) ' ')
+    (if local then "local" else "global")
+    i;
+
   transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
   let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
-  pick offset (d_lexical_charstring cconst lcstate) >>= fun (lcstate, acc) ->
+  pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
   let lcs = Alist.to_list acc in
+
+  Format.printf "!!! %s}@," (String.make (depth * 2) ' ');
 
   (* Adds the tokenized CharString and resets the remaining byte length. *)
   let lcstate =
@@ -1130,7 +1148,7 @@ let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~
           last_number = None;
         }
       in
-      let dec = d_lexical_charstring cconst lcstate in
+      let dec = d_lexical_charstring ~depth:0 cconst lcstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (lcstate, acc) ->
       return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
 

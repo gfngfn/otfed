@@ -39,11 +39,11 @@ val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
     - [gsubrs] is a map that stores already lexed global subroutines with non-biased indices,
     - [lsubrs] is a map that stores already lexed local subroutines with non-biased indices,
     - [gid] is a glyph ID,
-    - [gsubrs1] is a map gained by extending [gsubrs] with new global subroutines used by the glyph of [gid],
-    - [lsubrs1] is a map gained by extending [lsubrs] with new local subroutines used by the glyph of [gid], and
-    - [lcs] is the tokenized CharString of the glyph of [gid].
+    - [gsubrs1] is a map gained by extending [gsubrs] with new global subroutines used by the glyph of ID [gid],
+    - [lsubrs1] is a map gained by extending [lsubrs] with new local subroutines used by the glyph of ID [gid], and
+    - [lcs] is the tokenized CharString of the glyph of ID [gid].
 
-    Note that local subroutines differ depending on [gid] if the font is CID font;
+    Note that local subroutines differ depending on [gid] if the font is a CID font;
     use [fdindex] to track correct local subroutines for each set of glyphs. *)
 val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 

@@ -438,6 +438,7 @@ module Intermediate : sig
       cid_font_type     : int;
       cid_count         : int;
     }
+    [@@deriving show { with_path = false }]
 
     (** The type for Top DICT (CFF p.16, Table 10). *)
     type top_dict = {
@@ -458,6 +459,7 @@ module Intermediate : sig
       cid_info            : cid_info option;
       number_of_glyphs    : int;
     }
+    [@@deriving show { with_path = false }]
   end
 end
 

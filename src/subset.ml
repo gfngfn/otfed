@@ -340,6 +340,46 @@ type local_subrs_info =
   | FDLsubrs     of Lsi.t LsiMap.t
 
 
+module Old = struct
+
+  type t =
+    | Global of int
+    | Local  of Decode.fdindex option * int
+
+
+  let compare old1 old2 =
+    match (old1, old2) with
+    | (Global(i1), Global(i2)) ->
+        Int.compare i1 i2
+
+    | (Global(_), Local(_)) ->
+        -1
+
+    | (Local(_), Global(_)) ->
+        1
+
+    | (Local(fo1, i1), Local(fo2, i2)) ->
+        begin
+          match (fo1, fo2) with
+          | (Some(f1), Some(f2)) ->
+              let c = Int.compare f1 f2 in
+              if c = 0 then Int.compare i1 i2 else c
+
+          | (Some(_), None) -> -1
+          | (None, Some(_)) -> 1
+          | (None, None)    -> Int.compare i1 i2
+        end
+end
+
+
+module RenumberMap = Map.Make(Old)
+
+
+let renumber_subroutine ~(bias : int) (_renumber_map : int RenumberMap.t) (_lcs : Intermediate.Cff.lexical_charstring) =
+  let _ = bias in
+  failwith "TODO: renumber_subroutine"
+
+
 let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
   let open ResultMonad in
 
@@ -401,13 +441,49 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
                     return (Alist.extend lcsacc lcs, gsubrs, FDLsubrs(lsubrs_map))
           end
-    ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (lcsacc, _gsubrs_old, _lsubrs_map_old) ->
-  let charstrings =
-    let _charstrings_old = Alist.to_list lcsacc in
-    failwith "Encode.Subset.make_cff_subset, charstrings"
-    (* TODO: renumber subroutine indices and replace local subroutines with global ones *)
+    ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
+
+  let (num_subrs, renumber_map, subrs_old) =
+    let acc =
+      Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+        let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+        let renumber_map = renumber_map |> RenumberMap.add (Old.Global(i_old)) i_new in
+        (i_new + 1, renumber_map, subr_old_acc)
+      ) gsubrs_old (0, RenumberMap.empty, Alist.empty)
+    in
+    let (i_new, renumber_map, subr_old_acc) =
+      match lsubrs_info_old with
+      | SingleLsubrs(lsubrs) ->
+          Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+            let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+            let renumber_map = renumber_map |> RenumberMap.add (Old.Local(None, i_old)) i_new in
+            (i_new + 1, renumber_map, subr_old_acc)
+          ) lsubrs acc
+
+      | FDLsubrs(lsubrs_map) ->
+          LsiMap.fold (fun fdindex lsubrs acc ->
+            Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+              let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+              let renumber_map = renumber_map |> RenumberMap.add (Old.Local(Some(fdindex), i_old)) i_new in
+              (i_new + 1, renumber_map, subr_old_acc)
+            ) lsubrs acc
+          ) lsubrs_map acc
+    in
+    (i_new, renumber_map, subr_old_acc |> Alist.to_list)
   in
-  let gsubrs = failwith "Encode.Subset.make_cff_subset, gsubrs" in
+  let bias =
+    if num_subrs < 1240 then
+      107
+    else if num_subrs < 33900 then
+      1131
+    else
+      32768
+  in
+  let gsubrs = subrs_old |> List.map (renumber_subroutine ~bias renumber_map) in
+  let charstrings =
+    let charstrings_old = Alist.to_list charstring_acc_old in
+    charstrings_old |> List.map (renumber_subroutine ~bias renumber_map)
+  in
   inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings >>= fun table_cff ->
 
   let bbox_all = failwith "Encode.Subset.make_cff_subset, bbox_all" in

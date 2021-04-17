@@ -986,6 +986,7 @@ module LexicalSubroutineIndex : sig
   val mem : int -> t -> bool
   val find : int -> t -> lexical_charstring option
   val fold : (int -> lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
+  val cardinal : t -> int
 end = struct
 
   module Impl = Map.Make(Int)
@@ -1012,6 +1013,8 @@ end = struct
       | None      -> assert false
       | Some(lcs) -> f i lcs acc
     ) map acc
+
+  let cardinal = Impl.cardinal
 end
 
 

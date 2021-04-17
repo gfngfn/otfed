@@ -34,16 +34,16 @@ let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok
   | Some(loc) -> inj_dec @@ Decode.Ttf.glyf ttf loc
 
 
-type glyph_accumulator = ttf_glyph_info Alist.t * bounding_box
+type glyph_accumulator = (glyph_id * ttf_glyph_info) Alist.t * bounding_box
 
 
-let folding_ttf_glyph (ttf : Decode.ttf_source) ((gs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
+let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
   get_ttf_glyph ttf gid >>= fun g ->
-  return (Alist.extend gs g, update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
+  return (Alist.extend ggs (gid, g), update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
 
 
-let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph_info list * bounding_box) ok =
+let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * ttf_glyph_info) list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
@@ -52,7 +52,7 @@ let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : (ttf_glyph
   | gid_first :: gids_tail ->
       get_ttf_glyph ttf gid_first >>= fun g_first ->
       foldM (folding_ttf_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
-      let gs = g_first :: Alist.to_list gs_tail in
+      let gs = (gid_first, g_first) :: Alist.to_list gs_tail in
       return (gs, bbox_all)
 
 
@@ -65,12 +65,28 @@ type hmtx_accumulator = {
   nonzero_width_count  : int;
 }
 
+type hmtx_result = {
+  table_hmtx          : Encode.table;
+  hhea_derived        : Intermediate.Hhea.derived;
+  number_of_h_metrics : int;
+  average_char_width  : design_units;
+}
 
-let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
+
+let update_derived ~current:derived ~new_one:derived_new =
+  Intermediate.Hhea.{
+    advance_width_max      = Stdlib.max derived.advance_width_max      derived_new.advance_width_max;
+    min_left_side_bearing  = Stdlib.min derived.min_left_side_bearing  derived_new.min_left_side_bearing;
+    min_right_side_bearing = Stdlib.min derived.min_right_side_bearing derived_new.min_right_side_bearing;
+    xmax_extent            = Stdlib.max derived.xmax_extent            derived_new.xmax_extent;
+  }
+
+
+let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
-      err NoGlyphGiven
+      err @@ GlyphNotFound(gid)
 
   | Some((aw, lsb) as entry) ->
       let derived =
@@ -88,32 +104,17 @@ let get_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (I
       return (derived, entry, aw)
 
 
-let folding_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) : hmtx_accumulator ok =
+let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) : hmtx_accumulator ok =
   let open ResultMonad in
   let derived = acc.current_hhea_derived in
-  get_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
-      let derived =
-        Intermediate.Hhea.{
-          advance_width_max      = Stdlib.max derived.advance_width_max      derived_new.advance_width_max;
-          min_left_side_bearing  = Stdlib.min derived.min_left_side_bearing  derived_new.min_left_side_bearing;
-          min_right_side_bearing = Stdlib.min derived.min_right_side_bearing derived_new.min_right_side_bearing;
-          xmax_extent            = Stdlib.max derived.xmax_extent            derived_new.xmax_extent;
-        }
-      in
+  get_ttf_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
+      let derived = update_derived ~current:derived ~new_one:derived_new in
       return {
         current_hhea_derived = derived;
         hmtx_entries         = Alist.extend acc.hmtx_entries entry;
         advance_width_sum    = acc.advance_width_sum +% !% aw;
         nonzero_width_count  = if aw = 0 then acc.nonzero_width_count else acc.nonzero_width_count + 1;
       }
-
-
-type hmtx_result = {
-  table_hmtx          : Encode.table;
-  hhea_derived        : Intermediate.Hhea.derived;
-  number_of_h_metrics : int;
-  average_char_width  : design_units;
-}
 
 
 let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
@@ -124,7 +125,7 @@ let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list)
       err NoGlyphGiven
 
   | gg_first :: ggs_tail ->
-      get_hmtx ihmtx gg_first >>= fun (derived_first, entry_first, aw) ->
+      get_ttf_hmtx ihmtx gg_first >>= fun (derived_first, entry_first, aw) ->
       let acc =
         {
           current_hhea_derived = derived_first;
@@ -133,7 +134,7 @@ let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list)
           nonzero_width_count  = if aw = 0 then 0 else 1;
         }
       in
-      foldM (folding_hmtx ihmtx) ggs_tail acc >>= fun acc ->
+      foldM (folding_ttf_hmtx ihmtx) ggs_tail acc >>= fun acc ->
       let hhea_derived = acc.current_hhea_derived in
       let entries_tail = acc.hmtx_entries in
       inj_enc @@ Encode.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
@@ -148,6 +149,90 @@ let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list)
         number_of_h_metrics;
         average_char_width;
       }
+
+
+let calculate_bounding_box_of_paths (_cpaths : Value.cubic_path list) : Value.bounding_box =
+  failwith "TODO: calculate_bounding_box_of_paths"
+
+
+let get_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) (gid : glyph_id) : (Intermediate.Hhea.derived * hmtx_entry * design_units * Value.bounding_box) ok =
+  let open ResultMonad in
+  inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
+  | None ->
+      err @@ GlyphNotFound(gid)
+
+  | Some((aw, lsb) as entry) ->
+      inj_dec @@ Decode.Cff.charstring cff gid >>= function
+      | None ->
+          err @@ GlyphNotFound(gid)
+
+      | Some(_, charstring) ->
+          inj_dec @@ Decode.Cff.path_of_charstring charstring >>= fun cpaths ->
+          let bbox = calculate_bounding_box_of_paths cpaths in
+          let derived =
+            let x_min = bbox.x_min in
+            let x_max = bbox.x_max in
+            let extent = x_max - x_min in
+            let rsb = aw - lsb - extent in
+            Intermediate.Hhea.{
+              advance_width_max      = aw;
+              min_left_side_bearing  = lsb;
+              min_right_side_bearing = rsb;
+              xmax_extent            = extent;
+            }
+          in
+          return (derived, entry, aw, bbox)
+
+
+type cff_hmtx_accumulator = hmtx_accumulator * Value.bounding_box
+
+
+let folding_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) ((acc, bbox) : cff_hmtx_accumulator) (gid : glyph_id) : cff_hmtx_accumulator ok =
+  let open ResultMonad in
+  let derived = acc.current_hhea_derived in
+  get_cff_hmtx cff ihmtx gid >>= fun (derived_new, entry, aw, bbox_new) ->
+  let derived = update_derived ~current:derived ~new_one:derived_new in
+  let bbox = update_bounding_box ~current:bbox ~new_one:bbox_new in
+  return ({
+    current_hhea_derived = derived;
+    hmtx_entries         = Alist.extend acc.hmtx_entries entry;
+    advance_width_sum    = acc.advance_width_sum +% !% aw;
+    nonzero_width_count  = if aw = 0 then acc.nonzero_width_count else acc.nonzero_width_count + 1;
+  }, bbox)
+
+
+let make_cff_hmtx (cff : Decode.cff_source) (gids : glyph_id list) : (hmtx_result * Value.bounding_box) ok =
+  let open ResultMonad in
+  inj_dec @@ Decode.Hmtx.get (Cff(cff)) >>= fun ihmtx ->
+  match gids with
+  | [] ->
+      err NoGlyphGiven
+
+  | gid_first :: gids_tail ->
+      get_cff_hmtx cff ihmtx gid_first >>= fun (derived_first, entry_first, aw, bbox) ->
+      let acc =
+        {
+          current_hhea_derived = derived_first;
+          hmtx_entries         = Alist.empty;
+          advance_width_sum    = !% aw;
+          nonzero_width_count  = if aw = 0 then 0 else 1;
+        }
+      in
+      foldM (folding_cff_hmtx cff ihmtx) gids_tail (acc, bbox) >>= fun (acc, bbox) ->
+      let hhea_derived = acc.current_hhea_derived in
+      let entries_tail = acc.hmtx_entries in
+      inj_enc @@ Encode.Hmtx.make (entry_first :: Alist.to_list entries_tail) >>= fun table_hmtx ->
+      let number_of_h_metrics = List.length gids in
+      let average_char_width =
+        let count = acc.nonzero_width_count in
+        if count = 0 then 0 else WideInt.to_int (acc.advance_width_sum /% (!% count))
+      in
+      return ({
+        table_hmtx;
+        hhea_derived;
+        number_of_h_metrics;
+        average_char_width;
+      }, bbox)
 
 
 let make_os2 (src : Decode.source) ~average_char_width ~first_char ~max_context ~last_char : Encode.table ok =
@@ -301,8 +386,8 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   let num_glyphs = List.length gids in
 
   (* Make `glyf` and `loca`. *)
-  get_ttf_glyphs ttf gids >>= fun (gs, bbox_all) ->
-  inj_enc @@ Encode.Ttf.make_glyf gs >>= fun (table_glyf, locs) ->
+  get_ttf_glyphs ttf gids >>= fun (ggs, bbox_all) ->
+  inj_enc @@ Encode.Ttf.make_glyf (ggs |> List.map snd) >>= fun (table_glyf, locs) ->
   inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 
   (* Make `maxp` *)
@@ -313,7 +398,7 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   inj_enc @@ Encode.Ttf.Maxp.make maxp >>= fun table_maxp ->
 
   (* Make `hmtx` and get derived data for `hhea`. *)
-  make_ttf_hmtx src (List.combine gids gs) >>= fun hmtx_result ->
+  make_ttf_hmtx src ggs >>= fun hmtx_result ->
 
   make_common
     ~omit_cmap
@@ -411,15 +496,8 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
   aux Alist.empty tokens_old
 
 
-let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
+let make_cff (cff : Decode.cff_source) (gids : glyph_id list) =
   let open ResultMonad in
-
-  let src = Decode.Cff(cff) in
-  let num_glyphs = List.length gids in
-
-  let maxp = Intermediate.Cff.Maxp.{ num_glyphs = num_glyphs } in
-  inj_enc @@ Encode.Cff.Maxp.make maxp >>= fun table_maxp ->
-
   inj_dec @@ Decode.Cff.top_dict cff >>= fun top_dict ->
   begin
     match gids with
@@ -515,10 +593,21 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
   charstrings_old |> mapM (fun (lcs, fdindex_opt) ->
     renumber_subroutine ~fdindex_opt ~bias renumber_map lcs
   ) >>= fun charstrings ->
-  inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings >>= fun table_cff ->
+  inj_enc @@ Encode.Cff.make top_dict ~gsubrs ~charstrings
 
-  let bbox_all = failwith "TODO: Encode.Subset.make_cff_subset, bbox_all" in
-  let hmtx_result = failwith "TODO: Encode.Subset.make_cff_subset, hmtx_result" in
+
+let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_id list) : string ok =
+  let open ResultMonad in
+
+  let src = Decode.Cff(cff) in
+  let num_glyphs = List.length gids in
+
+  let maxp = Intermediate.Cff.Maxp.{ num_glyphs = num_glyphs } in
+  inj_enc @@ Encode.Cff.Maxp.make maxp >>= fun table_maxp ->
+
+  make_cff cff gids >>= fun table_cff ->
+
+  make_cff_hmtx cff gids >>= fun (hmtx_result, bbox_all) ->
 
   make_common
     ~omit_cmap

@@ -372,17 +372,17 @@ let select_fd_index (fdselect : fdselect) (gid : glyph_id) : fdindex ok =
         end
 
 
-let select_local_subr_index (private_info : private_info) (gid : glyph_id) =
+let select_local_subr_index (private_info : private_info) (gid : glyph_id) : (fdindex option * subroutine_index) ok =
   let open ResultMonad in
   match private_info with
   | SinglePrivate(singlepriv) ->
-      return singlepriv.local_subr_index
+      return (None, singlepriv.local_subr_index)
 
   | FontDicts(fdarray, fdselect) ->
       select_fd_index fdselect gid >>= fun fdindex ->
       try
         let singlepriv = fdarray.(fdindex) in
-        return singlepriv.local_subr_index
+        return (Some(fdindex), singlepriv.local_subr_index)
       with
       | Invalid_argument(_) ->
           err @@ Error.FdindexOutOfBounds(fdindex)
@@ -954,13 +954,8 @@ let charstring (cff : cff_source) (gid : glyph_id) : ((int option * Intermediate
       return None
 
   | Some(CharStringData(offset, length)) ->
-      select_local_subr_index private_info gid >>= fun lsubr_index ->
-      let cconst =
-        {
-          gsubr_index;
-          lsubr_index;
-        }
-      in
+      select_local_subr_index private_info gid >>= fun (_fdindex_opt, lsubr_index) ->
+      let cconst = { gsubr_index; lsubr_index } in
       let cstate = initial_charstring_state length in
       let dec = d_charstring cconst cstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (cstate, acc) ->
@@ -1099,7 +1094,7 @@ and d_lexical_subroutine ~(local : bool) (cconst : charstring_constant) (lcstate
   return lcstate
 
 
-let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~(lsubrs : LexicalSubroutineIndex.t) (gid : glyph_id) : ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * lexical_charstring) option) ok =
+let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~(lsubrs : LexicalSubroutineIndex.t) (gid : glyph_id) : ((fdindex option * LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * lexical_charstring) option) ok =
   let open ResultMonad in
   let { charstring_info; _ } = cff.cff_specific in
   let { gsubr_index; private_info; offset_CharString_INDEX } = charstring_info in
@@ -1108,7 +1103,7 @@ let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~
       return None
 
   | Some(CharStringData(offset, length)) ->
-      select_local_subr_index private_info gid >>= fun lsubr_index ->
+      select_local_subr_index private_info gid >>= fun (fdindex_opt, lsubr_index) ->
       let cconst = { gsubr_index; lsubr_index } in
       let lcstate =
         {
@@ -1124,7 +1119,7 @@ let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~
       in
       let dec = d_lexical_charstring cconst lcstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (lcstate, acc) ->
-      return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
+      return @@ Some((fdindex_opt, lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
 
 
 let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)

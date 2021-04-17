@@ -30,6 +30,6 @@ module LexicalSubroutineIndex : sig
   val find : int -> t -> Intermediate.Cff.lexical_charstring option
 end
 
-val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
+val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((fdindex option * LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
 val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok

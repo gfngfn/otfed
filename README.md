@@ -37,6 +37,7 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | glyf <glyph-id> <output-svg-file>  # Outputs the glyph of ID <glyph-id> that has TrueType outlines.
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
   | cff_lex <glyph-id>                 # Prints the tokenized CharString of the glyph of ID <glyph-id>.
+  | cff_top                            # Prints the Top DICT in the `CFF␣` table.
   | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
   | gpos <script> <langsys> <feature>  # Prints the contents of `GPOS` subtables.
   | subset <glyph-ids> <output-ttf>    # Makes a subset font by using given glyph IDs (TrueType-based font only).

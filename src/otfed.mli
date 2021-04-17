@@ -793,6 +793,8 @@ module Encode : sig
     module Maxp : sig
       val make : Intermediate.Cff.Maxp.t -> table ok
     end
+
+    val make : Intermediate.Cff.top_dict -> gsubrs:(Intermediate.Cff.lexical_charstring list) -> charstrings:(Intermediate.Cff.lexical_charstring list) -> table ok
   end
 
   module ForTest : sig

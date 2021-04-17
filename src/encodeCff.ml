@@ -309,11 +309,12 @@ let add_string_if_exists (s_opt : string option) (string_index : StringIndex.t) 
       (string_index, Some(sid))
 
 
-let e_cff (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
+let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
   let open EncodeOperation in
+  let string_index = StringIndex.empty in
   let
     {
-      font_name = _;
+      font_name = name;
       version;
       notice;
       copyright;
@@ -405,3 +406,12 @@ let e_cff (name : string) (top_dict : top_dict) (string_index : StringIndex.t) ~
   e_bytes contents_gsubrs_index     >>= fun () ->
   e_bytes contents_charstring_index >>= fun () ->
   e_bytes contents_private
+
+
+let make (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(charstrings : lexical_charstring list) =
+  let open ResultMonad in
+  e_cff top_dict ~gsubrs ~charstrings |> EncodeOperation.run >>= fun (contents, ()) ->
+  return {
+    tag = Value.Tag.table_cff;
+    contents;
+  }

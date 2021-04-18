@@ -191,8 +191,13 @@ let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) ~aw
   in
   let paths = Alist.to_list pathacc in
   let circs = Alist.to_list circacc in
-  let y_min = 0 in  (* temporary; should use bbox *)
-  let y_max = units_per_em in  (* temporary; should use bbox *)
+  let bbox =
+    match V.calculate_bounding_box_of_paths cpaths with
+    | None       -> V.{ x_min = 0; y_min = 0; x_max = aw; y_max = units_per_em }
+    | Some(bbox) -> bbox
+  in
+  let y_min = bbox.V.y_min in
+  let y_max = bbox.V.y_max in
   let ss =
     let (prefix, suffix) =
       svg_prefix_and_suffix
@@ -206,7 +211,7 @@ let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) ~aw
         )
     in
     let frame1 = frame_aw ~units_per_em ~y_min ~y_max ~aw in
-    let frame2 = frame_bbox ~units_per_em ~bbox:{ x_min = 0; y_min; x_max = units_per_em; y_max } in
+    let frame2 = frame_bbox ~units_per_em ~bbox:bbox in
     List.concat [
       prefix;
       frame1;

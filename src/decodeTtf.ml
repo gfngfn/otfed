@@ -199,6 +199,7 @@ let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decod
 
 
 type component_flag = Intermediate.Ttf.component_flag
+[@@deriving show { with_path = false }] (* for debug *)
 
 
 let d_component_flag : (bool * component_flag) decoder =
@@ -224,6 +225,7 @@ let d_composite_glyph : ttf_composite_glyph_description decoder =
   let open DecodeOperation in
   let rec aux acc =
     d_component_flag >>= fun (more_components, cflags) ->
+    Format.printf "!!! more: %B, cflags: %a@," more_components pp_component_flag cflags; (* for debug *)
     d_uint16 >>= fun glyphIndex ->
     let dec = if cflags.arg_1_and_2_are_words then d_int16 else d_int8 in
     dec >>= fun argument1 ->
@@ -263,6 +265,9 @@ let d_composite_glyph : ttf_composite_glyph_description decoder =
 let d_glyf =
   let open DecodeOperation in
   (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
+  current >>= fun offset_for_print ->
+  Format.printf "!!! glyf offset: %d@," offset_for_print; (* for debug *)
+
   d_int16 >>= fun numberOfContours ->
   d_int16 >>= fun xMin ->
   d_int16 >>= fun yMin ->

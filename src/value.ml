@@ -177,6 +177,28 @@ type quadratic_path = point * quadratic_path_element list
 [@@deriving show { with_path = false }]
 
 
+let cubic_path_of_quadratic_path ((v, qpath_elems) : quadratic_path) : cubic_path =
+  let ( ~$ ) = float_of_int in
+  let ( ~! ) = int_of_float in
+
+  let (_, cpath_elem_acc) =
+    qpath_elems |> List.fold_left (fun (v0, acc) qpath_elem ->
+      match qpath_elem with
+      | QuadraticLineTo(v1) ->
+          (v1, Alist.extend acc (CubicLineTo(v1)))
+
+      | QuadraticCurveTo(v1, v2) ->
+          let (x0, y0) = v0 in
+          let (x1, y1) = v1 in
+          let (x2, y2) = v2 in
+          let vA = (~! (~$ (x0 + x1 * 2) /. 3.), ~! (~$ (y0 + y1 * 2) /. 3.)) in
+          let vB = (~! (~$ (x2 + x1 * 2) /. 3.), ~! (~$ (y2 + y1 * 2) /. 3.)) in
+          (v2, Alist.extend acc (CubicCurveTo(vA, vB, v2)))
+    ) (v, Alist.empty)
+  in
+  (v, Alist.to_list cpath_elem_acc)
+
+
 let bezier_bounding_box ((x0, y0) : point) ((x1, y1) : point) ((x2, y2) : point) ((x3, y3) : point) =
   let ( ~$ ) = float_of_int in
 

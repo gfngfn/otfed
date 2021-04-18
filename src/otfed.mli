@@ -93,6 +93,11 @@ module Value : sig
   type quadratic_path = point * quadratic_path_element list
   [@@deriving show { with_path = false }]
 
+  (** Converts quadratic Bézier curves to cubic ones.
+      Although this conversion does not lose precision at all in theory,
+      it does owing to the rounding error for design units. *)
+  val cubic_path_of_quadratic_path : quadratic_path -> cubic_path
+
   (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box that includes both [bbox1] and [bbox2]. *)
   val unite_bounding_boxes : bounding_box -> bounding_box -> bounding_box
 

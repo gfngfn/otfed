@@ -6,6 +6,7 @@ open Value
 type error =
   | NoGlyphGiven
   | GlyphNotFound of glyph_id
+  | DependentGlyphNotFound of { depending : glyph_id; depended : glyph_id }
   | DecodeError   of DecodeError.t
   | EncodeError   of EncodeError.t
   | NonexplicitSubroutineNumber
@@ -45,6 +46,36 @@ let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id
       foldM (folding_ttf_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
       let gs = (gid_first, g_first) :: Alist.to_list gs_tail in
       return (gs, bbox_all)
+
+
+module OldToNew = Map.Make(Int)
+
+
+let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
+  let open ResultMonad in
+  let (_, old_to_new) =
+    ggs |> List.fold_left (fun (gid_new, old_to_new) (gid_old, _) ->
+      (gid_new + 1, old_to_new |> OldToNew.add gid_old gid_new)
+    ) (0, OldToNew.empty)
+  in
+  ggs |> mapM (fun gg_old ->
+    let (gid_old, g_old) = gg_old in
+    let { bounding_box = bbox; description = descr_old } = g_old in
+    match descr_old with
+    | TtfSimpleGlyph(_) ->
+        return gg_old
+
+    | TtfCompositeGlyph(composite_elems_old) ->
+        composite_elems_old |> mapM (fun (gid_elem_old, composition, linear_opt) ->
+          match old_to_new |> OldToNew.find_opt gid_elem_old with
+          | None ->
+              err @@ DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
+
+          | Some(gid_elem_new) ->
+              return (gid_elem_new, composition, linear_opt)
+        ) >>= fun descr_new ->
+        return (gid_old, { bounding_box = bbox; description = TtfCompositeGlyph(descr_new) })
+  )
 
 
 type hmtx_entry = design_units * design_units
@@ -378,6 +409,7 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
 
   (* Make `glyf` and `loca`. *)
   get_ttf_glyphs ttf gids >>= fun (ggs, bbox_all) ->
+  edit_composite_glyphs ggs >>= fun ggs ->
   inj_enc @@ Encode.Ttf.make_glyf (ggs |> List.map snd) >>= fun (table_glyf, locs) ->
   inj_enc @@ Encode.Ttf.make_loca locs >>= fun (table_loca, index_to_loc_format) ->
 

@@ -15,7 +15,7 @@ let display_x_scheme _units_per_em x = x
 let display_y_scheme units_per_em y = units_per_em - y
 
 
-let circle_scheme ~units_per_em ?index:index_opt ~color x y =
+let circle_scheme ~units_per_em ~index:index_opt ~color x y =
   let dispx = display_x_scheme units_per_em x in
   let dispy = display_y_scheme units_per_em y in
   let s =
@@ -34,21 +34,21 @@ let circle_scheme ~units_per_em ?index:index_opt ~color x y =
 let path_string_of_quadratic ~units_per_em ~shift:(vx, vy) ~index:(i : int) (qpath : V.quadratic_path) =
   let display_x x = display_x_scheme units_per_em (x + vx) in
   let display_y y = display_y_scheme units_per_em (y + vy) in
-  let circle = circle_scheme ~units_per_em in
+  let circle ~color ~index x y = circle_scheme ~units_per_em ~index ~color (x + vx) (y + vy) in
   let ((x0, y0), qelems) = qpath in
   let curve0 = Printf.sprintf "M%d,%d" (display_x x0) (display_y y0) in
-  let circ0 = circle ~color:"green" ~index:i x0 y0 in
+  let circ0 = circle ~color:"green" ~index:(Some(i)) x0 y0 in
   let (i, curveacc, circacc) =
     qelems |> List.fold_left (fun (i, curveacc, circacc) qelem ->
       match qelem with
       | V.QuadraticLineTo((xto, yto)) ->
-          let circ = circle ~color:"green" ~index:i xto yto in
+          let circ = circle ~color:"green" ~index:(Some(i)) xto yto in
           let curve = Printf.sprintf "L%d,%d" (display_x xto) (display_y yto) in
           (i + 1, Alist.extend curveacc curve, Alist.extend circacc circ)
 
       | V.QuadraticCurveTo((x1, y1), (xto, yto)) ->
-          let circ1 = circle ~color:"orange" x1 y1 in
-          let circto = circle ~color:"green" ~index:i xto yto in
+          let circ1 = circle ~color:"orange" ~index:None x1 y1 in
+          let circto = circle ~color:"green" ~index:(Some(i)) xto yto in
           let curve = Printf.sprintf "Q%d,%d %d,%d" (display_x x1) (display_y y1) (display_x xto) (display_y yto) in
           (i + 1, Alist.extend curveacc curve, Alist.append circacc [circ1; circto])
     ) (i + 1, Alist.extend Alist.empty curve0, Alist.extend Alist.empty circ0)
@@ -64,19 +64,19 @@ let path_string_of_cubic ~units_per_em ~index:(i : int) (cpath : V.cubic_path) =
   let circle = circle_scheme ~units_per_em in
   let ((x0, y0), celems) = cpath in
   let curve0 = Printf.sprintf "M%d,%d" (display_x x0) (display_y y0) in
-  let circ0 = circle ~color:"green" ~index:i x0 y0 in
+  let circ0 = circle ~color:"green" ~index:(Some(i)) x0 y0 in
   let (i, curveacc, circacc) =
     celems |> List.fold_left (fun (i, curveacc, circacc) celem ->
       match celem with
       | V.CubicLineTo((xto, yto)) ->
-          let circ = circle ~color:"green" ~index:i xto yto in
+          let circ = circle ~color:"green" ~index:(Some(i)) xto yto in
           let curve = Printf.sprintf "L%d,%d" (display_x xto) (display_y yto) in
           (i + 1, Alist.extend curveacc curve, Alist.extend circacc circ)
 
       | V.CubicCurveTo((x1, y1), (x2, y2), (xto, yto)) ->
-          let circ1 = circle ~color:"orange" x1 y1 in
-          let circ2 = circle ~color:"orange" x2 y2 in
-          let circto = circle ~color:"green" ~index:i xto yto in
+          let circ1 = circle ~color:"orange" ~index:None x1 y1 in
+          let circ2 = circle ~color:"orange" ~index:None x2 y2 in
+          let circto = circle ~color:"green" ~index:(Some(i)) xto yto in
           let curve =
             Printf.sprintf "C%d,%d %d,%d %d,%d"
               (display_x x1)

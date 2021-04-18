@@ -320,10 +320,10 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
           cid_font_type;
           cid_count;
         }), FontDicts(fdarray, fdselect))
-    else
-    (* If the font is not a CIDFont *)
-      fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
-      return (None, SinglePrivate(singlepriv))
+      else
+      (* If the font is not a CIDFont *)
+        fetch_single_private core ~offset_CFF top_dict >>= fun singlepriv ->
+        return (None, SinglePrivate(singlepriv))
   end >>= fun (cid_info, private_info) ->
   let cff_top_dict =
     Intermediate.Cff.{

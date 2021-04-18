@@ -6,26 +6,26 @@ let pp_uchar = Otfed.pp_uchar
 
 
 type config = {
-  tables : bool;
-  cmap   : bool;
-  head   : bool;
-  hhea   : bool;
-  maxp   : bool;
-  os2    : bool;
-  math   : bool;
-  kern   : bool;
-  post   : bool;
-  name   : bool;
-  cfftop : bool;
-  hmtx   : V.glyph_id Alist.t;
-  glyf   : (V.glyph_id * string) Alist.t;
-  cff    : (V.glyph_id * string) Alist.t;
-  cfflex : V.glyph_id Alist.t;
+  tables  : bool;
+  cmap    : bool;
+  head    : bool;
+  hhea    : bool;
+  maxp    : bool;
+  os2     : bool;
+  math    : bool;
+  kern    : bool;
+  post    : bool;
+  name    : bool;
+  cff_top : bool;
+  hmtx    : V.glyph_id Alist.t;
+  glyf    : (V.glyph_id * string) Alist.t;
+  cff     : (V.glyph_id * string) Alist.t;
+  cff_lex : V.glyph_id Alist.t;
   charset : V.glyph_id Alist.t;
-  gsub   : (string * string * string) Alist.t;
-  gpos   : (string * string * string) Alist.t;
-  subset : (V.glyph_id list * string) Alist.t;
-  string : string Alist.t;
+  gsub    : (string * string * string) Alist.t;
+  gpos    : (string * string * string) Alist.t;
+  subset  : (V.glyph_id list * string) Alist.t;
+  string  : string Alist.t;
 }
 
 
@@ -583,7 +583,7 @@ let parse_args () =
       | "post"   -> aux n { acc with post = true } (i + 1)
       | "name"   -> aux n { acc with name = true } (i + 1)
 
-      | "cff_top" -> aux n { acc with cfftop = true } (i + 1)
+      | "cff_top" -> aux n { acc with cff_top = true } (i + 1)
 
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -601,7 +601,7 @@ let parse_args () =
 
       | "cff_lex" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
-          aux n { acc with cfflex = Alist.extend acc.cfflex gid } (i + 2)
+          aux n { acc with cff_lex = Alist.extend acc.cff_lex gid } (i + 2)
 
       | "charset" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -636,26 +636,26 @@ let parse_args () =
     let path = Sys.argv.(1) in
     let config =
       {
-        tables = false;
-        cmap   = false;
-        head   = false;
-        hhea   = false;
-        maxp   = false;
-        os2    = false;
-        math   = false;
-        kern   = false;
-        post   = false;
-        name   = false;
-        cfftop = false;
+        tables  = false;
+        cmap    = false;
+        head    = false;
+        hhea    = false;
+        maxp    = false;
+        os2     = false;
+        math    = false;
+        kern    = false;
+        post    = false;
+        name    = false;
+        cff_top = false;
         charset = Alist.empty;
-        hmtx   = Alist.empty;
-        glyf   = Alist.empty;
-        cff    = Alist.empty;
-        cfflex = Alist.empty;
-        gsub   = Alist.empty;
-        gpos   = Alist.empty;
-        subset = Alist.empty;
-        string = Alist.empty;
+        hmtx    = Alist.empty;
+        glyf    = Alist.empty;
+        cff     = Alist.empty;
+        cff_lex = Alist.empty;
+        gsub    = Alist.empty;
+        gpos    = Alist.empty;
+        subset  = Alist.empty;
+        string  = Alist.empty;
       }
     in
     aux n config 2 >>= fun config ->
@@ -693,12 +693,12 @@ let _ =
           kern;
           post;
           name;
-          cfftop;
+          cff_top;
           hmtx;
           cmap;
           glyf;
           cff;
-          cfflex;
+          cff_lex;
           charset;
           gsub;
           gpos;
@@ -731,7 +731,7 @@ let _ =
           if name then print_name source else return ()
         end >>= fun () ->
         begin
-          if cfftop then print_cff_top source else return ()
+          if cff_top then print_cff_top source else return ()
         end >>= fun () ->
         hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid
@@ -745,7 +745,7 @@ let _ =
         cff |> Alist.to_list |> mapM (fun (gid, path) ->
           print_cff source gid path
         ) >>= fun _ ->
-        cfflex |> Alist.to_list |> mapM (fun gid ->
+        cff_lex |> Alist.to_list |> mapM (fun gid ->
           print_cff_lex source gid
         ) >>= fun _ ->
         charset |> Alist.to_list |> mapM (fun gid ->

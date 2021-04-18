@@ -19,6 +19,26 @@ Some unit tests use data extracted from the following fonts:
   - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
 
 
+## How to install
+
+Under the condition that [`opam`](https://opam.ocaml.org/) (a package manager for OCaml, Coq, etc.) is installed, invoke the following commands:
+
+```console
+$ cd <your-workspace>
+$ git clone https://github.com/gfngfn/otfed
+$ cd otfed
+$ opam pin add otfed .
+```
+
+Probably the last command above will ask you whether to install `otfed`. Then answer `y`.
+
+If not, invoking the following command will do:
+
+```console
+$ opam install otfed
+```
+
+
 ## Usage of an example CLI `otfedcli`
 
 ```console

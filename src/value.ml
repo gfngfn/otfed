@@ -223,7 +223,7 @@ let bezier_bounding_box ((x0, y0) : point) ((x1, y1) : point) ((x2, y2) : point)
   }
 
 
-let update_bounding_box ~(current : bounding_box) ~(new_one : bounding_box) : bounding_box =
+let unite_bounding_boxes (current : bounding_box) (new_one : bounding_box) : bounding_box =
   {
     x_min = Stdlib.min current.x_min new_one.x_min;
     y_min = Stdlib.min current.y_min new_one.y_min;
@@ -232,7 +232,7 @@ let update_bounding_box ~(current : bounding_box) ~(new_one : bounding_box) : bo
   }
 
 
-let bounding_box_by_points ((x1, y1) : point) ((x2, y2) : point) =
+let bounding_box_by_points ((x1, y1) : point) ((x2, y2) : point) : bounding_box =
   {
     x_min = Stdlib.min x1 x2;
     x_max = Stdlib.max x1 x2;
@@ -256,8 +256,7 @@ let calculate_bounding_box_of_path ((v, path_elems) : cubic_path) : bounding_box
         | CubicCurveTo(v1, v2, v3) ->
             (v3, bezier_bounding_box v0 v1 v2 v3)
       in
-      let bbox = update_bounding_box ~current:bbox ~new_one:bbox_new in
-      (v_new, bbox)
+      (v_new, unite_bounding_boxes bbox bbox_new)
     ) (v, bbox)
   in
   bbox
@@ -268,7 +267,7 @@ let calculate_bounding_box_of_paths (paths : cubic_path list) : bounding_box opt
     let bbox_new = calculate_bounding_box_of_path path in
     match bbox_opt with
     | None       -> Some(bbox_new)
-    | Some(bbox) -> Some(update_bounding_box ~current:bbox ~new_one:bbox_new)
+    | Some(bbox) -> Some(unite_bounding_boxes bbox bbox_new)
   ) None
 
 

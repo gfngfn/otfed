@@ -31,7 +31,7 @@ type glyph_accumulator = (glyph_id * ttf_glyph_info) Alist.t * bounding_box
 let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
   get_ttf_glyph ttf gid >>= fun g ->
-  return (Alist.extend ggs (gid, g), update_bounding_box ~current:bbox_all ~new_one:(g.bounding_box))
+  return (Alist.extend ggs (gid, g), unite_bounding_boxes bbox_all g.bounding_box)
 
 
 let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * ttf_glyph_info) list * bounding_box) ok =
@@ -183,7 +183,7 @@ let folding_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) ((acc, bb
   let derived = acc.current_hhea_derived in
   get_cff_hmtx cff ihmtx gid >>= fun (derived_new, entry, aw, bbox_new) ->
   let derived = update_derived ~current:derived ~new_one:derived_new in
-  let bbox = update_bounding_box ~current:bbox ~new_one:bbox_new in
+  let bbox = unite_bounding_boxes bbox bbox_new in
   return ({
     current_hhea_derived = derived;
     hmtx_entries         = Alist.extend acc.hmtx_entries entry;

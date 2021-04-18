@@ -93,6 +93,18 @@ module Value : sig
   type quadratic_path = point * quadratic_path_element list
   [@@deriving show { with_path = false }]
 
+  (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box that includes both [bbox1] and [bbox2]. *)
+  val unite_bounding_boxes : bounding_box -> bounding_box -> bounding_box
+
+  (** [bounding_box_by_points pt1 pt2] returns the minimum bounding box that contains both [pt1] and [pt2]. *)
+  val bounding_box_by_points : point -> point -> bounding_box
+
+  (** Returns the bounding box of the given path. *)
+  val calculate_bounding_box_of_path : cubic_path -> bounding_box
+
+  (** Calculates the bounding box of the given paths. Returns [None] for the empty list. *)
+  val calculate_bounding_box_of_paths : cubic_path list -> bounding_box option
+
   (** The type for ValueRecords (page 214). *)
   type value_record = {
     x_placement  : design_units option;

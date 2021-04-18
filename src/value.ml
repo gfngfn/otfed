@@ -241,28 +241,34 @@ let bounding_box_by_points ((x1, y1) : point) ((x2, y2) : point) =
   }
 
 
+let calculate_bounding_box_of_path ((v, path_elems) : cubic_path) : bounding_box =
+  let bbox =
+    let (x, y) = v in
+    { x_min = x; y_min = y; x_max = x; y_max = y }
+  in
+  let (_, bbox) =
+    path_elems |> List.fold_left (fun (v0, bbox) path_elem ->
+      let (v_new, bbox_new) =
+        match path_elem with
+        | CubicLineTo(v1) ->
+            (v1, bounding_box_by_points v0 v1)
+
+        | CubicCurveTo(v1, v2, v3) ->
+            (v3, bezier_bounding_box v0 v1 v2 v3)
+      in
+      let bbox = update_bounding_box ~current:bbox ~new_one:bbox_new in
+      (v_new, bbox)
+    ) (v, bbox)
+  in
+  bbox
+
+
 let calculate_bounding_box_of_paths (paths : cubic_path list) : bounding_box option =
-  paths |> List.fold_left (fun bbox_opt (cspt, path_elems) ->
-    let (_, bbox) =
-      path_elems |> List.fold_left (fun (v0, bbox_opt) path_elem ->
-        let (v_new, bbox_new) =
-          match path_elem with
-          | CubicLineTo(v1) ->
-              (v1, bounding_box_by_points v0 v1)
-
-          | CubicCurveTo(v1, v2, v3) ->
-              (v3, bezier_bounding_box v0 v1 v2 v3)
-        in
-        let bbox =
-          match bbox_opt with
-          | None       -> bbox_new
-          | Some(bbox) -> update_bounding_box ~current:bbox ~new_one:bbox_new
-        in
-        (v_new, Some(bbox))
-
-      ) (cspt, bbox_opt)
-    in
-    bbox
+  paths |> List.fold_left (fun bbox_opt path ->
+    let bbox_new = calculate_bounding_box_of_path path in
+    match bbox_opt with
+    | None       -> Some(bbox_new)
+    | Some(bbox) -> Some(update_bounding_box ~current:bbox ~new_one:bbox_new)
   ) None
 
 

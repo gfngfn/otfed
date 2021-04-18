@@ -18,15 +18,6 @@ let inj_dec d = Result.map_error (fun e -> DecodeError(e)) d
 let inj_enc e = Result.map_error (fun e -> EncodeError(e)) e
 
 
-let update_bounding_box ~current ~new_one =
-  {
-    x_min = Stdlib.min current.x_min new_one.x_min;
-    y_min = Stdlib.min current.y_min new_one.y_min;
-    x_max = Stdlib.max current.x_max new_one.x_max;
-    y_max = Stdlib.max current.y_max new_one.y_max;
-  }
-
-
 let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
   let open ResultMonad in
   inj_dec @@ Decode.Ttf.loca ttf gid >>= function
@@ -149,90 +140,6 @@ let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list)
         number_of_h_metrics;
         average_char_width;
       }
-
-
-let bezier_bounding_box ((x0, y0) : point) ((x1, y1) : point) ((x2, y2) : point) ((x3, y3) : point) =
-  let ( ~$ ) = float_of_int in
-
-  let bezier_point (t : float) (r0 : design_units) (r1 : design_units) (r2 : design_units) (r3 : design_units) =
-    if t < 0. then
-      r0
-    else if 1. < t then
-      r3
-    else
-      let c1 = ~$ (3 * (-r0 + r1)) in
-      let c2 = ~$ (3 * (r0 - 2 * r1 + r2)) in
-      let c3 = ~$ (-r0 + 3 * (r1 - r2) + r3) in
-      int_of_float @@ (~$ r0) +. t *. (c1 +. t *. (c2 +. t *. c3))
-  in
-
-  let aux (r0 : design_units) (r1 : design_units) (r2 : design_units) (r3 : design_units) =
-    let a = -r0 + 3 * (r1 - r2) + r3 in
-    let b = 2 * (r0 - 2 * r1 + r2) in
-    let c = -r0 + r1 in
-    if a = 0 then
-      [r0; r3]
-    else
-      let det = b * b - 4 * a * c in
-      if det < 0 then
-        [r0; r3]
-      else
-        let delta = sqrt (~$ det) in
-        let t_plus  = (-. (~$ b) +. delta) /. (~$ (2 * a)) in
-        let t_minus = (-. (~$ b) -. delta) /. (~$ (2 * a)) in
-        [r0; r3; bezier_point t_plus r0 r1 r2 r3; bezier_point t_minus r0 r1 r2 r3]
-  in
-
-  let xs = aux x0 x1 x2 x3 in
-  let x_max = xs |> List.fold_left max x0 in
-  let x_min = xs |> List.fold_left min x0 in
-  let ys = aux y0 y1 y2 y3 in
-  let y_max = ys |> List.fold_left max y0 in
-  let y_min = ys |> List.fold_left min y0 in
-  Value.{
-    x_min;
-    y_min;
-    x_max;
-    y_max;
-  }
-
-
-let update_bounding_box_by_points (bbox_opt : Value.bounding_box option) (x1, y1) (x2, y2) =
-  let bbox_new =
-    Value.{
-      x_min = min x1 x2;
-      x_max = max x1 x2;
-      y_min = min y1 y2;
-      y_max = max y1 y2;
-    }
-  in
-  match bbox_opt with
-  | None       -> bbox_new
-  | Some(bbox) -> update_bounding_box ~current:bbox ~new_one:bbox_new
-
-
-let calculate_bounding_box_of_paths (paths : Value.cubic_path list) : Value.bounding_box option =
-  paths |> List.fold_left (fun bbox_opt (cspt, path_elems) ->
-    let (_, bbox) =
-      path_elems |> List.fold_left (fun (v0, bbox_opt) path_elem ->
-        match path_elem with
-        | CubicLineTo(v1) ->
-            let bbox = update_bounding_box_by_points bbox_opt v0 v1 in
-            (v1, Some(bbox))
-
-        | CubicCurveTo(v1, v2, v3) ->
-            let bbox_new = bezier_bounding_box v0 v1 v2 v3 in
-            let bbox =
-              match bbox_opt with
-              | None       -> bbox_new
-              | Some(bbox) -> update_bounding_box ~current:bbox ~new_one:bbox_new
-            in
-            (v3, Some(bbox))
-
-      ) (cspt, bbox_opt)
-    in
-    bbox
-  ) None
 
 
 let get_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) (gid : glyph_id) : (Intermediate.Hhea.derived * hmtx_entry * design_units * Value.bounding_box) ok =

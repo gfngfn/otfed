@@ -209,6 +209,22 @@ let write_file path ~data =
       err @@ CannotWriteFile(path)
 
 
+let get_simple_glyph (ttf : D.ttf_source) (gid : V.glyph_id) =
+  let open ResultMonad in
+  D.Ttf.loca ttf gid |> inj >>= function
+  | None ->
+      return None
+
+  | Some(loc) ->
+      D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; _ } ->
+      match descr with
+      | V.TtfCompositeGlyph(_) ->
+          return None
+
+      | V.TtfSimpleGlyph(simple) ->
+          return @@ Some(simple)
+
+
 let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
   let open ResultMonad in
   Format.printf "glyf (glyph ID: %d):@," gid;
@@ -234,7 +250,24 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
 
           | Some(aw, _lsb) ->
               D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; bounding_box = bbox } ->
-              Svg.make_ttf descr ~bbox ~units_per_em ~aw |> inj >>= fun data ->
+              begin
+                match descr with
+                | V.TtfSimpleGlyph(simple) ->
+                    return [(simple, (0, 0))]
+
+                | V.TtfCompositeGlyph(composite_elems) ->
+                    composite_elems |> mapM (fun (gid, composition, _linear_opt) ->
+                      get_simple_glyph ttf gid >>= function
+                      | None ->
+                          failwith "invalid"
+
+                      | Some(simple) ->
+                          match composition with
+                          | V.Vector(vx, vy) -> return (simple, (vx, vy))
+                          | V.Matching(_)    -> failwith "matching; not supported"
+                    )
+              end >>= fun simples ->
+                    Svg.make_ttf simples ~bbox ~units_per_em ~aw |> inj >>= fun data ->
               Format.printf "  (%a, %a)@,"
                 V.pp_ttf_glyph_description descr
                 V.pp_bounding_box bbox;

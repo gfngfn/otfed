@@ -31,9 +31,9 @@ let circle_scheme ~units_per_em ?index:index_opt ~color x y =
         s (dispx + index_x_offset) (dispy + index_y_offset) i
 
 
-let path_string_of_quadratic ~units_per_em ~index:(i : int) (qpath : V.quadratic_path) =
-  let display_x = display_x_scheme units_per_em in
-  let display_y = display_y_scheme units_per_em in
+let path_string_of_quadratic ~units_per_em ~shift:(vx, vy) ~index:(i : int) (qpath : V.quadratic_path) =
+  let display_x x = display_x_scheme units_per_em (x + vx) in
+  let display_y y = display_y_scheme units_per_em (y + vy) in
   let circle = circle_scheme ~units_per_em in
   let ((x0, y0), qelems) = qpath in
   let curve0 = Printf.sprintf "M%d,%d" (display_x x0) (display_y y0) in
@@ -131,23 +131,34 @@ let frame_bbox ~units_per_em ~bbox =
   ]
 
 
-let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bounding_box) (units_per_em : int) (aw : int) =
+let make_ttf_simple ~shift (ttfcontours : V.ttf_simple_glyph_description) (units_per_em : int) =
   let open ResultMonad in
-  let display_x = display_x_scheme units_per_em in
-  let display_y = display_y_scheme units_per_em in
   ttfcontours |> mapM D.Ttf.path_of_ttf_contour >>= fun qpaths ->
-  let y_min = bbox.V.y_min in
-  let y_max = bbox.V.y_max in
 
   let (_, pathacc, circacc) =
     qpaths |> List.fold_left (fun (i, pathacc, circacc) qpath ->
-      let (i, path, circ) = path_string_of_quadratic ~units_per_em ~index:i qpath in
+      let (i, path, circ) = path_string_of_quadratic ~units_per_em ~shift ~index:i qpath in
       (i, Alist.extend pathacc path, Alist.extend circacc circ)
     ) (0, Alist.empty, Alist.empty)
   in
   let paths = Alist.to_list pathacc in
   let circs = Alist.to_list circacc in
+  return (paths, circs)
+
+
+let make_ttf (simples : (V.ttf_simple_glyph_description * (V.design_units * V.design_units)) list) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
+  let open ResultMonad in
+  foldM (fun (pathacc, circacc) (simple, v) ->
+    make_ttf_simple ~shift:v simple units_per_em >>= fun (paths, circs) ->
+    return (Alist.append pathacc paths, Alist.append circacc circs)
+  ) simples (Alist.empty, Alist.empty) >>= fun (pathacc, circacc) ->
+  let paths = Alist.to_list pathacc in
+  let circs = Alist.to_list circacc in
   let ss =
+    let display_x = display_x_scheme units_per_em in
+    let display_y = display_y_scheme units_per_em in
+    let y_min = bbox.V.y_min in
+    let y_max = bbox.V.y_max in
     let (prefix, suffix) =
       svg_prefix_and_suffix
         ~height:(units_per_em + 2 * dpoffset)
@@ -171,13 +182,6 @@ let make_ttf_simple (ttfcontours : V.ttf_simple_glyph_description) (bbox : V.bou
     ]
   in
   return @@ String.concat "" ss
-
-
-let make_ttf (descr : V.ttf_glyph_description) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
-  let open ResultMonad in
-  match descr with
-  | V.TtfSimpleGlyph(simple) -> make_ttf_simple simple bbox units_per_em aw
-  | V.TtfCompositeGlyph(_)   -> return ""
 
 
 let make_cff (cpaths : V.cubic_path list) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =

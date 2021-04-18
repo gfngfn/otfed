@@ -824,6 +824,7 @@ module Subset : sig
   type error =
     | NoGlyphGiven
     | GlyphNotFound of Value.glyph_id
+    | DependentGlyphNotFound of { depending : Value.glyph_id; depended : Value.glyph_id }
     | DecodeError   of Decode.Error.t
     | EncodeError   of Encode.Error.t
     | NonexplicitSubroutineNumber

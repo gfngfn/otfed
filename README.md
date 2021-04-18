@@ -41,29 +41,53 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | charset <glyph-id>                 # Prints the name of the glyph by consulting the charset in `CFF␣`.
   | gsub <script> <langsys> <feature>  # Prints the contents of `GSUB` subtables.
   | gpos <script> <langsys> <feature>  # Prints the contents of `GPOS` subtables.
-  | subset <glyph-ids> <output-ttf>    # Makes a subset font by using given glyph IDs (TrueType-based font only).
+  | subset <glyph-ids> <output-ttf>    # Makes a subset font by using given glyph IDs.
 
 <glyph-ids> ::= (comma-separated glyph IDs where no space is allowed around commas)
 ```
 
 ### Example usage
 
-Prints all of the Unicode-aware `cmap` subtables in IPAex Mincho:
+Consults `cmap` subtables by Unicode code points:
+
+```console
+$ dune exec otfedcli input/ipaexm.ttf cmap_word "田中太郎"
+* subtable (platform: 0, encoding: 3)
+  - U+7530 --> 2900
+  - U+4E2D --> 2746
+  - U+592A --> 2614
+  - U+90CE --> 3830
+* subtable (platform: 3, encoding: 1)
+  - U+7530 --> 2900
+  - U+4E2D --> 2746
+  - U+592A --> 2614
+  - U+90CE --> 3830
+* subtable (platform: 3, encoding: 10)
+  - U+7530 --> 2900
+  - U+4E2D --> 2746
+  - U+592A --> 2614
+  - U+90CE --> 3830
+```
+
+Prints all of the Unicode-aware `cmap` subtables in IPAex Mincho (please be careful of large outputs on stdout):
 
 ```console
 $ dune exec otfedcli input/ipaexm.ttf cmap
+(omitted)
 ```
 
 Outputs the glyph of ID 1000 in IPAex Mincho as an SVG file:
 
 ```console
 $ dune exec otfedcli input/ipaexm.ttf glyf 1000 output/ipaexm1000.svg
+(omitted)
 ```
 
 Outputs the glyph of ID 50 in Computer Modern Typewriter Italic as an SVG file:
 
 ```console
 $ dune exec otfedcli input/cmunit.otf cff 50 output/cmunit1000.svg
+(omitted)
 ```
 
 Outputs the subset of Junicode which contains `.notdef`, “Q”, and “f” only:
@@ -97,7 +121,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td rowspan="6">TTF</td>
       <td>cvt␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>fpgm</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>glyf</td><td>v</td><td>o (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
+  <tr><td>glyf</td><td>v</td><td>o</td><td>v</td><td>v (simple glyphs only)</td></tr>
   <tr><td>loca</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>prep</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>

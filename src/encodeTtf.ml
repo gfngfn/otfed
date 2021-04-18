@@ -159,9 +159,9 @@ let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
         in
         let (arg_1_and_2_are_words, e_arg) =
           if -256 <= arg1 && arg1 < 256 && -256 <= arg2 && arg2 < 256 then
-            (true, e_int8)
+            (false, e_int8)
           else
-            (false, e_int16)
+            (true, e_int16)
         in
         let cflags_base =
           Intermediate.Ttf.{
@@ -204,8 +204,8 @@ let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
         in
         let more_components =
           match elems with
-          | []     -> true
-          | _ :: _ -> false
+          | []     -> false
+          | _ :: _ -> true
         in
         e_component_flag more_components cflags >>= fun () ->
         e_uint16 gid >>= fun () ->

@@ -32,7 +32,7 @@ module Value : sig
   type timestamp = wint
 
   type ttf_contour = (bool * x_coordinate * y_coordinate) list
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type linear_transform = {
     a : float;
@@ -40,23 +40,23 @@ module Value : sig
     c : float;
     d : float;
   }
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type composition =
     | Vector   of x_coordinate * y_coordinate
     | Matching of int * int
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type ttf_simple_glyph_description = ttf_contour list
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type ttf_glyph_description =
     | TtfSimpleGlyph    of ttf_simple_glyph_description
     | TtfCompositeGlyph of ttf_composite_glyph_description
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type bounding_box = {
     x_min : x_coordinate;
@@ -64,7 +64,7 @@ module Value : sig
     x_max : x_coordinate;
     y_max : y_coordinate;
   }
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type ttf_glyph_info = {
     bounding_box : bounding_box;
@@ -74,24 +74,24 @@ module Value : sig
   type cubic_path_element =
     | CubicLineTo  of point
     | CubicCurveTo of point * point * point
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   (** Represents a (directed) cubic Bézier curve with absolute coordinates on the XY-plane.
       A value [(pt, elems)] of this type stands for the path
       starting at [pt] and subsequent moves of which can be described by [elems]. *)
   type cubic_path = point * cubic_path_element list
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type quadratic_path_element =
     | QuadraticLineTo  of point
     | QuadraticCurveTo of point * point
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   (** Represents a (directed) quadratic Bézier curve with absolute coordinates on the XY-plane.
       A value [(pt, elems)] of this type stands for the path
       starting at [pt] and subsequent moves of which can be described by [elems]. *)
   type quadratic_path = point * quadratic_path_element list
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   (** Converts quadratic Bézier curves to cubic ones.
       Although this conversion does not lose precision at all in theory,
@@ -147,10 +147,10 @@ module Value : sig
       UNDOCUMENTED (in OpenType 1.8.3): BaseRecord tables sometimes contain NULL pointers. *)
   type base_record = (anchor option) array
 
-  (** Type type for ComponentRecords (page 201). Arrays of this type are indexed by [mark_class]. *)
+  (** The type for ComponentRecords (page 201). Arrays of this type are indexed by [mark_class]. *)
   type component_record = (anchor option) array
 
-  (** Type type for LigatureAttath tables (page 201). *)
+  (** The type for LigatureAttath tables (page 201). *)
   type ligature_attach = component_record list
 
   (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
@@ -168,7 +168,7 @@ module Value : sig
       condensed : bool;
       extended  : bool;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     type t = {
       font_revision   : wint;
@@ -179,7 +179,7 @@ module Value : sig
       mac_style       : mac_style;
       lowest_rec_ppem : int;
     }
-    [@@deriving show {with_path = false}]
+    [@@deriving show]
   end
 
   module Hhea : sig
@@ -191,7 +191,7 @@ module Value : sig
       caret_slope_run  : int;
       caret_offset     : int;
     }
-    [@@deriving show {with_path = false}]
+    [@@deriving show]
   end
 
   module Os2 : sig
@@ -231,7 +231,7 @@ module Value : sig
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
   end
 
   module Post : (module type of Value.Post)
@@ -246,7 +246,7 @@ module Intermediate : sig
   type loc_format =
     | ShortLocFormat
     | LongLocFormat
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   module Head : sig
     (** The type for data contained in a single [head] table that are derivable
@@ -258,14 +258,14 @@ module Intermediate : sig
       y_max               : int;
       index_to_loc_format : loc_format;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** The type for representing [head] tables. *)
     type t = {
       value   : Value.Head.t;
       derived : derived;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
   end
 
   module Hhea : sig
@@ -277,14 +277,14 @@ module Intermediate : sig
       min_right_side_bearing : int;
       xmax_extent            : int;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** The type for representing [hhea] tables. *)
     type t = {
       value   : Value.Hhea.t;
       derived : derived;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
   end
 
   module Os2 : sig
@@ -296,14 +296,14 @@ module Intermediate : sig
       us_last_char_index  : Uchar.t;
       us_max_context      : int option;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** The type for representing [OS/2] tables. *)
     type t = {
       value   : Value.Os2.t;
       derived : derived;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
   end
 
   module Ttf : sig
@@ -325,7 +325,7 @@ module Intermediate : sig
         max_component_elements   : int;
         max_component_depth      : int;
       }
-      [@@deriving show { with_path = false }]
+      [@@deriving show]
     end
 
     type glyph_location
@@ -337,7 +337,7 @@ module Intermediate : sig
       type t = {
         num_glyphs : int;
       }
-      [@@deriving show { with_path = false }]
+      [@@deriving show]
     end
 
     type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
@@ -345,7 +345,7 @@ module Intermediate : sig
     type key =
       | ShortKey of int
       | LongKey  of int
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     type value =
       | Integer of int
@@ -411,10 +411,10 @@ module Intermediate : sig
       | OpFlex   (** [flex (12 35)] *)
       | OpHFlex1 (** [hflex1 (12 36)] *)
       | OpFlex1  (** [flex1 (12 37)] *)
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     type lexical_charstring = charstring_token list
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** Represents an operation in CharStrings (i.e. a pair of an operator and its operands). *)
     type charstring_operation =
@@ -439,11 +439,11 @@ module Intermediate : sig
       | HFlex     of int * cs_point * int * int * int * int                                (** [hflex (12 34)] *)
       | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (** [hflex1 (12 36)] *)
       | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (** [flex1 (12 37)] *)
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** Represents a CharString. *)
     type charstring = charstring_operation list
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** The type for CIDFont-specific data in Top DICT (CFF p.16, Table 10) *)
     type cid_info = {
@@ -455,7 +455,7 @@ module Intermediate : sig
       cid_font_type     : int;
       cid_count         : int;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     (** The type for Top DICT (CFF p.16, Table 10). *)
     type top_dict = {
@@ -476,7 +476,7 @@ module Intermediate : sig
       cid_info            : cid_info option;
       number_of_glyphs    : int;
     }
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
   end
 end
 
@@ -525,7 +525,7 @@ module Decode : sig
   (** Handles intermediate representation of [cmap] tables for decoding.
       Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
-      it is likely to be efficient in space. *)
+      they are likely to be efficient in space. *)
   module Cmap : sig
     (** The type for representing [cmap] tables. *)
     type t
@@ -548,7 +548,7 @@ module Decode : sig
   (** Handles intermediate representation of [hmtx] tables for decoding.
       Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
-      it is likely to be efficient in space. *)
+      they are likely to be efficient in space. *)
   module Hmtx : sig
     (** The type for representing [hmtx] tables. *)
     type t
@@ -596,11 +596,14 @@ module Decode : sig
 
     val features : langsys -> (feature option * feature set) ok
 
-    type 'a folding_single = 'a -> Value.glyph_id * Value.glyph_id -> 'a
+    type 'a folding_single =
+      'a -> Value.glyph_id * Value.glyph_id -> 'a
 
-    type 'a folding_alt = 'a -> Value.glyph_id * Value.glyph_id list -> 'a
+    type 'a folding_alt =
+      'a -> Value.glyph_id * Value.glyph_id list -> 'a
 
-    type 'a folding_lig = 'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
+    type 'a folding_lig =
+      'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
 
     val fold_subtables :
       ?single:('a folding_single) ->
@@ -637,21 +640,29 @@ module Decode : sig
     type class_definition =
       | GlyphToClass      of Value.glyph_id * Value.class_value
       | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
-    [@@deriving show {with_path = false}]
+    [@@deriving show]
 
-    type 'a folding_single1 = 'a -> Value.glyph_id list -> Value.value_record -> 'a
+    type 'a folding_single1 =
+      'a -> Value.glyph_id list -> Value.value_record -> 'a
 
-    type 'a folding_single2 = 'a -> Value.glyph_id * Value.value_record -> 'a
+    type 'a folding_single2 =
+      'a -> Value.glyph_id * Value.value_record -> 'a
 
-    type 'a folding_pair1 = 'a -> Value.glyph_id * (Value.glyph_id * Value.value_record * Value.value_record) list -> 'a
+    type 'a folding_pair1 =
+      'a -> Value.glyph_id * (Value.glyph_id * Value.value_record * Value.value_record) list -> 'a
 
-    type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
+    type 'a folding_pair2 =
+      class_definition list -> class_definition list -> 'a ->
+        (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
-    type 'a folding_markbase1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
+    type 'a folding_markbase1 =
+      int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 
-    type 'a folding_marklig1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
+    type 'a folding_marklig1 =
+      int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
 
-    type 'a folding_markmark1 = int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
+    type 'a folding_markmark1 =
+      int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
 
     val fold_subtables :
       ?single1:('a folding_single1) ->
@@ -676,7 +687,7 @@ module Decode : sig
       minimum      : bool;
       cross_stream : bool;
     }
-    [@@deriving show {with_path = false}]
+    [@@deriving show]
 
     val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
   end
@@ -751,7 +762,7 @@ module Encode : sig
   type 'a ok = ('a, Error.t) result
 
   (** The type for encoded tables. Values of this type is basically
-      a pair of a 4cc tag and a raw string contents. *)
+      a pair of a 4cc tag and a raw string of table contents. *)
   type table
 
   val get_table_tag : table -> Value.Tag.t
@@ -813,14 +824,16 @@ module Encode : sig
       val make : Intermediate.Cff.Maxp.t -> table ok
     end
 
-    val make : Intermediate.Cff.top_dict -> gsubrs:(Intermediate.Cff.lexical_charstring list) -> names_and_charstrings:((string * Intermediate.Cff.lexical_charstring) list) -> table ok
+    val make :
+      Intermediate.Cff.top_dict ->
+      gsubrs:(Intermediate.Cff.lexical_charstring list) ->
+      names_and_charstrings:((string * Intermediate.Cff.lexical_charstring) list) ->
+      table ok
   end
 
   module ForTest : sig
     module EncodeOperation : (module type of EncodeOperation)
-
     type 'a encoder = 'a EncodeOperation.Open.encoder
-
     val run : 'a encoder -> string ok
   end
 end
@@ -833,7 +846,7 @@ module Subset : sig
     | DecodeError   of Decode.Error.t
     | EncodeError   of Encode.Error.t
     | NonexplicitSubroutineNumber
-  [@@deriving show { with_path = false }]
+  [@@deriving show]
 
   type 'a ok = ('a, error) result
 

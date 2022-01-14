@@ -319,7 +319,7 @@ let e_charset ~(sid_first_opt : int option) ~(num_glyphs : int) =
   | Some(sid_first) ->
       e_uint8 2           >>= fun () -> (* Format number *)
       e_uint16 sid_first  >>= fun () ->
-      e_uint16 (num_glyphs - 1)
+      e_uint16 (num_glyphs - 2) (* `.notdef` and the first glyph for the SID is excluded *)
 
 
 let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(names_and_charstrings : (string * lexical_charstring) list) =

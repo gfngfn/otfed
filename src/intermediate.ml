@@ -199,37 +199,100 @@ module Cff = struct
   type lexical_charstring = charstring_token list
   [@@deriving show { with_path = false }]
 
-  type cs_x = int
-  [@@deriving show { with_path = false }]
-
-  type cs_y = int
-  [@@deriving show { with_path = false }]
-
-  type cs_point = cs_x * cs_y
+  type vector = Value.design_units * Value.design_units
   [@@deriving show { with_path = false }]
 
   type charstring_operation =
-    | HStem     of int * int * cs_point list                                             (* `hstem (1)` *)
-    | VStem     of int * int * cs_point list                                             (* `vstem (3)` *)
-    | VMoveTo   of int                                                                   (* `vmoveto (4)` *)
-    | RLineTo   of cs_point list                                                         (* `rlineto (5)` *)
-    | HLineTo   of int list                                                              (* `hlineto (6)` *)
-    | VLineTo   of int list                                                              (* `vlineto (7)` *)
-    | RRCurveTo of (cs_point * cs_point * cs_point) list                                 (* `rrcurveto (8)` *)
-    | HStemHM   of int * int * cs_point list                                             (* `hstemhm (18)` *)
-    | HintMask  of stem_argument                                                         (* `hintmask (19)` *)
-    | CntrMask  of stem_argument                                                         (* `cntrmask (20)` *)
-    | RMoveTo   of cs_point                                                              (* `rmoveto (21)` *)
-    | HMoveTo   of int                                                                   (* `hmoveto (22)` *)
-    | VStemHM   of int * int * cs_point list                                             (* `vstemhm (23)` *)
-    | VVCurveTo of cs_x option * (cs_y * cs_point * cs_y) list                           (* `vvcurveto (26)` *)
-    | HHCurveTo of cs_y option * (cs_x * cs_point * cs_x) list                           (* `hhcurveto (27)` *)
-    | VHCurveTo of (int * cs_point * int) list * int option                              (* `vhcurveto (30)` *)
-    | HVCurveTo of (int * cs_point * int) list * int option                              (* `hvcurveto (31)` *)
-    | Flex      of cs_point * cs_point * cs_point * cs_point * cs_point * cs_point * int (* `flex (12 35)` *)
-    | HFlex     of int * cs_point * int * int * int * int                                (* `hflex (12 34)` *)
-    | HFlex1    of cs_point * cs_point * int * int * cs_point * int                      (* `hflex1 (12 36)` *)
-    | Flex1     of cs_point * cs_point * cs_point * cs_point * cs_point * int            (* `flex1 (12 37)` *)
+    | HStem of {
+        y    : Value.design_units;
+        dy   : Value.design_units;
+        rest : (Value.design_units * Value.design_units) list;
+      } (* `hstem (1)` *)
+    | VStem of {
+        x    : Value.design_units;
+        dx   : Value.design_units;
+        rest : (Value.design_units * Value.design_units) list;
+      } (* `vstem (3)` *)
+    | VMoveTo of {
+        dy1 : Value.design_units;
+      } (* `vmoveto (4)` *)
+    | RLineTo of (Value.design_units * Value.design_units) list
+        (* `rlineto (5)` *)
+    | HLineTo of Value.design_units list
+        (* `hlineto (6)` *)
+    | VLineTo of Value.design_units list
+        (* `vlineto (7)` *)
+    | RRCurveTo of (vector * vector * vector) list
+        (* `rrcurveto (8)` *)
+    | HStemHM of {
+        y    : Value.design_units;
+        dy   : Value.design_units;
+        rest : (Value.design_units * Value.design_units) list;
+      } (* `hstemhm (18)` *)
+    | HintMask of stem_argument
+        (* `hintmask (19)` *)
+    | CntrMask of stem_argument
+        (* `cntrmask (20)` *)
+    | RMoveTo of {
+        dv1 : vector;
+      } (* `rmoveto (21)` *)
+    | HMoveTo of {
+        dx1 : Value.design_units;
+      } (* `hmoveto (22)` *)
+    | VStemHM of {
+        x    : Value.design_units;
+        dx   : Value.design_units;
+        rest : (Value.design_units * Value.design_units) list;
+      } (* `vstemhm (23)` *)
+    | VVCurveTo of {
+        dx1  : Value.design_units option;
+        rest : (Value.design_units * vector * Value.design_units) list;
+      } (* `vvcurveto (26)` *)
+    | HHCurveTo of {
+        dy1  : Value.design_units option;
+        rest : (Value.design_units * vector * Value.design_units) list;
+      } (* `hhcurveto (27)` *)
+    | VHCurveTo of {
+        main : (Value.design_units * vector * Value.design_units) list;
+        df   : Value.design_units option;
+      } (* `vhcurveto (30)` *)
+    | HVCurveTo of {
+        main : (Value.design_units * vector * Value.design_units) list;
+        df   : Value.design_units option;
+      } (* `hvcurveto (31)` *)
+    | Flex of {
+        dv1 : vector;
+        dv2 : vector;
+        dv3 : vector;
+        dv4 : vector;
+        dv5 : vector;
+        dv6 : vector;
+        fd  : Value.design_units;
+      } (* `flex (12 35)` *)
+    | HFlex of {
+        dx1 : Value.design_units;
+        dv2 : vector;
+        dx3 : Value.design_units;
+        dx4 : Value.design_units;
+        dx5 : Value.design_units;
+        dx6 : Value.design_units;
+      } (* `hflex (12 34)` *)
+    | HFlex1 of {
+        dv1 : vector;
+        dv2 : vector;
+        dx3 : Value.design_units;
+        dx4 : Value.design_units;
+        dv5 : vector;
+        dx6 : Value.design_units;
+      } (* `hflex1 (12 36)` *)
+    | Flex1 of {
+        dv1 : vector;
+        dv2 : vector;
+        dv3 : vector;
+        dv4 : vector;
+        dv5 : vector;
+        d6  : Value.design_units;
+      } (* `flex1 (12 37)` *)
   [@@deriving show { with_path = false }]
 
   type charstring = charstring_operation list

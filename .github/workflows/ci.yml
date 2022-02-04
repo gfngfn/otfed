@@ -35,6 +35,7 @@ jobs:
       - name: Install opam packages
         run: opam install . --deps-only --with-test
 
+      - name: Build otfed
         run: opam exec -- dune build
 
       - name: Run unit tests

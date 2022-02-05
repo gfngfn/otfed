@@ -55,6 +55,9 @@ type t =
   | UnexpectedMacStyle        of int
   | UnknownCharstringToken    of int
   | NegativeLengthForBytes    of int
+  | UnknownWeightClass        of int
+  | UnknownWidthClass         of int
+  | InvalidFsType             of int
 
   | InconsistentNumberOfPoints of {
       num_points : int;

@@ -199,10 +199,43 @@ module Value : sig
 
   (** Defines types for master data in [OS/2] tables. *)
   module Os2 : sig
+    type weight_class =
+      | WeightThin
+      | WeightExtraLight
+      | WeightLight
+      | WeightNormal
+      | WeightMedium
+      | WeightSemiBold
+      | WeightBold
+      | WeightExtraBold
+      | WeightBlack
+    [@@deriving show]
+
+    type width_class =
+      | WidthUltraCondensed
+      | WidthExtraCondensed
+      | WidthCondensed
+      | WidthSemiCondensed
+      | WidthMedium
+      | WidthSemiExpanded
+      | WidthExpanded
+      | WidthExtraExpanded
+      | WidthUltraExpanded
+    [@@deriving show]
+
+    type fs_type = {
+      restricted_license_embedding : bool;
+      preview_and_print_embedding  : bool;
+      editable_embedding           : bool;
+      no_subsetting                : bool;
+      bitmap_embedding_only        : bool;
+    }
+    [@@deriving show]
+
     type t = {
-      us_weight_class             : int; (* TODO: define a variant type for representing this class *)
-      us_width_class              : int; (* TODO: define a variant type for representing this class *)
-      fs_type                     : int; (* TODO: define a record type for representing this class *)
+      us_weight_class             : weight_class;
+      us_width_class              : width_class;
+      fs_type                     : fs_type;
       y_subscript_x_size          : design_units;
       y_subscript_y_size          : design_units;
       y_subscript_x_offset        : design_units;

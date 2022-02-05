@@ -466,10 +466,43 @@ module Hhea = struct
 end
 
 module Os2 = struct
+  type weight_class =
+    | WeightThin
+    | WeightExtraLight
+    | WeightLight
+    | WeightNormal
+    | WeightMedium
+    | WeightSemiBold
+    | WeightBold
+    | WeightExtraBold
+    | WeightBlack
+  [@@deriving show { with_path = false }]
+
+  type width_class =
+    | WidthUltraCondensed
+    | WidthExtraCondensed
+    | WidthCondensed
+    | WidthSemiCondensed
+    | WidthMedium
+    | WidthSemiExpanded
+    | WidthExpanded
+    | WidthExtraExpanded
+    | WidthUltraExpanded
+  [@@deriving show { with_path = false }]
+
+  type fs_type = {
+    restricted_license_embedding : bool;
+    preview_and_print_embedding  : bool;
+    editable_embedding           : bool;
+    no_subsetting                : bool;
+    bitmap_embedding_only        : bool;
+  }
+  [@@deriving show { with_path = false }]
+
   type t = {
-    us_weight_class             : int;
-    us_width_class              : int;
-    fs_type                     : int;
+    us_weight_class             : weight_class;
+    us_width_class              : width_class;
+    fs_type                     : fs_type;
     y_subscript_x_size          : design_units;
     y_subscript_y_size          : design_units;
     y_subscript_x_offset        : design_units;

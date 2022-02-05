@@ -130,6 +130,51 @@ let e_extension1 ((ext1, ext2_option) : extension1) =
   return ()
 
 
+let e_weight_class (weight_class : Value.Os2.weight_class) =
+  let open EncodeOperation in
+  let u =
+    match weight_class with
+    | Value.Os2.WeightThin       -> 100
+    | Value.Os2.WeightExtraLight -> 200
+    | Value.Os2.WeightLight      -> 300
+    | Value.Os2.WeightNormal     -> 400
+    | Value.Os2.WeightMedium     -> 500
+    | Value.Os2.WeightSemiBold   -> 600
+    | Value.Os2.WeightBold       -> 700
+    | Value.Os2.WeightExtraBold  -> 800
+    | Value.Os2.WeightBlack      -> 900
+  in
+  e_uint16 u
+
+
+let e_width_class (width_class : Value.Os2.width_class) =
+  let open EncodeOperation in
+  let u =
+    match width_class with
+    | Value.Os2.WidthUltraCondensed -> 1
+    | Value.Os2.WidthExtraCondensed -> 2
+    | Value.Os2.WidthCondensed      -> 3
+    | Value.Os2.WidthSemiCondensed  -> 4
+    | Value.Os2.WidthMedium         -> 5
+    | Value.Os2.WidthSemiExpanded   -> 6
+    | Value.Os2.WidthExpanded       -> 7
+    | Value.Os2.WidthExtraExpanded  -> 8
+    | Value.Os2.WidthUltraExpanded  -> 9
+  in
+  e_uint16 u
+
+
+let e_fs_type (fs_type : Value.Os2.fs_type) =
+  let open EncodeOperation in
+  let u = 0 in
+  let u = if fs_type.restricted_license_embedding then u + 0x2 else u in
+  let u = if fs_type.preview_and_print_embedding  then u + 0x4 else u in
+  let u = if fs_type.editable_embedding           then u + 0x8 else u in
+  let u = if fs_type.no_subsetting                then u + 0x100 else u in
+  let u = if fs_type.bitmap_embedding_only        then u + 0x200 else u in
+  e_uint16 u
+
+
 let make (ios2 : Intermediate.Os2.t) : table ok =
   let d = ios2.Intermediate.Os2.derived in
   let v = ios2.Intermediate.Os2.value in
@@ -158,9 +203,9 @@ let make (ios2 : Intermediate.Os2.t) : table ok =
     let open EncodeOperation in
     e_uint16 table_version            >>= fun () ->
     e_int16  d.x_avg_char_width       >>= fun () ->
-    e_uint16 v.us_weight_class        >>= fun () ->
-    e_uint16 v.us_width_class         >>= fun () ->
-    e_uint16 v.fs_type                >>= fun () ->
+    e_weight_class v.us_weight_class  >>= fun () ->
+    e_width_class v.us_width_class    >>= fun () ->
+    e_fs_type v.fs_type               >>= fun () ->
     e_int16  v.y_subscript_x_size     >>= fun () ->
     e_int16  v.y_subscript_y_size     >>= fun () ->
     e_int16  v.y_subscript_x_offset   >>= fun () ->

@@ -565,11 +565,6 @@ module Decode : sig
   (** Returns the list of tags for the tables contained in the source. *)
   val tables : source -> Value.Tag.t set
 
-  (** Used in [Intermediate.Cmap.fold_subtable]. *)
-  type cmap_segment =
-    | Incremental of Uchar.t * Uchar.t * Value.glyph_id
-    | Constant    of Uchar.t * Uchar.t * Value.glyph_id
-
   type fdindex = int
 
   (** Handles intermediate representation of [head] tables for decoding. *)
@@ -590,6 +585,7 @@ module Decode : sig
     (** The type for representing [cmap] tables. *)
     type t
 
+    (** Gets the [cmap] table from a font. *)
     val get : source -> t ok
 
     (** The type for representing Unicode-aware [cmap] subtables. *)
@@ -602,8 +598,19 @@ module Decode : sig
 
     val get_format_number : subtable -> int
 
-    val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
+    (** Represents an entry in [cmap] subtables, and is used in [fold_subtable].
+        [Incremental(uch1, uch2, gid)] maps [uch1] to [gid], [uch1 + 1] to [gid + 1], …, and
+        [uch2] to [gid + (uch2 - uch1 + 1)].
+        On the other hand, [Constant(uch1, uch2, gid)] maps
+        all the code points between [uch1] and [uch2] (including [uch1] and [uch2] themselves) to [gid]. *)
+    type segment =
+      | Incremental of Uchar.t * Uchar.t * Value.glyph_id
+      | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
+    (** Folds a [cmap] subtable in ascending order. *)
+    val fold_subtable : subtable -> ('a -> segment -> 'a) -> 'a -> 'a ok
+
+    (** Converts a [cmap] subtable to an in-memory mapping. *)
     val unmarshal_subtable : subtable -> Value.Cmap.subtable ok
   end
 
@@ -618,6 +625,8 @@ module Decode : sig
     (** Gets the [hmtx] table of a font. *)
     val get : source -> t ok
 
+    (** [access hmtx gid] returns [Some((aw, lsb))] (if [gid] is present in the font)
+        where [aw] is the advance width of [gid], and [lsb] is the left side bearing of [gid]. *)
     val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
   end
 

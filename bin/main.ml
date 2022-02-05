@@ -52,13 +52,13 @@ let print_cmap (source : D.source) =
         format;
       D.Cmap.fold_subtable subtable (fun () seg ->
         match seg with
-        | D.Incremental(uch1, uch2, gid) ->
+        | D.Cmap.Incremental(uch1, uch2, gid) ->
             if Uchar.equal uch1 uch2 then
               Format.printf "  - I %a --> %d@," pp_uchar uch1 gid
             else
               Format.printf "  - I %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
 
-        | D.Constant(uch1, uch2, gid) ->
+        | D.Cmap.Constant(uch1, uch2, gid) ->
               Format.printf "  - C %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
       ) ()
     ) subtables ()

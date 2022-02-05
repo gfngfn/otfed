@@ -28,10 +28,6 @@ type common_source = {
   num_h_metrics   : int;
 }
 
-type cmap_segment =
-  | Incremental of Uchar.t * Uchar.t * Value.glyph_id
-  | Constant    of Uchar.t * Uchar.t * Value.glyph_id
-
 (* The type for String INDEXes [CFF p.17, Section 10] *)
 type string_index = string array
 

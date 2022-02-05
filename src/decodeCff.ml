@@ -741,9 +741,9 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | [] ->
             err Error.InvalidCharstring
 
-        | (y, dy) :: cspts ->
+        | (y, dy) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
-            return ({ cstate with width; stack }, [HStem(y, dy, cspts)])
+            return ({ cstate with width; stack }, [HStem{ y; dy; rest }])
       end
 
   | OpVStem ->
@@ -753,15 +753,15 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | [] ->
             err Error.InvalidCharstring
 
-        | (x, dx) :: cspts ->
+        | (x, dx) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
-            return ({ cstate with width; stack }, [VStem(x, dx, cspts)])
+            return ({ cstate with width; stack }, [VStem{ x; dx; rest }])
       end
 
   | OpVMoveTo ->
-      pop_mandatory stack >>= fun (stack, arg) ->
+      pop_mandatory stack >>= fun (stack, dy1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with width; stack }, [VMoveTo(arg)])
+      return ({ cstate with width; stack }, [VMoveTo{ dy1 }])
 
   | OpRLineTo ->
       let (stack, cspts) = pop_iter pop2_opt stack in
@@ -812,9 +812,9 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | [] ->
             err Error.InvalidCharstring
 
-        | (y, dy) :: cspts ->
+        | (y, dy) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
-            return ({ cstate with width; stack }, [HStemHM(y, dy, cspts)])
+            return ({ cstate with width; stack }, [HStemHM{ y; dy; rest }])
       end
 
   | OpHintMask(arg) ->
@@ -823,8 +823,8 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let cstate = { cstate with width; stack } in
       begin
         match pairs with
-        | []               -> return (cstate, [HintMask(arg)])
-        | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); HintMask(arg)])
+        | []              -> return (cstate, [HintMask(arg)])
+        | (x, dx) :: rest -> return (cstate, [VStemHM{ x; dx; rest }; HintMask(arg)])
       end
 
   | OpCntrMask(arg) ->
@@ -833,20 +833,20 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       let cstate = { cstate with width; stack } in
       begin
         match pairs with
-        | []               -> return (cstate, [CntrMask(arg)])
-        | (x, dx) :: cspts -> return (cstate, [VStemHM(x, dx, cspts); CntrMask(arg)])
+        | []              -> return (cstate, [CntrMask(arg)])
+        | (x, dx) :: rest -> return (cstate, [VStemHM{ x; dx; rest }; CntrMask(arg)])
       end
 
   | OpRMoveTo ->
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with width; stack }, [RMoveTo((dx1, dy1))])
+      return ({ cstate with width; stack }, [RMoveTo{ dv1 = (dx1, dy1) }])
 
   | OpHMoveTo ->
-      pop_mandatory stack >>= fun (stack, arg) ->
+      pop_mandatory stack >>= fun (stack, dx1) ->
       let (stack, width) = pop_opt_for_width cstate.width stack in
-      return ({ cstate with width; stack }, [HMoveTo(arg)])
+      return ({ cstate with width; stack }, [HMoveTo{ dx1 }])
 
   | OpVStemHM ->
       let (stack, pairs) = pop_iter pop2_opt stack in
@@ -855,9 +855,9 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         | [] ->
             err Error.InvalidCharstring
 
-        | (x, dx) :: cspts ->
+        | (x, dx) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
-            return ({ cstate with width; stack }, [VStemHM(x, dx, cspts)])
+            return ({ cstate with width; stack }, [VStemHM{ x; dx; rest }])
       end
 
   | OpRCurveLine ->
@@ -865,7 +865,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dxd) ->
       let (stack, tuples) = pop_iter pop6_opt stack in
       let beziers = tuples |> List.map make_bezier in
-      return ({ cstate with stack }, [RRCurveTo(beziers); RLineTo([(dxd, dyd)])])
+      return ({ cstate with stack }, [ RRCurveTo(beziers); RLineTo([ (dxd, dyd) ]) ])
 
   | OpRLineCurve ->
       pop_mandatory stack >>= fun (stack, dyd) ->
@@ -875,19 +875,19 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dyb) ->
       pop_mandatory stack >>= fun (stack, dxb) ->
       let (stack, pairs) = pop_iter pop2_opt stack in
-      return ({ cstate with stack }, [RLineTo(pairs); RRCurveTo([((dxb, dyb), (dxc, dyc), (dxd, dyd))])])
+      return ({ cstate with stack }, [ RLineTo(pairs); RRCurveTo([ ((dxb, dyb), (dxc, dyc), (dxd, dyd)) ]) ])
 
   | OpVVCurveTo ->
       let (stack, tuples) = pop_iter pop4_opt stack in
-      let rets = tuples |> List.map (fun (dya, dxb, dyb, dyc) -> (dya, (dxb, dyb), dyc)) in
-      let (stack, dx1opt) = pop_opt stack in
-      return ({ cstate with stack }, [VVCurveTo(dx1opt, rets)])
+      let rest = tuples |> List.map (fun (dya, dxb, dyb, dyc) -> (dya, (dxb, dyb), dyc)) in
+      let (stack, dx1_opt) = pop_opt stack in
+      return ({ cstate with stack }, [ VVCurveTo{ dx1 = dx1_opt; rest } ])
 
   | OpHHCurveTo ->
       let (stack, tuples) = pop_iter pop4_opt stack in
-      let rets = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
-      let (stack, dy1opt) = pop_opt stack in
-      return ({ cstate with stack }, [HHCurveTo(dy1opt, rets)])
+      let rest = tuples |> List.map (fun (dxa, dxb, dyb, dxc) -> (dxa, (dxb, dyb), dxc)) in
+      let (stack, dy1_opt) = pop_opt stack in
+      return ({ cstate with stack }, [ HHCurveTo{ dy1 = dy1_opt; rest } ])
 
   | OpCallGSubr ->
       d_subroutine cconst cstate cconst.gsubr_index
@@ -900,11 +900,11 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         else
           return (stack, None)
 
-      end >>= fun (stack, dfopt) ->
+      end >>= fun (stack, df_opt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
-        let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [VHCurveTo(rets, dfopt)])
+        let main = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
+        return ({ cstate with stack }, [ VHCurveTo{ main; df = df_opt } ])
       else
         err Error.InvalidCharstring
 
@@ -915,11 +915,11 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
           return (stack, Some(df))
         else
           return (stack, None)
-      end >>= fun (stack, dfopt) ->
+      end >>= fun (stack, df_opt) ->
       let (stack, tuples) = pop_iter pop4_opt stack in
       if ImmutStack.is_empty stack then
-        let rets = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
-        return ({ cstate with stack }, [HVCurveTo(rets, dfopt)])
+        let main = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
+        return ({ cstate with stack }, [ HVCurveTo{ main; df = df_opt } ])
       else
         err Error.InvalidCharstring
 
@@ -931,7 +931,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dy2) ->
       pop_mandatory stack >>= fun (stack, dx2) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
-      return ({ cstate with stack }, [HFlex(dx1, (dx2, dy2), dx3, dx4, dx5, dx6)])
+      return ({ cstate with stack }, [ HFlex{ dx1; dv2 = (dx2, dy2); dx3; dx4; dx5; dx6 } ])
 
   | OpFlex ->
       pop_mandatory stack >>= fun (stack, fd) ->
@@ -947,8 +947,17 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dx2) ->
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
-      let parsed = [Flex((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), (dx6, dy6), fd)] in
-      return ({ cstate with stack }, parsed)
+      return ({ cstate with stack }, [
+        Flex{
+          dv1 = (dx1, dy1);
+          dv2 = (dx2, dy2);
+          dv3 = (dx3, dy3);
+          dv4 = (dx4, dy4);
+          dv5 = (dx5, dy5);
+          dv6 = (dx6, dy6);
+          fd;
+        }
+      ])
 
   | OpHFlex1 ->
       pop_mandatory stack >>= fun (stack, dx6) ->
@@ -960,7 +969,16 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dx2) ->
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
-      return ({ cstate with stack }, [HFlex1((dx1, dy1), (dx2, dy2), dx3, dx4, (dx5, dy5), dx6)])
+      return ({ cstate with stack }, [
+        HFlex1{
+          dv1 = (dx1, dy1);
+          dv2 = (dx2, dy2);
+          dx3;
+          dx4;
+          dv5 = (dx5, dy5);
+          dx6;
+        }
+      ])
 
   | OpFlex1 ->
       pop_mandatory stack >>= fun (stack, d6) ->
@@ -974,7 +992,16 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       pop_mandatory stack >>= fun (stack, dx2) ->
       pop_mandatory stack >>= fun (stack, dy1) ->
       pop_mandatory stack >>= fun (stack, dx1) ->
-      return ({ cstate with stack }, [Flex1((dx1, dy1), (dx2, dy2), (dx3, dy3), (dx4, dy4), (dx5, dy5), d6)])
+      return ({ cstate with stack }, [
+        Flex1{
+          dv1 = (dx1, dy1);
+          dv2 = (dx2, dy2);
+          dv3 = (dx3, dy3);
+          dv4 = (dx4, dy4);
+          dv5 = (dx5, dy5);
+          d6;
+        }
+      ])
 
 
 and d_subroutine (cconst : charstring_constant) (cstate : charstring_state) (subr : subroutine_index) =
@@ -1339,24 +1366,24 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
     match op with
     | HintMask(_)
     | CntrMask(_)
-    | HStem(_, _, _)
-    | VStem(_, _, _)
-    | HStemHM(_, _, _)
-    | VStemHM(_, _, _) ->
+    | HStem(_)
+    | VStem(_)
+    | HStemHM(_)
+    | VStemHM(_) ->
         return (curv, state)
 
-    | VMoveTo(dy) ->
-        let curv = curv +@| dy in
+    | VMoveTo{ dy1 } ->
+        let curv = curv +@| dy1 in
         let middle = start_new_path state curv in
         return (curv, Middle(middle))
 
-    | HMoveTo(dx) ->
-        let curv = curv +@- dx in
+    | HMoveTo{ dx1 } ->
+        let curv = curv +@- dx1 in
         let middle = start_new_path state curv in
         return (curv, Middle(middle))
 
-    | RMoveTo(dv) ->
-        let curv = curv +@ dv in
+    | RMoveTo{ dv1 } ->
+        let curv = curv +@ dv1 in
         let middle = start_new_path state curv in
         return (curv, Middle(middle))
 
@@ -1391,13 +1418,13 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         in
         return (curv, Middle{ middle with elems = peacc })
 
-    | VVCurveTo(_, []) ->
+    | VVCurveTo{ dx1 = _; rest = [] } ->
         err Error.InvalidCharstring
 
-    | VVCurveTo(dx1opt, (dy1, dv2, dy3) :: vvs) ->
+    | VVCurveTo{ dx1 = dx1_opt; rest = (dy1, dv2, dy3) :: vvs } ->
         assert_middle state >>= fun middle ->
         let v1 =
-          match dx1opt with
+          match dx1_opt with
           | None      -> curv +@| dy1
           | Some(dx1) -> curv +@ (dx1, dy1)
         in
@@ -1413,13 +1440,13 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HHCurveTo(_, []) ->
+    | HHCurveTo{ dy1 = _; rest = [] } ->
         err Error.InvalidCharstring
 
-    | HHCurveTo(dy1opt, (dx1, dv2, dx3) :: hhs) ->
+    | HHCurveTo{ dy1 = dy1_opt; rest = (dx1, dv2, dx3) :: hhs } ->
         assert_middle state >>= fun middle ->
         let v1 =
-          match dy1opt with
+          match dy1_opt with
           | None      -> curv +@- dx1
           | Some(dy1) -> curv +@ (dx1, dy1)
         in
@@ -1435,38 +1462,42 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HVCurveTo(hvs, dfopt) ->
+    | HVCurveTo{ main = hvs; df = df_opt } ->
         assert_middle state >>= fun middle ->
         chop_last_of_list hvs >>= fun (hvsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last dfopt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:true middle.elems hvsmain last df_opt curv in
         return (curv, Middle{ middle with elems = peacc })
 
-    | VHCurveTo(vhs, dfopt) ->
+    | VHCurveTo{ main = vhs; df = df_opt } ->
         assert_middle state >>= fun middle ->
         chop_last_of_list vhs >>= fun (vhsmain, last) ->
-        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last dfopt curv in
+        let (curv, peacc) = curve_parity ~starts_horizontally:false middle.elems vhsmain last df_opt curv in
         return (curv, Middle{ middle with elems = peacc })
 
-    | Flex(pt1, pt2, pt3, pt4, pt5, pt6, _) ->
+    | Flex{ dv1; dv2; dv3; dv4; dv5; dv6; fd = _ } ->
         assert_middle state >>= fun middle ->
-        let (curv, pes_flex) = flex_path ~current:curv pt1 pt2 pt3 pt4 pt5 pt6 in
+        let (curv, pes_flex) = flex_path ~current:curv dv1 dv2 dv3 dv4 dv5 dv6 in
         let peacc = Alist.append middle.elems pes_flex in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HFlex(dx1, (dx2, dy2), dx3, dx4, dx5, dx6) ->
+    | HFlex{ dx1; dv2; dx3; dx4; dx5; dx6 } ->
+        let (_dx2, dy2) = dv2 in
         assert_middle state >>= fun middle ->
-        let (curv, pes_flex) = flex_path ~current:curv (dx1, 0) (dx2, dy2) (dx3, 0) (dx4, 0) (dx5, -dy2) (dx6, 0) in
+        let (curv, pes_flex) = flex_path ~current:curv (dx1, 0) dv2 (dx3, 0) (dx4, 0) (dx5, -dy2) (dx6, 0) in
         let peacc = Alist.append middle.elems pes_flex in
         return (curv, Middle{ middle with elems = peacc })
 
-    | HFlex1((dx1, dy1), (dx2, dy2), dx3, dx4, (dx5, dy5), dx6) ->
+    | HFlex1{ dv1; dv2; dx3; dx4; dv5; dx6 } ->
+        let (_dx1, dy1) = dv1 in
+        let (_dx2, dy2) = dv2 in
+        let (_dx5, dy5) = dv5 in
         assert_middle state >>= fun middle ->
-        let dy6 = - (dy1 + dy2 + dy5) in
-        let (curv, pes_flex) = flex_path ~current:curv (dx1, dy1) (dx2, dy2) (dx3, 0) (dx4, 0) (dx5, dy5) (dx6, dy6) in
+        let dy6 = -(dy1 + dy2 + dy5) in
+        let (curv, pes_flex) = flex_path ~current:curv dv1 dv2 (dx3, 0) (dx4, 0) dv5 (dx6, dy6) in
         let peacc = Alist.append middle.elems pes_flex in
         return (curv, Middle{ middle with elems = peacc })
 
-    | Flex1(pt1, pt2, pt3, pt4, pt5, d6) ->
+    | Flex1{ dv1 = pt1; dv2 = pt2; dv3 = pt3; dv4 = pt4; dv5 = pt5; d6 } ->
         assert_middle state >>= fun middle ->
         let (dxsum, dysum) = pt1 +@ pt2 +@ pt3 +@ pt4 +@ pt5 in
         let (xstart, ystart) = curv in

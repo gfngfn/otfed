@@ -47,25 +47,25 @@ let lsubrs = (264, [
 let expected_operations =
   let open Otfed.Intermediate.Cff in
   [
-    HStem(-11, 25, [(217, 21); (174, 22)]);
-    VStem(28, 83, [(238, 66)]);
-    RMoveTo(415, 119);
-    VHCurveTo([(10, (-8, 2), -5); (-9, (-2, -6), -8)], Some(-2));
-    HHCurveTo(Some(-103), [(-35, (-90, 0), -10)]);
-    HVCurveTo([(-50, (-40, 30), 37)], Some(-23));
-    VVCurveTo(Some(-30), [(48, (0, 66), 36)]);
-    HLineTo[279];
-    HVCurveTo([
-      (22, (3, 0), 21);
-      (99, (-54, 97), -125);
-      (-116, (-92, -103), -125);
-      (-134, (105, -97), 115);
-      (122, (45, 111), 19)
-    ], None);
-    RMoveTo(-66, 133);
-    HLineTo[-237];
-    HHCurveTo((Some 149), [(6, (84, 25), 34)]);
-    HVCurveTo([(103, (10, -135), -39)], None);
+    HStem{ y = -11; dy = 25; rest = [ (217, 21); (174, 22) ] };
+    VStem{ x = 28; dx = 83; rest = [ (238, 66) ] };
+    RMoveTo{ dv1 = (415, 119) };
+    VHCurveTo{ main = [ (10, (-8, 2), -5); (-9, (-2, -6), -8) ]; df = Some(-2) };
+    HHCurveTo{ dy1 = Some(-103); rest = [ (-35, (-90, 0), -10) ] };
+    HVCurveTo{ main = [ (-50, (-40, 30), 37) ]; df = Some(-23) };
+    VVCurveTo{ dx1 = Some(-30); rest = [ (48, (0, 66), 36) ] };
+    HLineTo([ 279 ]);
+    HVCurveTo{
+      main = [
+        (22, (3, 0), 21); (99, (-54, 97), -125); (-116, (-92, -103), -125);
+        (-134, (105, -97), 115); (122, (45, 111), 19)
+      ];
+      df = None;
+    };
+    RMoveTo{ dv1 = (-66, 133) };
+    HLineTo([ -237 ]);
+    HHCurveTo{ dy1 = Some(149); rest = [ (6, (84, 25), 34) ] };
+    HVCurveTo{ main = [ (103, (10, -135), -39) ]; df = None }
   ]
 
 

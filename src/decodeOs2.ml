@@ -45,7 +45,7 @@ let get (src : source) : Intermediate.Os2.t ok =
     d_bmp_code_point >>= fun us_first_char_index ->
     d_bmp_code_point >>= fun us_last_char_index ->
     d_int16    >>= fun s_typo_ascender ->
-    d_int16    >>= fun s_type_descender ->
+    d_int16    >>= fun s_typo_descender ->
     d_int16    >>= fun s_typo_linegap ->
     d_uint16   >>= fun us_win_ascent ->
     d_uint16   >>= fun us_win_descent ->
@@ -82,7 +82,7 @@ let get (src : source) : Intermediate.Os2.t ok =
         ach_vend_id;
         fs_selection;
         s_typo_ascender;
-        s_type_descender;
+        s_typo_descender;
         s_typo_linegap;
         us_win_ascent;
         us_win_descent;

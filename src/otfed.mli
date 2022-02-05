@@ -1,7 +1,7 @@
 
 include module type of Basic
 
-(** Handles master data for OpenType fonts. *)
+(** Handles master data (i.e. data that cannot be derivable from other data) for OpenType fonts. *)
 module Value : sig
 
   (** Handles 4cc tags. *)
@@ -71,6 +71,7 @@ module Value : sig
     description  : ttf_glyph_description;
   }
 
+  (** See [cubic_path]. *)
   type cubic_path_element =
     | CubicLineTo  of point
     | CubicCurveTo of point * point * point
@@ -158,6 +159,7 @@ module Value : sig
 
   module Cmap : (module type of Value.Cmap)
 
+  (** Defines types for master data in [head] tables. *)
   module Head : sig
     type mac_style = {
       bold      : bool;
@@ -182,6 +184,7 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types for master data in [hhea] tables. *)
   module Hhea : sig
     type t = {
       ascender         : int;
@@ -194,21 +197,22 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types for master data in [OS/2] tables. *)
   module Os2 : sig
     type t = {
-      us_weight_class             : int;
-      us_width_class              : int;
-      fs_type                     : int;
-      y_subscript_x_size          : int;
-      y_subscript_y_size          : int;
-      y_subscript_x_offset        : int;
-      y_subscript_y_offset        : int;
-      y_superscript_x_size        : int;
-      y_superscript_y_size        : int;
-      y_superscript_x_offset      : int;
-      y_superscript_y_offset      : int;
-      y_strikeout_size            : int;
-      y_strikeout_position        : int;
+      us_weight_class             : int; (* TODO: define a variant type for representing this class *)
+      us_width_class              : int; (* TODO: define a variant type for representing this class *)
+      fs_type                     : int; (* TODO: define a record type for representing this class *)
+      y_subscript_x_size          : design_units;
+      y_subscript_y_size          : design_units;
+      y_subscript_x_offset        : design_units;
+      y_subscript_y_offset        : design_units;
+      y_superscript_x_size        : design_units;
+      y_superscript_y_size        : design_units;
+      y_superscript_x_offset      : design_units;
+      y_superscript_y_offset      : design_units;
+      y_strikeout_size            : design_units;
+      y_strikeout_position        : design_units;
       s_family_class              : int;
       panose                      : string;  (* 10 bytes. *)
       ul_unicode_range1           : wint;
@@ -216,41 +220,48 @@ module Value : sig
       ul_unicode_range3           : wint;
       ul_unicode_range4           : wint;
       ach_vend_id                 : string;  (* 4 bytes. *)
-      fs_selection                : int;
-      s_typo_ascender             : int;
-      s_type_descender            : int;
-      s_typo_linegap              : int;
-      us_win_ascent               : int;
-      us_win_descent              : int;
+      fs_selection                : int; (* TODO: define a record type for representing this class *)
+      s_typo_ascender             : design_units;
+      s_typo_descender            : design_units;
+      s_typo_linegap              : design_units;
+      us_win_ascent               : design_units;
+      us_win_descent              : design_units;
       ul_code_page_range_1        : wint option;
       ul_code_page_range_2        : wint option;
-      s_x_height                  : int option;
-      s_cap_height                : int option;
-      us_default_char             : int option;
-      us_break_char               : int option;
+      s_x_height                  : design_units option;
+      s_cap_height                : design_units option;
+      us_default_char             : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
+      us_break_char               : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
     [@@deriving show]
   end
 
+  (** Defines types for master data in [post] tables. *)
   module Post : (module type of Value.Post)
 
+  (** Defines types for master data in [name] tables. *)
   module Name : (module type of Value.Name)
 
+  (** Defines types for master data in [MATH] tables. *)
   module Math : (module type of Value.Math)
 end
 
-(** Handles in-memory representation of OpenType tables that contain metadata derived from master data. *)
+(** Handles in-memory representation of OpenType tables
+    that contain metadata derived from master data as well as master data. *)
 module Intermediate : sig
+
+  (** The type for the [indexToLocFormat] entry in [head] tables. *)
   type loc_format =
     | ShortLocFormat
     | LongLocFormat
   [@@deriving show]
 
+  (** Defines types for representing whole information in [head] tables. *)
   module Head : sig
-    (** The type for data contained in a single [head] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
+    (** The type for data contained in a [head] table that are derivable from
+        glyph descriptions or master data in other tables. *)
     type derived = {
       x_min               : int;
       y_min               : int;
@@ -268,6 +279,7 @@ module Intermediate : sig
     [@@deriving show]
   end
 
+  (** Defines types for representing whole information in [hhea] tables. *)
   module Hhea : sig
     (** The type for data contained in a single [hhea] table that are derivable
         from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
@@ -287,11 +299,12 @@ module Intermediate : sig
     [@@deriving show]
   end
 
+  (** Defines types for representing whole information in [OS/2] tables. *)
   module Os2 : sig
     (** The type for data contained in a single [OS/2] table that are derivable
         from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
     type derived = {
-      x_avg_char_width    : int;
+      x_avg_char_width    : Value.design_units;
       us_first_char_index : Uchar.t;
       us_last_char_index  : Uchar.t;
       us_max_context      : int option;
@@ -340,26 +353,6 @@ module Intermediate : sig
       [@@deriving show]
     end
 
-    type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
-
-    type key =
-      | ShortKey of int
-      | LongKey  of int
-    [@@deriving show]
-
-    type value =
-      | Integer of int
-      | Real    of float
-
-    type dict_element =
-      | Value of value
-      | Key   of key
-
-    module DictMap : Map.S
-
-    (** The type for DICT data (CFF p.9, Section 4) *)
-    type dict = (value list) DictMap.t
-
     (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
     type stem_argument = string
 
@@ -407,7 +400,7 @@ module Intermediate : sig
     type lexical_charstring = charstring_token list
     [@@deriving show]
 
-    (** Represents a relative vector. *)
+    (** Represents a relative vector used in CharString. *)
     type vector = Value.design_units * Value.design_units
     [@@deriving show { with_path = false }]
 
@@ -520,7 +513,7 @@ module Intermediate : sig
     }
     [@@deriving show]
 
-    (** The type for Top DICT (CFF p.16, Table 10). *)
+    (** The type for Top DICTs (CFF p.16, Table 10). *)
     type top_dict = {
       font_name           : string;
       version             : string option;
@@ -543,7 +536,9 @@ module Intermediate : sig
   end
 end
 
+(** Contains types and operations for decoding fonts. *)
 module Decode : sig
+  (** Handles values that represent errors that can happen while decoding fonts. *)
   module Error : (module type of DecodeError)
 
   type 'a ok = ('a, Error.t) result
@@ -554,10 +549,12 @@ module Decode : sig
   (** The type for sources equipped with CFF-based outlines. *)
   type cff_source
 
+  (** Represents a single font. *)
   type source =
     | Ttf of ttf_source
     | Cff of cff_source
 
+  (** Represents a single font or a font collection (i.e. so-called a TrueType collection). *)
   type single_or_collection =
     | Single     of source
     | Collection of source list
@@ -595,8 +592,10 @@ module Decode : sig
 
     val get : source -> t ok
 
+    (** The type for representing Unicode-aware [cmap] subtables. *)
     type subtable
 
+    (** Gets all the Unicode-aware subtables in the given [cmap] table. *)
     val get_subtables : t -> (subtable set) ok
 
     val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
@@ -616,9 +615,10 @@ module Decode : sig
     (** The type for representing [hmtx] tables. *)
     type t
 
+    (** Gets the [hmtx] table of a font. *)
     val get : source -> t ok
 
-    val access : t -> Value.glyph_id -> ((int * int) option) ok
+    val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
   end
 
   (** Handles intermediate representation of [OS/2] tables for decoding. *)
@@ -760,7 +760,9 @@ module Decode : sig
     val get : source -> (Value.Math.t option) ok
   end
 
+  (** The module for decoding TrueType-based OpenType fonts. *)
   module Ttf : sig
+    (** The module for decoding [maxp] tables in TrueType-based fonts. *)
     module Maxp : sig
       val get : ttf_source -> Intermediate.Ttf.Maxp.t ok
     end
@@ -776,19 +778,31 @@ module Decode : sig
     val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
   end
 
+  (** The module for decoding CFF-based OpenType fonts. *)
   module Cff : sig
+    (** The module for decoding [maxp] tables in CFF-based fonts. *)
     module Maxp : sig
       val get : cff_source -> Intermediate.Cff.Maxp.t ok
     end
 
+    (** Gets the Top DICT in the [CFF] table. *)
     val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
+    (** [access_charset cff gid] gets the character name for [gid] stored in the Charset of [cff]. *)
     val access_charset : cff_source -> Value.glyph_id -> (string option) ok
 
-    val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
+    (** [charstring cff gid] returns:
+
+        {ul
+          {- [None] if [gid] is not defined in [cff];}
+          {- [Some((width_opt, charstring))] if [gid] is defined in [cff]
+             where [width_opt] is the optionally stored advance width of the glyph,
+             and [charstring] is the CharString in which subroutine calls have been resolved.}} *)
+    val charstring : cff_source -> Value.glyph_id -> ((Value.design_units option * Intermediate.Cff.charstring) option) ok
 
     val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
 
+    (** Handles subroutine INDEXes that contain low-level CharString representations. *)
     module LexicalSubroutineIndex : sig
       type t
       val empty : t
@@ -800,6 +814,7 @@ module Decode : sig
 
     val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
+    (** Converts a CharString into a cubic Bézier path. *)
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end
 

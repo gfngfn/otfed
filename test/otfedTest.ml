@@ -1,45 +1,14 @@
 
+open TestUtil
+
 module V = Otfed.Value
 module I = Otfed.Intermediate
 module D = Otfed.Decode
 module E = Otfed.Encode
 module DT = Otfed.Decode.ForTest
 module ET = Otfed.Encode.ForTest
-
-
-let assert_equal ~pp ~pp_error ~message:msg expected = function
-  | Ok(got) ->
-      if got = expected then
-        begin
-          print_endline "OK";
-          got
-        end
-      else
-        begin
-          Format.printf "@[<v>";
-          Format.printf "FAIL \"%s\"@," msg;
-          Format.printf "expected:@,@[<h>%a,@]@," pp expected;
-          Format.printf "got:@,@[<h>%a@]@," pp got;
-          Format.printf "@]";
-          exit 1
-        end
-
-  | Error(e) ->
-      Format.printf "%s\n" msg;
-      Format.printf "%a\n" pp_error e;
-      exit 1
-
-
-let pp_sep ppf () =
-  Format.fprintf ppf ", "
-
-
-let pp_xxd ppf s =
-  let pp_single ppf ch =
-    Format.fprintf ppf "%02x" (Char.code ch)
-  in
-  let chars = Core_kernel.String.to_list_rev s |> List.rev in
-  Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
+module DecOp = DT.DecodeOperation
+module EncOp = ET.EncodeOperation
 
 
 (** Tests for `DecodeOperation.chop_two_bytes` (via `DT.chop_two_bytes`) *)
@@ -68,16 +37,12 @@ let () =
   )
 
 
-module DecOp = DT.DecodeOperation
-module EncOp = ET.EncodeOperation
-
-
 (** Tests for `DecodeOperation.d_int16` (via `DecOp.d_int16`)
     and `EncodeOperation.e_int16` (via `EncOp.e_int16`) *)
 let () =
   let cases =
     [
-      (TestUtil.make_string_even [0xffec], -20);
+      (make_string_even [0xffec], -20);
     ]
   in
   cases |> List.iter (fun (input, expected) ->

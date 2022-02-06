@@ -278,9 +278,13 @@ let fetch_cff_specific (core : common_source_core) (table_directory : table_dire
   if charstring_type <> 2 then
     err @@ Error.UnknownCharstringType(charstring_type)
   else
-    get_iquad_opt            top_dict (ShortKey(5)) (0, 0, 0, 0) >>= fun font_bbox ->
+    get_iquad_opt            top_dict (ShortKey(5)) (0, 0, 0, 0) >>= fun font_bbox_quad ->
     get_integer_with_default top_dict (LongKey(8) ) 0            >>= fun stroke_width ->
     get_integer_with_default top_dict (ShortKey(15)) 0           >>= fun charset_number ->
+    let font_bbox =
+      let (x_min, y_min, x_max, y_max) = font_bbox_quad in
+      Value.{ x_min; y_min; x_max; y_max }
+    in
     let charset =
       match charset_number with
       | 0           -> PredefinedCharset(IsoAdobeCharset)

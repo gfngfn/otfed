@@ -410,7 +410,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(names_and_
     ]
   in
   let dict =
-    let (bbox_elem1, bbox_elem2, bbox_elem3, bbox_elem4) = font_bbox in
+    let Value.{ x_min; y_min; x_max; y_max } = font_bbox in
     let charstring_type = 2 in
     List.fold_left (fun dict (key, values) ->
       dict |> DictMap.add key values
@@ -421,7 +421,7 @@ let e_cff (top_dict : top_dict) ~(gsubrs : lexical_charstring list) ~(names_and_
       (LongKey(4),   [Integer(underline_thickness)]);
       (LongKey(5),   [Integer(paint_type)]);
       (LongKey(6),   [Integer(charstring_type)]);
-      (ShortKey(5),  [Integer(bbox_elem1); Integer(bbox_elem2); Integer(bbox_elem3); Integer(bbox_elem4)]);
+      (ShortKey(5),  [Integer(x_min); Integer(y_min); Integer(x_max); Integer(y_max)]);
       (LongKey(8),   [Integer(stroke_width)]);
       (ShortKey(15), [Integer(zero_offset_charset)]);
       (ShortKey(17), [Integer(zero_offset_CharString_INDEX)]);

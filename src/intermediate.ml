@@ -323,7 +323,7 @@ module Cff = struct
     underline_position  : int;
     underline_thickness : int;
     paint_type          : int;
-    font_bbox           : int * int * int * int;
+    font_bbox           : Value.bounding_box;
     stroke_width        : int;
     cid_info            : cid_info option;
     number_of_glyphs    : int;

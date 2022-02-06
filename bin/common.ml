@@ -15,7 +15,7 @@ type error =
   | CannotReadFile     of string
   | CannotWriteFile    of string
   | DecodingError      of D.Error.t
-  | SubsetError        of Subset.error
+  | SubsetError        of Subset.Error.t
 [@@deriving show { with_path = false }]
 
 

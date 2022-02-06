@@ -967,6 +967,17 @@ module Decode : sig
       val fold : (int -> Intermediate.Cff.lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
     end
 
+    (** [lexical_charstring cff ~gsubrs ~lsubrs gid] returns [Some((gsubrs_new, lsubrs_new, lcs))] where
+
+        {ul
+          {- [cff] is a CFF-based font,}
+          {- [gsubrs] and [lsubrs] are maps of already known global subroutines and local ones,}
+          {- [gid] is the GID of a glyph (the CharString of which one wants to get),}
+          {- [lcs] is the tokenized CharString of [gid] where subroutine calls are not resolved, and}
+          {- [gsubrs_new] and [lsubrs_new] are maps made by extending [gsubrs] and [lsubrs]
+             while decoding the CharString of [gid].}}
+
+        Here, [gsubrs] and [lsubrs] also enable decoding operations to avoid infinite loops. *)
     val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
     (** Converts a CharString into a cubic Bézier path. *)
@@ -988,6 +999,7 @@ end
 
 
 module Encode : sig
+  (** Handles values that represent errors that can happen while encoding fonts. *)
   module Error : (module type of EncodeError)
 
   type 'a ok = ('a, Error.t) result
@@ -1012,49 +1024,63 @@ module Encode : sig
       - checking that some derived data encoded in given tables are consistent with master data. *)
   val make_font_data_from_tables : ttf:bool -> table list -> string ok
 
+  (** Defines encoding operations for [head] tables. *)
   module Head : sig
     val make : Intermediate.Head.t -> table ok
   end
 
+  (** Defines encoding operations for [hhea] tables. *)
   module Hhea : sig
     val make : number_of_h_metrics:int -> Intermediate.Hhea.t -> table ok
   end
 
+  (** Defines encoding operations for [OS/2] tables. *)
   module Os2 : sig
     val make : Intermediate.Os2.t -> table ok
   end
 
+  (** Defines encoding operations for [post] tables. *)
   module Post : sig
     val make : Value.Post.t -> table ok
   end
 
+  (** Defines encoding operations for [name] tables. *)
   module Name : sig
     val make : Value.Name.t -> table ok
   end
 
+  (** Defines encoding operations for [hmtx] tables. *)
   module Hmtx : sig
     val make : (Value.design_units * Value.design_units) list -> table ok
   end
 
+  (** Defines encoding operations for [cmap] tables. *)
   module Cmap : sig
     val make : Value.Cmap.t -> table ok
   end
 
+  (** Defines encoding operations for tables specific to TrueType-based fonts. *)
   module Ttf : sig
+    (** Defines encoding operations for [maxp] tables of TrueType-based fonts. *)
     module Maxp : sig
       val make : Intermediate.Ttf.Maxp.t -> table ok
     end
 
+    (** Encodes a [glyf] table and produces glyph locations that will constitute a [loca] table. *)
     val make_glyf : Value.Ttf.glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
 
+    (** Encodes a [loca] table and produces a value for the [indexToLocFormat] entry of the [head] table. *)
     val make_loca : Intermediate.Ttf.glyph_location list -> (table * Intermediate.loc_format) ok
   end
 
+  (** Defines encoding operations for tables specific to CFF-based fonts. *)
   module Cff : sig
+    (** Defines encoding operations for [maxp] tables of CFF-based fonts. *)
     module Maxp : sig
       val make : Intermediate.Cff.Maxp.t -> table ok
     end
 
+    (** Encodes a [CFF] table. *)
     val make :
       Intermediate.Cff.top_dict ->
       gsubrs:(Intermediate.Cff.lexical_charstring list) ->
@@ -1069,17 +1095,23 @@ module Encode : sig
   end
 end
 
+(** Contains operations for encoding subset fonts. *)
 module Subset : sig
-  type error =
-    | NoGlyphGiven
-    | GlyphNotFound of Value.glyph_id
-    | DependentGlyphNotFound of { depending : Value.glyph_id; depended : Value.glyph_id }
-    | DecodeError   of Decode.Error.t
-    | EncodeError   of Encode.Error.t
-    | NonexplicitSubroutineNumber
-  [@@deriving show]
+  (** Handles values that represent errors that can happen while encoding subset fonts. *)
+  module Error : sig
+    type t =
+      | NoGlyphGiven
+      | GlyphNotFound               of Value.glyph_id
+      | DependentGlyphNotFound      of { depending : Value.glyph_id; depended : Value.glyph_id }
+      | DecodeError                 of Decode.Error.t
+      | EncodeError                 of Encode.Error.t
+      | NonexplicitSubroutineNumber
+    [@@deriving show]
+  end
 
-  type 'a ok = ('a, error) result
+  type 'a ok = ('a, Error.t) result
 
+  (** [make d gids] encodes a subset font of [d] that contains glyphs corresponding to [gids] only.
+      The resulting subset font consists only of mandatory tables. *)
   val make : ?omit_cmap:bool -> Decode.source -> Value.glyph_id list -> string ok
 end

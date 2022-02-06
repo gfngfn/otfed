@@ -16,7 +16,9 @@ type t =
   | UnsupportedCmapFormat     of int
   | InvalidCodePoint          of int
   | InvalidCodePointRange     of Uchar.t * Uchar.t
-      [@printer (fun ppf (uch1, uch2) -> Format.fprintf ppf "InvalidCodePointRange(%04x, %04x)" (Uchar.to_int uch1) (Uchar.to_int uch2))]
+      [@printer (fun ppf (uch1, uch2) ->
+        Format.fprintf ppf "InvalidCodePointRange(%a, %a)" pp_uchar uch1 pp_uchar uch2
+      )]
   | InvalidLocFormat          of int
   | InvalidCompositeFormat    of int
   | InvalidOffsize            of int

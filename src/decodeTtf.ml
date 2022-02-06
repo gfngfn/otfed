@@ -132,7 +132,7 @@ let d_y_coordinates flags =
   d_coordinates (fun flag -> flag.y_short_vector) (fun flag -> flag.this_y_is_same) flags
 
 
-let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) =
+let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list) (xCoordinates : int list) (yCoordinates : int list) : (Ttf.contour list) decoder =
   let open DecodeOperation in
   let rec aux pointacc contouracc endPtsOfContours = function
     | (i, [], [], []) ->
@@ -152,7 +152,12 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
         xCoordinate :: xCoordinates,
         yCoordinate :: yCoordinates
       ) ->
-        let point = (flag.Intermediate.Ttf.on_curve, xCoordinate, yCoordinate) in
+        let point =
+          Ttf.{
+            on_curve = flag.Intermediate.Ttf.on_curve;
+            point    = (xCoordinate, yCoordinate);
+          }
+        in
         let (is_final, endPtsOfContours) =
           match endPtsOfContours with
           | []      -> (false, [])
@@ -292,19 +297,28 @@ let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : Ttf.gl
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 
-let path_of_ttf_contour (contour : Ttf.contour) : quadratic_path ok =
+let path_of_contour (contour : Ttf.contour) : quadratic_path ok =
   let open ResultMonad in
   begin
     match contour with
-    | (_, x0, y0) :: tail -> return ((x0, y0), tail)
-    | []                  -> err Error.InvalidTtfContour
+    | []           -> err Error.InvalidTtfContour
+    | elem :: tail -> return (elem.Ttf.point, tail)
   end >>= fun (pt0, tail) ->
   let rec aux acc = function
-    | []                                                  -> Alist.to_list acc
-    | (true, x, y) :: tail                                -> aux (Alist.extend acc @@ QuadraticLineTo(x, y)) tail
-    | (false, x1, y1) :: (true, x, y) :: tail             -> aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), (x, y))) tail
-    | (false, x1, y1) :: (((false, x2, y2) :: _) as tail) -> aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), ((x1 + x2) / 2, (y1 + y2) / 2))) tail
-    | (false, x1, y1) :: []                               -> Alist.to_list (Alist.extend acc @@ QuadraticCurveTo((x1, y1), pt0))
+    | [] ->
+        Alist.to_list acc
+
+    | Ttf.{ on_curve = true; point = (x, y) } :: tail ->
+        aux (Alist.extend acc @@ QuadraticLineTo(x, y)) tail
+
+    | Ttf.{ on_curve = false; point = (x1, y1) } :: Ttf.{ on_curve = true; point = (x, y) } :: tail ->
+        aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), (x, y))) tail
+
+    | Ttf.{ on_curve = false; point = (x1, y1) } :: ((Ttf.{ on_curve = false; point = (x2, y2) } :: _) as tail) ->
+        aux (Alist.extend acc @@ QuadraticCurveTo((x1, y1), ((x1 + x2) / 2, (y1 + y2) / 2))) tail
+
+    | Ttf.{ on_curve = false; point = (x1, y1) } :: [] ->
+        Alist.to_list (Alist.extend acc @@ QuadraticCurveTo((x1, y1), pt0))
   in
   let elems = aux Alist.empty tail in
   return @@ (pt0, elems)

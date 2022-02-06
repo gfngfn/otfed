@@ -42,7 +42,8 @@ let decompose_contours (contours : Ttf.contour list) : flag list * relative list
     }
   in
   let (acc, _, _) =
-    coordinates |> List.fold_left (fun (acc, x_coord_prev, y_coord_prev) (on_curve, x_coord, y_coord) ->
+    coordinates |> List.fold_left (fun (acc, x_coord_prev, y_coord_prev) elem ->
+      let Ttf.{ on_curve; point = (x_coord, y_coord) } = elem in
       let (x_short_vector, this_x_is_same, relative_xs) =
         let x_rel = x_coord - x_coord_prev in
         if x_rel = 0 then

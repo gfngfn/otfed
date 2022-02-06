@@ -586,7 +586,13 @@ module Name = struct
 end
 
 module Ttf = struct
-  type contour = (bool * x_coordinate * y_coordinate) list
+  type contour_element = {
+    on_curve : bool;
+    point    : point;
+  }
+  [@@deriving show { with_path = false }]
+
+  type contour = contour_element list
   [@@deriving show { with_path = false }]
 
   type composition =

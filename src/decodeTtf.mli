@@ -11,4 +11,4 @@ val d_glyf : Ttf.glyph_info decoder
 
 val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Ttf.glyph_info ok
 
-val path_of_ttf_contour : Ttf.contour -> quadratic_path ok
+val path_of_contour : Ttf.contour -> quadratic_path ok

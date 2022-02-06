@@ -133,7 +133,7 @@ let frame_bbox ~units_per_em ~bbox =
 
 let make_ttf_simple ~shift (ttfcontours : V.Ttf.simple_glyph_description) (units_per_em : int) =
   let open ResultMonad in
-  ttfcontours |> mapM D.Ttf.path_of_ttf_contour >>= fun qpaths ->
+  ttfcontours |> mapM D.Ttf.path_of_contour >>= fun qpaths ->
 
   let (_, pathacc, circacc) =
     qpaths |> List.fold_left (fun (i, pathacc, circacc) qpath ->

@@ -254,7 +254,13 @@ module Value : sig
   module Name : (module type of Value.Name)
 
   module Ttf : sig
-    type contour = (bool * x_coordinate * y_coordinate) list
+    type contour_element = {
+      on_curve : bool;
+      point    : point;
+    }
+    [@@deriving show]
+
+    type contour = contour_element list
     [@@deriving show]
 
     type composition =
@@ -820,7 +826,7 @@ module Decode : sig
         returns the bounding box and the outline of the glyph. *)
     val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.Ttf.glyph_info ok
 
-    val path_of_ttf_contour : Value.Ttf.contour -> Value.quadratic_path ok
+    val path_of_contour : Value.Ttf.contour -> Value.quadratic_path ok
   end
 
   (** The module for decoding CFF-based OpenType fonts. *)

@@ -47,9 +47,11 @@ let data =
 
 
 let expected =
+  let convert (on_curve, x_coord, y_coord) = V.Ttf.{ on_curve; point = (x_coord, y_coord) } in
   let description =
     V.Ttf.SimpleGlyph[
-      [ (true, 432, 911);
+      List.map convert [
+        (true, 432, 911);
         (true, 630, 911);
         (true, 706, 1005);
         (false, 811, 916);
@@ -82,12 +84,14 @@ let expected =
         (true, 391, 936);
         (false, 408, 929);
       ];
-      [ (true, 414, 860);
+      List.map convert [
+        (true, 414, 860);
         (true, 414, 182);
         (true, 647, 182);
         (true, 647, 860);
       ];
-      [ (true, 995, 940);
+      List.map convert [
+        (true, 995, 940);
         (false, 910, 798);
         (true, 819, 684);
         (true, 776, 717);
@@ -138,17 +142,20 @@ let expected =
         (true, 1110, -147);
         (true, 995, -147);
       ];
-      [ (true, 1110, 1165);
+      List.map convert [
+        (true, 1110, 1165);
         (true, 1110, 842);
         (true, 1396, 842);
         (true, 1396, 1165);
       ];
-      [ (true, 1110, 791);
+      List.map convert [
+        (true, 1110, 791);
         (true, 1110, 449);
         (true, 1396, 449);
         (true, 1396, 791);
       ];
-      [ (true, 1110, 397);
+      List.map convert [
+        (true, 1110, 397);
         (true, 1110, 33);
         (true, 1396, 33);
         (true, 1396, 397);

@@ -690,35 +690,71 @@ module Decode : sig
     (** The type for representing [GSUB] tables. *)
     type t
 
+    (** Gets the [GSUB] table in a font if it exists. *)
     val get : source -> (t option) ok
 
+    (** The type for data associated with a Script. *)
     type script
 
+    (** The type for data associated with a LangSys. *)
     type langsys
 
+    (** The type for data associated with a Feature. *)
     type feature
 
+    (** Gets the Script tag (e.g. [DFLT], [cyrl], [hani], [latn], or [kana]). *)
     val get_script_tag : script -> string
 
+    (** Gets the LangSys tag (e.g. [DFLT], [DEU], [FRA], or [TRK]). *)
     val get_langsys_tag : langsys -> string
 
+    (** Gets the [GSUB] Feature tag (e.g. [aalt], [liga], or [onum]). *)
     val get_feature_tag : feature -> string
 
+    (** Returns all the Scripts in a [GSUB] table. *)
     val scripts : t -> (script set) ok
 
+    (** Returns the pair of the default LangSys and the list of all LangSyses supported by a given Script. *)
     val langsyses : script -> (langsys option * langsys set) ok
 
+    (** Returns the pair of the default Feature and the list of all Features supported by a given LangSys. *)
     val features : langsys -> (feature option * feature set) ok
 
+    (** The type for functions that handle entries of
+        Single substitution (Lookup Type 1) subtables (OpenType p.251).
+        See [fold_subtables]. *)
     type 'a folding_single =
       'a -> Value.glyph_id * Value.glyph_id -> 'a
 
+    (** The type for functions that handle entries of
+        Alternate substitution (Lookup Type 3) subtables (OpenType p.253).
+        See [fold_subtables]. *)
     type 'a folding_alt =
       'a -> Value.glyph_id * Value.glyph_id list -> 'a
 
+    (** The type for functions that handle entries of
+        Ligature substitution (Lookup Type 4) subtables (OpenType p.254).
+        See [fold_subtables]. *)
     type 'a folding_lig =
       'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
 
+    (** Folds all the subtables associated with a [GPOS] Feature.
+        Unspecified optional arguments default to a function that remains accumulators unchanged.
+        The function [fold_subtables] supports the following types:
+
+        {ul
+          {- Lookup Type 1: Single substitution (OpenType p.251),}
+          {- Lookup Type 2: Alternate substitution (OpenType p.253), and}
+          {- Lookup Type 4: Ligature substitution (OpenType p.254).}}
+
+        Subtables of the following types are ignored:
+
+        {ul
+          {- Lookup Type 3: Multiple substitution (OpenType p.252),}
+          {- Lookup Type 5: Contextual substitution (OpenType p.255),}
+          {- Lookup Type 6: Chaining contextual substitution (OpenType p.261),}
+          {- Lookup Type 7: Extension substitution (OpenType p.266), and}
+          {- Lookup Type 8: Reverse chaining contextual single substitution (OpenType p.267).}} *)
     val fold_subtables :
       ?single:('a folding_single) ->
       ?alt:('a folding_alt) ->
@@ -731,24 +767,34 @@ module Decode : sig
     (** The type for representing [GPOS] tables. *)
     type t
 
+    (** Gets the [GPOS] table in a font if it exists. *)
     val get : source -> (t option) ok
 
+    (** The type for data associated with a Script. *)
     type script
 
+    (** The type for data associated with a LangSys. *)
     type langsys
 
+    (** The type for data associated with a Feature. *)
     type feature
 
+    (** Gets the Script tag (e.g. [DFLT], [cyrl], [hani], [latn], or [kana]). *)
     val get_script_tag : script -> string
 
+    (** Gets the LangSys tag (e.g. [DFLT], [DEU], [FRA], or [TRK]). *)
     val get_langsys_tag : langsys -> string
 
+    (** Gets the [GPOS] Feature tag (e.g. [kern], [mark], or [mkmk]). *)
     val get_feature_tag : feature -> string
 
+    (** Returns all the Scripts in a [GPOS] table. *)
     val scripts : t -> (script set) ok
 
+    (** Returns the pair of the default LangSys and the list of all LangSyses supported by a given Script. *)
     val langsyses : script -> (langsys option * langsys set) ok
 
+    (** Returns the pair of the default Feature and the list of all Features supported by a given LangSys. *)
     val features : langsys -> (feature option * feature set) ok
 
     type class_definition =
@@ -756,28 +802,67 @@ module Decode : sig
       | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
     [@@deriving show]
 
+    (** The type for functions that handle
+        Single adjustment positioning (Lookup Type 1) subtables of Format 1 (OpenType p.192).
+        See [fold_subtables]. *)
     type 'a folding_single1 =
       'a -> Value.glyph_id list -> Value.value_record -> 'a
 
+    (** The type for functions that handle entries of
+        Single adjustment positioning (Lookup Type 1) subtables of Format 2 (OpenType p.193).
+        See [fold_subtables]. *)
     type 'a folding_single2 =
       'a -> Value.glyph_id * Value.value_record -> 'a
 
+    (** The type for functions that handle entries of
+        Pair adjustment positioning (Lookup Type 2) subtables of Format 1 (OpenType p.194).
+        See [fold_subtables]. *)
     type 'a folding_pair1 =
       'a -> Value.glyph_id * (Value.glyph_id * Value.value_record * Value.value_record) list -> 'a
 
+    (** The type for functions that handle
+        Pair adjustment positioning (Lookup Type 2) subtables of Format 2 (OpenType p.195).
+        See [fold_subtables]. *)
     type 'a folding_pair2 =
       class_definition list -> class_definition list -> 'a ->
         (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
+    (** The type for functions that handle
+        MarkToBase attachment positioning (Lookup Type 4) subtables of Format 1 (OpenType p.198).
+        See [fold_subtables]. *)
     type 'a folding_markbase1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 
+    (** The type for functions that handle
+        MarkToLigature attachment positioning (Lookup Type 5) subtables of Format 1 (OpenType p.199).
+        See [fold_subtables]. *)
     type 'a folding_marklig1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
 
+    (** The type for functions that handle
+        MarkToMark attachment positioning (Lookup Type 6) subtables of Format 1 (OpenType p.201).
+        See [fold_subtables]. *)
     type 'a folding_markmark1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
 
+    (** Folds all the subtables associated with a [GPOS] Feature.
+        Unspecified optional arguments default to a function that remains accumulators unchanged.
+        The function [fold_subtables] supports the following types:
+
+        {ul
+          {- Lookup Type 1: Single adjustment positioning (OpenType p.192),}
+          {- Lookup Type 2: Pair adjustment positioning (OpenType p.194),}
+          {- Lookup Type 4: MarkToBase attachment positioning (OpenType p.198),}
+          {- Lookup Type 5: MarkToLigature attachment positioning (OpenType p.199),}
+          {- Lookup Type 6: MarkToMark attachment positioning (OpenType p.201), and}
+          {- Lookup Type 9: Extension positioning (OpenType p.213).}}
+
+        Subtables of the following types are ignored:
+
+        {ul
+          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
+          {- Lookup Type 7: Contextual positioning (OpenType p.203), and}
+          {- Lookup Type 8: Chaining contextual positioning (OpenType p.209).}} *)
     val fold_subtables :
       ?single1:('a folding_single1) ->
       ?single2:('a folding_single2) ->
@@ -851,6 +936,8 @@ module Decode : sig
              and [charstring] is the CharString in which subroutine calls have been resolved.}} *)
     val charstring : cff_source -> Value.glyph_id -> ((Value.design_units option * Intermediate.Cff.charstring) option) ok
 
+    (** Returns which FDIndex a given glyph belongs to if the font is a CIDFont, or returns [None] otherwise.
+        This function is mainly for experimental use. *)
     val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
 
     (** Handles subroutine INDEXes that contain low-level CharString representations. *)

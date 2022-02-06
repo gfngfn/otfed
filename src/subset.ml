@@ -3,30 +3,33 @@ open Basic
 open Value
 
 
-type error =
-  | NoGlyphGiven
-  | GlyphNotFound of glyph_id
-  | DependentGlyphNotFound of { depending : glyph_id; depended : glyph_id }
-  | DecodeError   of DecodeError.t
-  | EncodeError   of EncodeError.t
-  | NonexplicitSubroutineNumber
-[@@deriving show { with_path = false }]
-
-type 'a ok = ('a, error) result
-
-
-let inj_dec d = Result.map_error (fun e -> DecodeError(e)) d
-let inj_enc e = Result.map_error (fun e -> EncodeError(e)) e
+module Error = struct
+  type t =
+    | NoGlyphGiven
+    | GlyphNotFound of glyph_id
+    | DependentGlyphNotFound of { depending : glyph_id; depended : glyph_id }
+    | DecodeError   of DecodeError.t
+    | EncodeError   of EncodeError.t
+    | NonexplicitSubroutineNumber
+  [@@deriving show { with_path = false }]
+end
 
 
-let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
+type 'a ok = ('a, Error.t) result
+
+
+let inj_dec d = Result.map_error (fun e -> Error.DecodeError(e)) d
+let inj_enc e = Result.map_error (fun e -> Error.EncodeError(e)) e
+
+
+let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : Ttf.glyph_info ok =
   let open ResultMonad in
   inj_dec @@ Decode.Ttf.loca ttf gid >>= function
-  | None      -> err @@ GlyphNotFound(gid)
+  | None      -> err @@ Error.GlyphNotFound(gid)
   | Some(loc) -> inj_dec @@ Decode.Ttf.glyf ttf loc
 
 
-type glyph_accumulator = (glyph_id * ttf_glyph_info) Alist.t * bounding_box
+type glyph_accumulator = (glyph_id * Ttf.glyph_info) Alist.t * bounding_box
 
 
 let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
@@ -35,11 +38,11 @@ let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumul
   return (Alist.extend ggs (gid, g), unite_bounding_boxes bbox_all g.bounding_box)
 
 
-let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * ttf_glyph_info) list * bounding_box) ok =
+let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * Ttf.glyph_info) list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
-      err NoGlyphGiven
+      err Error.NoGlyphGiven
 
   | gid_first :: gids_tail ->
       get_ttf_glyph ttf gid_first >>= fun g_first ->
@@ -51,7 +54,7 @@ let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id
 module OldToNew = Map.Make(Int)
 
 
-let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
+let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info) list) =
   let open ResultMonad in
   let (_, old_to_new) =
     ggs |> List.fold_left (fun (gid_new, old_to_new) (gid_old, _) ->
@@ -60,21 +63,21 @@ let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
   in
   ggs |> mapM (fun gg_old ->
     let (gid_old, g_old) = gg_old in
-    let { bounding_box = bbox; description = descr_old } = g_old in
+    let Ttf.{ bounding_box = bbox; description = descr_old } = g_old in
     match descr_old with
-    | TtfSimpleGlyph(_) ->
+    | Ttf.SimpleGlyph(_) ->
         return gg_old
 
-    | TtfCompositeGlyph(composite_elems_old) ->
+    | Ttf.CompositeGlyph(composite_elems_old) ->
         composite_elems_old |> mapM (fun (gid_elem_old, composition, linear_opt) ->
           match old_to_new |> OldToNew.find_opt gid_elem_old with
           | None ->
-              err @@ DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
+              err @@ Error.DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
 
           | Some(gid_elem_new) ->
               return (gid_elem_new, composition, linear_opt)
         ) >>= fun descr_new ->
-        return (gid_old, { bounding_box = bbox; description = TtfCompositeGlyph(descr_new) })
+        return (gid_old, Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(descr_new) })
   )
 
 
@@ -104,11 +107,11 @@ let update_derived ~current:derived ~new_one:derived_new =
   }
 
 
-let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
+let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * Ttf.glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
-      err @@ GlyphNotFound(gid)
+      err @@ Error.GlyphNotFound(gid)
 
   | Some((aw, lsb) as entry) ->
       let derived =
@@ -126,7 +129,7 @@ let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) 
       return (derived, entry, aw)
 
 
-let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) : hmtx_accumulator ok =
+let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * Ttf.glyph_info) : hmtx_accumulator ok =
   let open ResultMonad in
   let derived = acc.current_hhea_derived in
   get_ttf_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
@@ -139,12 +142,12 @@ let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyp
       }
 
 
-let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
+let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * Ttf.glyph_info) list) : hmtx_result ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with
   | [] ->
-      err NoGlyphGiven
+      err Error.NoGlyphGiven
 
   | gg_first :: ggs_tail ->
       get_ttf_hmtx ihmtx gg_first >>= fun (derived_first, entry_first, aw) ->
@@ -177,12 +180,12 @@ let get_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) (gid : glyph_
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
-      err @@ GlyphNotFound(gid)
+      err @@ Error.GlyphNotFound(gid)
 
   | Some((aw, lsb) as entry) ->
       inj_dec @@ Decode.Cff.charstring cff gid >>= function
       | None ->
-          err @@ GlyphNotFound(gid)
+          err @@ Error.GlyphNotFound(gid)
 
       | Some(_, charstring) ->
           inj_dec @@ Decode.Cff.path_of_charstring charstring >>= fun cpaths ->
@@ -228,7 +231,7 @@ let make_cff_hmtx (cff : Decode.cff_source) (gids : glyph_id list) : (hmtx_resul
   inj_dec @@ Decode.Hmtx.get (Cff(cff)) >>= fun ihmtx ->
   match gids with
   | [] ->
-      err NoGlyphGiven
+      err Error.NoGlyphGiven
 
   | gid_first :: gids_tail ->
       get_cff_hmtx cff ihmtx gid_first >>= fun (derived_first, entry_first, aw, bbox) ->
@@ -453,7 +456,7 @@ module Old = struct
 
   type t =
     | Global of int
-    | Local  of Decode.fdindex option * int
+    | Local  of Intermediate.Cff.fdindex option * int
 
 
   let compare old1 old2 =
@@ -500,7 +503,7 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
     | _ :: OpCallGSubr :: _ ->
-        err @@ NonexplicitSubroutineNumber
+        err @@ Error.NonexplicitSubroutineNumber
 
     | ArgumentInteger(i_old) :: OpCallSubr :: tokens ->
         let i_new_biased =
@@ -511,7 +514,7 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
     | _ :: OpCallSubr :: _ ->
-        err @@ NonexplicitSubroutineNumber
+        err @@ Error.NonexplicitSubroutineNumber
 
     | token :: tokens ->
         aux (Alist.extend token_new_acc token) tokens
@@ -536,7 +539,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
   begin
     match gids with
     | [] ->
-        err @@ NoGlyphGiven
+        err @@ Error.NoGlyphGiven
 
     | gid :: _ ->
         begin
@@ -545,7 +548,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
           | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
         end
   end >>= fun lsubrs_info ->
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Decode.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Intermediate.Cff.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
       get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->
@@ -558,7 +561,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
                 begin
                   inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
                   | None ->
-                      err @@ GlyphNotFound(gid)
+                      err @@ Error.GlyphNotFound(gid)
 
                   | Some(gsubrs, lsubrs, lcs) ->
                       return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
@@ -579,7 +582,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
                 in
                 inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
                 | None ->
-                    err @@ GlyphNotFound(gid)
+                    err @@ Error.GlyphNotFound(gid)
 
                 | Some(gsubrs, lsubrs, lcs) ->
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in

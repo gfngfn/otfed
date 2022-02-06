@@ -1,7 +1,7 @@
 
 include module type of Basic
 
-(** Handles master data for OpenType fonts. *)
+(** Handles master data (i.e. data that cannot be derivable from other data) for OpenType fonts. *)
 module Value : sig
 
   (** Handles 4cc tags. *)
@@ -31,7 +31,12 @@ module Value : sig
 
   type timestamp = wint
 
-  type ttf_contour = (bool * x_coordinate * y_coordinate) list
+  type bounding_box = {
+    x_min : x_coordinate;
+    y_min : y_coordinate;
+    x_max : x_coordinate;
+    y_max : y_coordinate;
+  }
   [@@deriving show]
 
   type linear_transform = {
@@ -42,35 +47,7 @@ module Value : sig
   }
   [@@deriving show]
 
-  type composition =
-    | Vector   of x_coordinate * y_coordinate
-    | Matching of int * int
-  [@@deriving show]
-
-  type ttf_simple_glyph_description = ttf_contour list
-  [@@deriving show]
-
-  type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-  [@@deriving show]
-
-  type ttf_glyph_description =
-    | TtfSimpleGlyph    of ttf_simple_glyph_description
-    | TtfCompositeGlyph of ttf_composite_glyph_description
-  [@@deriving show]
-
-  type bounding_box = {
-    x_min : x_coordinate;
-    y_min : y_coordinate;
-    x_max : x_coordinate;
-    y_max : y_coordinate;
-  }
-  [@@deriving show]
-
-  type ttf_glyph_info = {
-    bounding_box : bounding_box;
-    description  : ttf_glyph_description;
-  }
-
+  (** See [cubic_path]. *)
   type cubic_path_element =
     | CubicLineTo  of point
     | CubicCurveTo of point * point * point
@@ -98,10 +75,12 @@ module Value : sig
       it does owing to the rounding error for design units. *)
   val cubic_path_of_quadratic_path : quadratic_path -> cubic_path
 
-  (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box that includes both [bbox1] and [bbox2]. *)
+  (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box
+      that includes both [bbox1] and [bbox2]. *)
   val unite_bounding_boxes : bounding_box -> bounding_box -> bounding_box
 
-  (** [bounding_box_by_points pt1 pt2] returns the minimum bounding box that contains both [pt1] and [pt2]. *)
+  (** [bounding_box_by_points pt1 pt2] returns the minimum bounding box
+      that contains both [pt1] and [pt2]. *)
   val bounding_box_by_points : point -> point -> bounding_box
 
   (** Returns the bounding box of the given path. *)
@@ -158,6 +137,7 @@ module Value : sig
 
   module Cmap : (module type of Value.Cmap)
 
+  (** Defines types for master data in [head] tables. *)
   module Head : sig
     type mac_style = {
       bold      : bool;
@@ -182,6 +162,7 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types for master data in [hhea] tables. *)
   module Hhea : sig
     type t = {
       ascender         : int;
@@ -194,21 +175,55 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types for master data in [OS/2] tables. *)
   module Os2 : sig
+    type weight_class =
+      | WeightThin
+      | WeightExtraLight
+      | WeightLight
+      | WeightNormal
+      | WeightMedium
+      | WeightSemiBold
+      | WeightBold
+      | WeightExtraBold
+      | WeightBlack
+    [@@deriving show]
+
+    type width_class =
+      | WidthUltraCondensed
+      | WidthExtraCondensed
+      | WidthCondensed
+      | WidthSemiCondensed
+      | WidthMedium
+      | WidthSemiExpanded
+      | WidthExpanded
+      | WidthExtraExpanded
+      | WidthUltraExpanded
+    [@@deriving show]
+
+    type fs_type = {
+      restricted_license_embedding : bool;
+      preview_and_print_embedding  : bool;
+      editable_embedding           : bool;
+      no_subsetting                : bool;
+      bitmap_embedding_only        : bool;
+    }
+    [@@deriving show]
+
     type t = {
-      us_weight_class             : int;
-      us_width_class              : int;
-      fs_type                     : int;
-      y_subscript_x_size          : int;
-      y_subscript_y_size          : int;
-      y_subscript_x_offset        : int;
-      y_subscript_y_offset        : int;
-      y_superscript_x_size        : int;
-      y_superscript_y_size        : int;
-      y_superscript_x_offset      : int;
-      y_superscript_y_offset      : int;
-      y_strikeout_size            : int;
-      y_strikeout_position        : int;
+      us_weight_class             : weight_class;
+      us_width_class              : width_class;
+      fs_type                     : fs_type;
+      y_subscript_x_size          : design_units;
+      y_subscript_y_size          : design_units;
+      y_subscript_x_offset        : design_units;
+      y_subscript_y_offset        : design_units;
+      y_superscript_x_size        : design_units;
+      y_superscript_y_size        : design_units;
+      y_superscript_x_offset      : design_units;
+      y_superscript_y_offset      : design_units;
+      y_strikeout_size            : design_units;
+      y_strikeout_position        : design_units;
       s_family_class              : int;
       panose                      : string;  (* 10 bytes. *)
       ul_unicode_range1           : wint;
@@ -216,41 +231,81 @@ module Value : sig
       ul_unicode_range3           : wint;
       ul_unicode_range4           : wint;
       ach_vend_id                 : string;  (* 4 bytes. *)
-      fs_selection                : int;
-      s_typo_ascender             : int;
-      s_type_descender            : int;
-      s_typo_linegap              : int;
-      us_win_ascent               : int;
-      us_win_descent              : int;
+      fs_selection                : int; (* TODO: define a record type for representing this class *)
+      s_typo_ascender             : design_units;
+      s_typo_descender            : design_units;
+      s_typo_linegap              : design_units;
+      us_win_ascent               : design_units;
+      us_win_descent              : design_units;
       ul_code_page_range_1        : wint option;
       ul_code_page_range_2        : wint option;
-      s_x_height                  : int option;
-      s_cap_height                : int option;
-      us_default_char             : int option;
-      us_break_char               : int option;
+      s_x_height                  : design_units option;
+      s_cap_height                : design_units option;
+      us_default_char             : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
+      us_break_char               : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }
     [@@deriving show]
   end
 
+  (** Defines types for master data in [post] tables. *)
   module Post : (module type of Value.Post)
 
+  (** Defines types for master data in [name] tables. *)
   module Name : (module type of Value.Name)
 
+  module Ttf : sig
+    type contour_element = {
+      on_curve : bool;
+      point    : point;
+    }
+    [@@deriving show]
+
+    type contour = contour_element list
+    [@@deriving show]
+
+    type composition =
+      | Vector   of x_coordinate * y_coordinate
+      | Matching of int * int
+    [@@deriving show]
+
+    type simple_glyph_description = contour list
+    [@@deriving show]
+
+    type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+    [@@deriving show]
+
+    type glyph_description =
+      | SimpleGlyph    of simple_glyph_description
+      | CompositeGlyph of composite_glyph_description
+    [@@deriving show]
+
+    type glyph_info = {
+      bounding_box : bounding_box;
+      description  : glyph_description;
+    }
+    [@@deriving show]
+  end
+
+  (** Defines types for master data in [MATH] tables. *)
   module Math : (module type of Value.Math)
 end
 
-(** Handles in-memory representation of OpenType tables that contain metadata derived from master data. *)
+(** Handles in-memory representation of OpenType tables
+    that contain metadata derived from master data as well as master data. *)
 module Intermediate : sig
+
+  (** The type for the [indexToLocFormat] entry in [head] tables. *)
   type loc_format =
     | ShortLocFormat
     | LongLocFormat
   [@@deriving show]
 
+  (** Defines types for representing whole information in [head] tables. *)
   module Head : sig
-    (** The type for data contained in a single [head] table that are derivable
-        from glyph descriptions or master data in other tables in the font the [head] table belongs to. *)
+    (** The type for data contained in a [head] table that are derivable from
+        glyph descriptions or master data in other tables. *)
     type derived = {
       x_min               : int;
       y_min               : int;
@@ -268,6 +323,7 @@ module Intermediate : sig
     [@@deriving show]
   end
 
+  (** Defines types for representing whole information in [hhea] tables. *)
   module Hhea : sig
     (** The type for data contained in a single [hhea] table that are derivable
         from glyph descriptions or master data in other tables in the font the [hhea] table belongs to. *)
@@ -287,11 +343,12 @@ module Intermediate : sig
     [@@deriving show]
   end
 
+  (** Defines types for representing whole information in [OS/2] tables. *)
   module Os2 : sig
     (** The type for data contained in a single [OS/2] table that are derivable
         from glyph descriptions or master data in other tables in the font the [OS/2] table belongs to. *)
     type derived = {
-      x_avg_char_width    : int;
+      x_avg_char_width    : Value.design_units;
       us_first_char_index : Uchar.t;
       us_last_char_index  : Uchar.t;
       us_max_context      : int option;
@@ -340,26 +397,6 @@ module Intermediate : sig
       [@@deriving show]
     end
 
-    type offsize = OffSize1 | OffSize2 | OffSize3 | OffSize4
-
-    type key =
-      | ShortKey of int
-      | LongKey  of int
-    [@@deriving show]
-
-    type value =
-      | Integer of int
-      | Real    of float
-
-    type dict_element =
-      | Value of value
-      | Key   of key
-
-    module DictMap : Map.S
-
-    (** The type for DICT data (CFF p.9, Section 4) *)
-    type dict = (value list) DictMap.t
-
     (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
     type stem_argument = string
 
@@ -407,7 +444,7 @@ module Intermediate : sig
     type lexical_charstring = charstring_token list
     [@@deriving show]
 
-    (** Represents a relative vector. *)
+    (** Represents a relative vector used in CharString. *)
     type vector = Value.design_units * Value.design_units
     [@@deriving show { with_path = false }]
 
@@ -520,7 +557,7 @@ module Intermediate : sig
     }
     [@@deriving show]
 
-    (** The type for Top DICT (CFF p.16, Table 10). *)
+    (** The type for Top DICTs (CFF p.16, Table 10). *)
     type top_dict = {
       font_name           : string;
       version             : string option;
@@ -534,16 +571,28 @@ module Intermediate : sig
       underline_position  : int;
       underline_thickness : int;
       paint_type          : int;
-      font_bbox           : int * int * int * int;
+      font_bbox           : Value.bounding_box;
       stroke_width        : int;
       cid_info            : cid_info option;
       number_of_glyphs    : int;
     }
     [@@deriving show]
+
+    type fdindex = int
+    [@@deriving show]
+
+    (** Exported for tests. *)
+    type charstring_data = CharStringData of int * int
+    [@@deriving show]
+
+    (** Exported for tests. *)
+    type subroutine_index = charstring_data array
   end
 end
 
+(** Contains types and operations for decoding fonts. *)
 module Decode : sig
+  (** Handles values that represent errors that can happen while decoding fonts. *)
   module Error : (module type of DecodeError)
 
   type 'a ok = ('a, Error.t) result
@@ -554,10 +603,12 @@ module Decode : sig
   (** The type for sources equipped with CFF-based outlines. *)
   type cff_source
 
+  (** Represents a single font. *)
   type source =
     | Ttf of ttf_source
     | Cff of cff_source
 
+  (** Represents a single font or a font collection (i.e. so-called a TrueType collection). *)
   type single_or_collection =
     | Single     of source
     | Collection of source list
@@ -567,13 +618,6 @@ module Decode : sig
 
   (** Returns the list of tags for the tables contained in the source. *)
   val tables : source -> Value.Tag.t set
-
-  (** Used in [Intermediate.Cmap.fold_subtable]. *)
-  type cmap_segment =
-    | Incremental of Uchar.t * Uchar.t * Value.glyph_id
-    | Constant    of Uchar.t * Uchar.t * Value.glyph_id
-
-  type fdindex = int
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
@@ -593,44 +637,66 @@ module Decode : sig
     (** The type for representing [cmap] tables. *)
     type t
 
+    (** Gets the [cmap] table from a font. *)
     val get : source -> t ok
 
+    (** The type for representing Unicode-aware [cmap] subtables. *)
     type subtable
 
+    (** Gets all the Unicode-aware subtables in the given [cmap] table. *)
     val get_subtables : t -> (subtable set) ok
 
     val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
 
     val get_format_number : subtable -> int
 
-    val fold_subtable : subtable -> ('a -> cmap_segment -> 'a) -> 'a -> 'a ok
+    (** Represents an entry in [cmap] subtables, and is used in [fold_subtable].
+        [Incremental(uch1, uch2, gid)] maps [uch1] to [gid], [uch1 + 1] to [gid + 1], …, and
+        [uch2] to [gid + (uch2 - uch1 + 1)].
+        On the other hand, [Constant(uch1, uch2, gid)] maps
+        all the code points between [uch1] and [uch2] (including [uch1] and [uch2] themselves) to [gid]. *)
+    type segment =
+      | Incremental of Uchar.t * Uchar.t * Value.glyph_id
+      | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
+    (** Folds a [cmap] subtable in ascending order. *)
+    val fold_subtable : subtable -> ('a -> segment -> 'a) -> 'a -> 'a ok
+
+    (** Converts a [cmap] subtable to an in-memory mapping. *)
     val unmarshal_subtable : subtable -> Value.Cmap.subtable ok
   end
 
   (** Handles intermediate representation of [hmtx] tables for decoding.
       Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
-      they are likely to be efficient in space. *)
+      they are likely to be efficient in time and space. *)
   module Hmtx : sig
     (** The type for representing [hmtx] tables. *)
     type t
 
+    (** Gets the [hmtx] table of a font. *)
     val get : source -> t ok
 
-    val access : t -> Value.glyph_id -> ((int * int) option) ok
+    (** [access hmtx gid] returns [Some((aw, lsb))] (if [gid] is present in the font)
+        where [aw] is the advance width of [gid], and [lsb] is the left side bearing of [gid]. *)
+    val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
   end
 
-  (** Handles intermediate representation of [OS/2] tables for decoding. *)
+  (** Defines decoding operations for [OS/2] tables. *)
   module Os2 : sig
+    (** Gets the [OS/2] table of a font. *)
     val get : source -> Intermediate.Os2.t ok
   end
 
+  (** Defines decoding operations for [post] tables. *)
   module Post : sig
+    (** Gets the [post] table of a font. *)
     val get : source -> Value.Post.t ok
   end
 
+  (** Defines decoding operations for [name] tables. *)
   module Name : sig
+    (** Gets the [name] table of a font. *)
     val get : source -> Value.Name.t ok
   end
 
@@ -639,35 +705,71 @@ module Decode : sig
     (** The type for representing [GSUB] tables. *)
     type t
 
+    (** Gets the [GSUB] table of a font if it exists. *)
     val get : source -> (t option) ok
 
+    (** The type for data associated with a Script. *)
     type script
 
+    (** The type for data associated with a LangSys. *)
     type langsys
 
+    (** The type for data associated with a Feature. *)
     type feature
 
+    (** Gets the Script tag (e.g. [DFLT], [cyrl], [hani], [latn], or [kana]). *)
     val get_script_tag : script -> string
 
+    (** Gets the LangSys tag (e.g. [DFLT], [DEU], [FRA], or [TRK]). *)
     val get_langsys_tag : langsys -> string
 
+    (** Gets the [GSUB] Feature tag (e.g. [aalt], [liga], or [onum]). *)
     val get_feature_tag : feature -> string
 
+    (** Returns all the Scripts in a [GSUB] table. *)
     val scripts : t -> (script set) ok
 
+    (** Returns the pair of the default LangSys and the list of all LangSyses supported by a given Script. *)
     val langsyses : script -> (langsys option * langsys set) ok
 
+    (** Returns the pair of the default Feature and the list of all Features supported by a given LangSys. *)
     val features : langsys -> (feature option * feature set) ok
 
+    (** The type for functions that handle entries of
+        Single substitution (Lookup Type 1) subtables (OpenType p.251).
+        See [fold_subtables]. *)
     type 'a folding_single =
       'a -> Value.glyph_id * Value.glyph_id -> 'a
 
+    (** The type for functions that handle entries of
+        Alternate substitution (Lookup Type 3) subtables (OpenType p.253).
+        See [fold_subtables]. *)
     type 'a folding_alt =
       'a -> Value.glyph_id * Value.glyph_id list -> 'a
 
+    (** The type for functions that handle entries of
+        Ligature substitution (Lookup Type 4) subtables (OpenType p.254).
+        See [fold_subtables]. *)
     type 'a folding_lig =
       'a -> Value.glyph_id * (Value.glyph_id list * Value.glyph_id) list -> 'a
 
+    (** Folds all the subtables associated with a [GPOS] Feature.
+        Unspecified optional arguments default to a function that remains accumulators unchanged.
+        The function [fold_subtables] supports the following types:
+
+        {ul
+          {- Lookup Type 1: Single substitution (OpenType p.251),}
+          {- Lookup Type 2: Alternate substitution (OpenType p.253), and}
+          {- Lookup Type 4: Ligature substitution (OpenType p.254).}}
+
+        Subtables of the following types are ignored:
+
+        {ul
+          {- Lookup Type 3: Multiple substitution (OpenType p.252),}
+          {- Lookup Type 5: Contextual substitution (OpenType p.255),}
+          {- Lookup Type 6: Chaining contextual substitution (OpenType p.261),}
+          {- Lookup Type 7: Extension substitution (OpenType p.266), and}
+          {- Lookup Type 8: Reverse chaining contextual single substitution (OpenType p.267).}} *)
     val fold_subtables :
       ?single:('a folding_single) ->
       ?alt:('a folding_alt) ->
@@ -680,24 +782,34 @@ module Decode : sig
     (** The type for representing [GPOS] tables. *)
     type t
 
+    (** Gets the [GPOS] table of a font if it exists. *)
     val get : source -> (t option) ok
 
+    (** The type for data associated with a Script. *)
     type script
 
+    (** The type for data associated with a LangSys. *)
     type langsys
 
+    (** The type for data associated with a Feature. *)
     type feature
 
+    (** Gets the Script tag (e.g. [DFLT], [cyrl], [hani], [latn], or [kana]). *)
     val get_script_tag : script -> string
 
+    (** Gets the LangSys tag (e.g. [DFLT], [DEU], [FRA], or [TRK]). *)
     val get_langsys_tag : langsys -> string
 
+    (** Gets the [GPOS] Feature tag (e.g. [kern], [mark], or [mkmk]). *)
     val get_feature_tag : feature -> string
 
+    (** Returns all the Scripts in a [GPOS] table. *)
     val scripts : t -> (script set) ok
 
+    (** Returns the pair of the default LangSys and the list of all LangSyses supported by a given Script. *)
     val langsyses : script -> (langsys option * langsys set) ok
 
+    (** Returns the pair of the default Feature and the list of all Features supported by a given LangSys. *)
     val features : langsys -> (feature option * feature set) ok
 
     type class_definition =
@@ -705,28 +817,67 @@ module Decode : sig
       | GlyphRangeToClass of Value.glyph_id * Value.glyph_id * Value.class_value
     [@@deriving show]
 
+    (** The type for functions that handle
+        Single adjustment positioning (Lookup Type 1) subtables of Format 1 (OpenType p.192).
+        See [fold_subtables]. *)
     type 'a folding_single1 =
       'a -> Value.glyph_id list -> Value.value_record -> 'a
 
+    (** The type for functions that handle entries of
+        Single adjustment positioning (Lookup Type 1) subtables of Format 2 (OpenType p.193).
+        See [fold_subtables]. *)
     type 'a folding_single2 =
       'a -> Value.glyph_id * Value.value_record -> 'a
 
+    (** The type for functions that handle entries of
+        Pair adjustment positioning (Lookup Type 2) subtables of Format 1 (OpenType p.194).
+        See [fold_subtables]. *)
     type 'a folding_pair1 =
       'a -> Value.glyph_id * (Value.glyph_id * Value.value_record * Value.value_record) list -> 'a
 
+    (** The type for functions that handle
+        Pair adjustment positioning (Lookup Type 2) subtables of Format 2 (OpenType p.195).
+        See [fold_subtables]. *)
     type 'a folding_pair2 =
       class_definition list -> class_definition list -> 'a ->
         (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
+    (** The type for functions that handle
+        MarkToBase attachment positioning (Lookup Type 4) subtables of Format 1 (OpenType p.198).
+        See [fold_subtables]. *)
     type 'a folding_markbase1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.base_record) list -> 'a
 
+    (** The type for functions that handle
+        MarkToLigature attachment positioning (Lookup Type 5) subtables of Format 1 (OpenType p.199).
+        See [fold_subtables]. *)
     type 'a folding_marklig1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.ligature_attach) list -> 'a
 
+    (** The type for functions that handle
+        MarkToMark attachment positioning (Lookup Type 6) subtables of Format 1 (OpenType p.201).
+        See [fold_subtables]. *)
     type 'a folding_markmark1 =
       int -> 'a -> (Value.glyph_id * Value.mark_record) list -> (Value.glyph_id * Value.mark2_record) list -> 'a
 
+    (** Folds all the subtables associated with a [GPOS] Feature.
+        Unspecified optional arguments default to a function that remains accumulators unchanged.
+        The function [fold_subtables] supports the following types:
+
+        {ul
+          {- Lookup Type 1: Single adjustment positioning (OpenType p.192),}
+          {- Lookup Type 2: Pair adjustment positioning (OpenType p.194),}
+          {- Lookup Type 4: MarkToBase attachment positioning (OpenType p.198),}
+          {- Lookup Type 5: MarkToLigature attachment positioning (OpenType p.199),}
+          {- Lookup Type 6: MarkToMark attachment positioning (OpenType p.201), and}
+          {- Lookup Type 9: Extension positioning (OpenType p.213).}}
+
+        Subtables of the following types are ignored:
+
+        {ul
+          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
+          {- Lookup Type 7: Contextual positioning (OpenType p.203), and}
+          {- Lookup Type 8: Chaining contextual positioning (OpenType p.209).}} *)
     val fold_subtables :
       ?single1:('a folding_single1) ->
       ?single2:('a folding_single2) ->
@@ -743,6 +894,7 @@ module Decode : sig
     (** The type for representing [kern] tables. *)
     type t
 
+    (** Gets the [kern] table of a font if it exists. *)
     val get : source -> (t option) ok
 
     type kern_info = {
@@ -757,10 +909,13 @@ module Decode : sig
 
   (** Contains decoding operations for [MATH] tables. *)
   module Math : sig
+    (** Gets the [MATH] table of a font if it exists. *)
     val get : source -> (Value.Math.t option) ok
   end
 
+  (** The module for decoding TrueType-based OpenType fonts. *)
   module Ttf : sig
+    (** The module for decoding [maxp] tables in TrueType-based fonts. *)
     module Maxp : sig
       val get : ttf_source -> Intermediate.Ttf.Maxp.t ok
     end
@@ -771,24 +926,38 @@ module Decode : sig
 
     (** [glyf ttf loc] accesses [loca] in the [glyf] table and
         returns the bounding box and the outline of the glyph. *)
-    val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.ttf_glyph_info ok
+    val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.Ttf.glyph_info ok
 
-    val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
+    val path_of_contour : Value.Ttf.contour -> Value.quadratic_path ok
   end
 
+  (** The module for decoding CFF-based OpenType fonts. *)
   module Cff : sig
+    (** The module for decoding [maxp] tables in CFF-based fonts. *)
     module Maxp : sig
       val get : cff_source -> Intermediate.Cff.Maxp.t ok
     end
 
+    (** Gets the Top DICT in the [CFF] table. *)
     val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 
+    (** [access_charset cff gid] gets the character name for [gid] stored in the Charset of [cff]. *)
     val access_charset : cff_source -> Value.glyph_id -> (string option) ok
 
-    val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok
+    (** [charstring cff gid] returns:
 
-    val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
+        {ul
+          {- [None] if [gid] is not defined in [cff];}
+          {- [Some((width_opt, charstring))] if [gid] is defined in [cff]
+             where [width_opt] is the optionally stored advance width of the glyph,
+             and [charstring] is the CharString in which subroutine calls have been resolved.}} *)
+    val charstring : cff_source -> Value.glyph_id -> ((Value.design_units option * Intermediate.Cff.charstring) option) ok
 
+    (** Returns which FDIndex a given glyph belongs to if the font is a CIDFont, or returns [None] otherwise.
+        This function is mainly for experimental use. *)
+    val fdindex : cff_source -> Value.glyph_id -> (Intermediate.Cff.fdindex option) ok
+
+    (** Handles subroutine INDEXes that contain low-level CharString representations. *)
     module LexicalSubroutineIndex : sig
       type t
       val empty : t
@@ -798,28 +967,39 @@ module Decode : sig
       val fold : (int -> Intermediate.Cff.lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
     end
 
+    (** [lexical_charstring cff ~gsubrs ~lsubrs gid] returns [Some((gsubrs_new, lsubrs_new, lcs))] where
+
+        {ul
+          {- [cff] is a CFF-based font,}
+          {- [gsubrs] and [lsubrs] are maps of already known global subroutines and local ones,}
+          {- [gid] is the GID of a glyph (the CharString of which one wants to get),}
+          {- [lcs] is the tokenized CharString of [gid] where subroutine calls are not resolved, and}
+          {- [gsubrs_new] and [lsubrs_new] are maps made by extending [gsubrs] and [lsubrs]
+             while decoding the CharString of [gid].}}
+
+        Here, [gsubrs] and [lsubrs] also enable decoding operations to avoid infinite loops. *)
     val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
+    (** Converts a CharString into a cubic Bézier path. *)
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end
 
-  type charstring_data = CharStringData of int * int
-  type subroutine_index = charstring_data array
   module ForTest : sig
     module DecodeOperation : (module type of DecodeOperation)
     type 'a decoder = 'a DecodeOperation.Open.decoder
     val run : string -> 'a decoder -> 'a ok
-    val d_glyf : Value.ttf_glyph_info decoder
+    val d_glyf : Value.Ttf.glyph_info decoder
     val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
     val run_d_charstring :
-      gsubr_index:subroutine_index ->
-      lsubr_index:subroutine_index ->
+      gsubr_index:Intermediate.Cff.subroutine_index ->
+      lsubr_index:Intermediate.Cff.subroutine_index ->
       string -> start:int -> charstring_length:int -> (Intermediate.Cff.charstring_operation list) ok
   end
 end
 
 
 module Encode : sig
+  (** Handles values that represent errors that can happen while encoding fonts. *)
   module Error : (module type of EncodeError)
 
   type 'a ok = ('a, Error.t) result
@@ -844,49 +1024,63 @@ module Encode : sig
       - checking that some derived data encoded in given tables are consistent with master data. *)
   val make_font_data_from_tables : ttf:bool -> table list -> string ok
 
+  (** Defines encoding operations for [head] tables. *)
   module Head : sig
     val make : Intermediate.Head.t -> table ok
   end
 
+  (** Defines encoding operations for [hhea] tables. *)
   module Hhea : sig
     val make : number_of_h_metrics:int -> Intermediate.Hhea.t -> table ok
   end
 
+  (** Defines encoding operations for [OS/2] tables. *)
   module Os2 : sig
     val make : Intermediate.Os2.t -> table ok
   end
 
+  (** Defines encoding operations for [post] tables. *)
   module Post : sig
     val make : Value.Post.t -> table ok
   end
 
+  (** Defines encoding operations for [name] tables. *)
   module Name : sig
     val make : Value.Name.t -> table ok
   end
 
+  (** Defines encoding operations for [hmtx] tables. *)
   module Hmtx : sig
     val make : (Value.design_units * Value.design_units) list -> table ok
   end
 
+  (** Defines encoding operations for [cmap] tables. *)
   module Cmap : sig
     val make : Value.Cmap.t -> table ok
   end
 
+  (** Defines encoding operations for tables specific to TrueType-based fonts. *)
   module Ttf : sig
+    (** Defines encoding operations for [maxp] tables of TrueType-based fonts. *)
     module Maxp : sig
       val make : Intermediate.Ttf.Maxp.t -> table ok
     end
 
-    val make_glyf : Value.ttf_glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
+    (** Encodes a [glyf] table and produces glyph locations that will constitute a [loca] table. *)
+    val make_glyf : Value.Ttf.glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
 
+    (** Encodes a [loca] table and produces a value for the [indexToLocFormat] entry of the [head] table. *)
     val make_loca : Intermediate.Ttf.glyph_location list -> (table * Intermediate.loc_format) ok
   end
 
+  (** Defines encoding operations for tables specific to CFF-based fonts. *)
   module Cff : sig
+    (** Defines encoding operations for [maxp] tables of CFF-based fonts. *)
     module Maxp : sig
       val make : Intermediate.Cff.Maxp.t -> table ok
     end
 
+    (** Encodes a [CFF] table. *)
     val make :
       Intermediate.Cff.top_dict ->
       gsubrs:(Intermediate.Cff.lexical_charstring list) ->
@@ -901,17 +1095,23 @@ module Encode : sig
   end
 end
 
+(** Contains operations for encoding subset fonts. *)
 module Subset : sig
-  type error =
-    | NoGlyphGiven
-    | GlyphNotFound of Value.glyph_id
-    | DependentGlyphNotFound of { depending : Value.glyph_id; depended : Value.glyph_id }
-    | DecodeError   of Decode.Error.t
-    | EncodeError   of Encode.Error.t
-    | NonexplicitSubroutineNumber
-  [@@deriving show]
+  (** Handles values that represent errors that can happen while encoding subset fonts. *)
+  module Error : sig
+    type t =
+      | NoGlyphGiven
+      | GlyphNotFound               of Value.glyph_id
+      | DependentGlyphNotFound      of { depending : Value.glyph_id; depended : Value.glyph_id }
+      | DecodeError                 of Decode.Error.t
+      | EncodeError                 of Encode.Error.t
+      | NonexplicitSubroutineNumber
+    [@@deriving show]
+  end
 
-  type 'a ok = ('a, error) result
+  type 'a ok = ('a, Error.t) result
 
+  (** [make d gids] encodes a subset font of [d] that contains glyphs corresponding to [gids] only.
+      The resulting subset font consists only of mandatory tables. *)
   val make : ?omit_cmap:bool -> Decode.source -> Value.glyph_id list -> string ok
 end

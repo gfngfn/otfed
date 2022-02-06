@@ -120,7 +120,12 @@ type y_coordinate = design_units
 type point = x_coordinate * y_coordinate
 [@@deriving show { with_path = false }]
 
-type ttf_contour = (bool * x_coordinate * y_coordinate) list
+type bounding_box = {
+  x_min : x_coordinate;
+  y_min : y_coordinate;
+  x_max : x_coordinate;
+  y_max : y_coordinate;
+}
 [@@deriving show { with_path = false }]
 
 type linear_transform = {
@@ -130,35 +135,6 @@ type linear_transform = {
   d : float;
 }
 [@@deriving show { with_path = false }]
-
-type composition =
-  | Vector   of x_coordinate * y_coordinate
-  | Matching of int * int
-[@@deriving show { with_path = false }]
-
-type ttf_simple_glyph_description = ttf_contour list
-[@@deriving show { with_path = false }]
-
-type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-[@@deriving show { with_path = false }]
-
-type ttf_glyph_description =
-  | TtfSimpleGlyph    of ttf_simple_glyph_description
-  | TtfCompositeGlyph of ttf_composite_glyph_description
-[@@deriving show { with_path = false }]
-
-type bounding_box = {
-  x_min : x_coordinate;
-  y_min : y_coordinate;
-  x_max : x_coordinate;
-  y_max : y_coordinate;
-}
-[@@deriving show { with_path = false }]
-
-type ttf_glyph_info = {
-  bounding_box : bounding_box;
-  description  : ttf_glyph_description;
-}
 
 type cubic_path_element =
   | CubicLineTo  of point
@@ -466,20 +442,53 @@ module Hhea = struct
 end
 
 module Os2 = struct
+  type weight_class =
+    | WeightThin
+    | WeightExtraLight
+    | WeightLight
+    | WeightNormal
+    | WeightMedium
+    | WeightSemiBold
+    | WeightBold
+    | WeightExtraBold
+    | WeightBlack
+  [@@deriving show { with_path = false }]
+
+  type width_class =
+    | WidthUltraCondensed
+    | WidthExtraCondensed
+    | WidthCondensed
+    | WidthSemiCondensed
+    | WidthMedium
+    | WidthSemiExpanded
+    | WidthExpanded
+    | WidthExtraExpanded
+    | WidthUltraExpanded
+  [@@deriving show { with_path = false }]
+
+  type fs_type = {
+    restricted_license_embedding : bool;
+    preview_and_print_embedding  : bool;
+    editable_embedding           : bool;
+    no_subsetting                : bool;
+    bitmap_embedding_only        : bool;
+  }
+  [@@deriving show { with_path = false }]
+
   type t = {
-    us_weight_class             : int;
-    us_width_class              : int;
-    fs_type                     : int;
-    y_subscript_x_size          : int;
-    y_subscript_y_size          : int;
-    y_subscript_x_offset        : int;
-    y_subscript_y_offset        : int;
-    y_superscript_x_size        : int;
-    y_superscript_y_size        : int;
-    y_superscript_x_offset      : int;
-    y_superscript_y_offset      : int;
-    y_strikeout_size            : int;
-    y_strikeout_position        : int;
+    us_weight_class             : weight_class;
+    us_width_class              : width_class;
+    fs_type                     : fs_type;
+    y_subscript_x_size          : design_units;
+    y_subscript_y_size          : design_units;
+    y_subscript_x_offset        : design_units;
+    y_subscript_y_offset        : design_units;
+    y_superscript_x_size        : design_units;
+    y_superscript_y_size        : design_units;
+    y_superscript_x_offset      : design_units;
+    y_superscript_y_offset      : design_units;
+    y_strikeout_size            : design_units;
+    y_strikeout_position        : design_units;
     s_family_class              : int;
     panose                      : string;  (* 10 bytes. *)
     ul_unicode_range1           : wint;
@@ -488,15 +497,15 @@ module Os2 = struct
     ul_unicode_range4           : wint;
     ach_vend_id                 : string;  (* 4 bytes. *)
     fs_selection                : int;
-    s_typo_ascender             : int;
-    s_type_descender            : int;
-    s_typo_linegap              : int;
-    us_win_ascent               : int;
-    us_win_descent              : int;
+    s_typo_ascender             : design_units;
+    s_typo_descender            : design_units;
+    s_typo_linegap              : design_units;
+    us_win_ascent               : design_units;
+    us_win_descent              : design_units;
     ul_code_page_range_1        : wint option;
     ul_code_page_range_2        : wint option;
-    s_x_height                  : int option;
-    s_cap_height                : int option;
+    s_x_height                  : design_units option;
+    s_cap_height                : design_units option;
     us_default_char             : int option;
     us_break_char               : int option;
     us_lower_optical_point_size : int option;
@@ -572,6 +581,39 @@ module Name = struct
   type t = {
     name_records : name_record list;
     lang_tags    : (lang_tag list) option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+module Ttf = struct
+  type contour_element = {
+    on_curve : bool;
+    point    : point;
+  }
+  [@@deriving show { with_path = false }]
+
+  type contour = contour_element list
+  [@@deriving show { with_path = false }]
+
+  type composition =
+    | Vector   of x_coordinate * y_coordinate
+    | Matching of int * int
+  [@@deriving show { with_path = false }]
+
+  type simple_glyph_description = contour list
+  [@@deriving show { with_path = false }]
+
+  type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+  [@@deriving show { with_path = false }]
+
+  type glyph_description =
+    | SimpleGlyph    of simple_glyph_description
+    | CompositeGlyph of composite_glyph_description
+  [@@deriving show { with_path = false }]
+
+  type glyph_info = {
+    bounding_box : bounding_box;
+    description  : glyph_description;
   }
   [@@deriving show { with_path = false }]
 end

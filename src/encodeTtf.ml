@@ -8,7 +8,7 @@ open EncodeOperation.Open
 module Maxp = EncodeTtfMaxp
 
 
-let make_end_points (contours : ttf_contour list) : int list =
+let make_end_points (contours : Ttf.contour list) : int list =
   let (acc, _) =
     contours |> List.fold_left (fun (acc, i) contour ->
       let num_points_in_contour = List.length contour in
@@ -32,7 +32,7 @@ type coordinate_accumulator = {
 }
 
 
-let decompose_contours (contours : ttf_contour list) : flag list * relative list * relative list =
+let decompose_contours (contours : Ttf.contour list) : flag list * relative list * relative list =
   let coordinates = List.concat contours in
   let acc =
     {
@@ -42,7 +42,8 @@ let decompose_contours (contours : ttf_contour list) : flag list * relative list
     }
   in
   let (acc, _, _) =
-    coordinates |> List.fold_left (fun (acc, x_coord_prev, y_coord_prev) (on_curve, x_coord, y_coord) ->
+    coordinates |> List.fold_left (fun (acc, x_coord_prev, y_coord_prev) elem ->
+      let Ttf.{ on_curve; point = (x_coord, y_coord) } = elem in
       let (x_short_vector, this_x_is_same, relative_xs) =
         let x_rel = x_coord - x_coord_prev in
         if x_rel = 0 then
@@ -113,7 +114,7 @@ let e_relative (relative : relative) =
   | Long(rel)      -> e_int16 rel
 
 
-let e_simple_glyph (contours : ttf_simple_glyph_description) : unit encoder =
+let e_simple_glyph (contours : Ttf.simple_glyph_description) : unit encoder =
   let endPtsOfContours = make_end_points contours in
   let instructions = "" in (* TODO: `instructions` should be extracted from `ttf_simple_glyph_description`. *)
   let instructionLength = String.length instructions in
@@ -145,7 +146,7 @@ let e_component_flag (more_components : bool) (cflag : Intermediate.Ttf.componen
   ]
 
 
-let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
+let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
   let open EncodeOperation in
   let rec aux = function
     | [] ->
@@ -154,8 +155,8 @@ let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
     | (gid, composition, linear_opt) :: elems ->
         let (args_are_xy_values, arg1, arg2) =
           match composition with
-          | Vector(x, y)   -> (true, x, y)
-          | Matching(i, j) -> (false, i, j)
+          | Ttf.Vector(x, y)   -> (true, x, y)
+          | Ttf.Matching(i, j) -> (false, i, j)
         in
         let (arg_1_and_2_are_words, e_arg) =
           if -256 <= arg1 && arg1 < 256 && -256 <= arg2 && arg2 < 256 then
@@ -217,12 +218,12 @@ let e_composite_glyph (elems : ttf_composite_glyph_description) : unit encoder =
   aux elems
 
 
-let e_glyph (g : ttf_glyph_info) =
+let e_glyph (g : Ttf.glyph_info) =
   let open EncodeOperation in
   let (number_of_contours, enc) =
     match g.description with
-    | TtfSimpleGlyph(contours) -> (List.length contours, e_simple_glyph contours)
-    | TtfCompositeGlyph(elems) -> (-1, e_composite_glyph elems)
+    | Ttf.SimpleGlyph(contours) -> (List.length contours, e_simple_glyph contours)
+    | Ttf.CompositeGlyph(elems) -> (-1, e_composite_glyph elems)
   in
   e_int16 number_of_contours   >>= fun () ->
   e_int16 g.bounding_box.x_min >>= fun () ->
@@ -232,7 +233,7 @@ let e_glyph (g : ttf_glyph_info) =
   enc
 
 
-let make_glyf (gs : ttf_glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
+let make_glyf (gs : Ttf.glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
   let enc =
     let open EncodeOperation in
     gs |> mapM (fun g ->

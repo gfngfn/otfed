@@ -14,6 +14,10 @@ let get (src : source) : t ok =
   return @@ make_scheme common.core offset length ()
 
 
+type segment =
+  | Incremental of Uchar.t * Uchar.t * Value.glyph_id
+  | Constant    of Uchar.t * Uchar.t * Value.glyph_id
+
 type format = int
 
 type subtable = t * offset * Value.Cmap.subtable_ids * format
@@ -97,7 +101,7 @@ let make_segment ~incremental ~start:startCharCode ~last:endCharCode ~gid:startG
     return @@ Constant(startCharCode, endCharCode, startGlyphId)
 
 
-let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> cmap_segment -> 'a) acc (endCodes, startCodes, idDeltas, idRangeOffsets) =
+let d_cmap_4_loop (offset_glyphIdArray : offset) (segCount : int) (f : 'a -> segment -> 'a) acc (endCodes, startCodes, idDeltas, idRangeOffsets) =
   let rec aux i acc = function
     | ([], [], [], []) ->
         if i = segCount then

@@ -109,8 +109,8 @@ let tables (src : source) : Value.Tag.t set =
 
 
 module ForTest = struct
-  type charstring_data = DecodeBasic.charstring_data
-  type subroutine_index = DecodeBasic.subroutine_index
+  type charstring_data = Intermediate.Cff.charstring_data
+  type subroutine_index = Intermediate.Cff.subroutine_index
 
   module DecodeOperation = DecodeOperation
 

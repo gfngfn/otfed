@@ -79,16 +79,16 @@ let () =
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` (via `DT.run_d_charstring`) *)
 let () =
   let (gsize, gkeyval) = TestCaseCff1.gsubrs in
-  let gsubr_index = Array.make gsize (D.CharStringData(0, 0)) in
+  let gsubr_index = Array.make gsize (I.Cff.CharStringData(0, 0)) in
   let (lsize, lkeyval) = TestCaseCff1.lsubrs in
-  let lsubr_index = Array.make lsize (D.CharStringData(0, 0)) in
+  let lsubr_index = Array.make lsize (I.Cff.CharStringData(0, 0)) in
   let (start, data, charstring_length) =
     let buf = Buffer.create 1024 in
     let start =
       gkeyval |> List.fold_left (fun start (i, s) ->
         let len = String.length s in
         Format.printf "| Write: global, biased = %d, offset = %d, length = %d\n" i start len;
-        gsubr_index.(i) <- D.CharStringData(start, len);
+        gsubr_index.(i) <- I.Cff.CharStringData(start, len);
         Buffer.add_string buf s;
         start + len
       ) 0
@@ -97,7 +97,7 @@ let () =
       lkeyval |> List.fold_left (fun start (i, s) ->
         let len = String.length s in
         Format.printf "| Write: local, biased = %d, offset = %d, length = %d\n" i start len;
-        lsubr_index.(i) <- D.CharStringData(start, len);
+        lsubr_index.(i) <- I.Cff.CharStringData(start, len);
         Buffer.add_string buf s;
         start + len
       ) start

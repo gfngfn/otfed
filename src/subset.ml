@@ -453,7 +453,7 @@ module Old = struct
 
   type t =
     | Global of int
-    | Local  of Decode.fdindex option * int
+    | Local  of Intermediate.Cff.fdindex option * int
 
 
   let compare old1 old2 =
@@ -545,7 +545,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
           | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
         end
   end >>= fun lsubrs_info ->
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Decode.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Intermediate.Cff.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
       get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->

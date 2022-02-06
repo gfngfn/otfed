@@ -329,4 +329,64 @@ module Cff = struct
     number_of_glyphs    : int;
   }
   [@@deriving show { with_path = false }]
+
+  (* The type for String INDEXes [CFF p.17, Section 10] *)
+  type string_index = string array
+
+  (* `CharString(offset, length)`
+     ` `offset`: the (absolute) offset to the charstring data
+     - `length`: the length of the charstring data *)
+  type charstring_data =
+    | CharStringData of int * int
+  [@@deriving show { with_path = false }]
+
+  (* The type for Local/Global Subrs INDEXes [CFF p.25, Section 16] *)
+  type subroutine_index = charstring_data array
+
+  (* The type for CFF headers [CFF p.13, Section 6] *)
+  type cff_header = {
+    major    : int;
+    minor    : int;
+    hdrSize  : int;
+    offSize  : offsize;
+  }
+  [@@deriving show { with_path = false }]
+
+  (* The type for Private DICT [CFF p.23, Section 15] *)
+  type single_private = {
+    default_width_x  : int;
+    nominal_width_x  : int;
+    local_subr_index : subroutine_index;
+  }
+
+  type fdarray = single_private array
+
+  type fdindex = int
+  [@@deriving show { with_path = false }]
+
+  (* The type for FDSelect [CFF p.28, Section 19] *)
+  type fdselect =
+    | FDSelectFormat0 of fdindex array
+    | FDSelectFormat3 of (Value.glyph_id * fdindex) list * Value.glyph_id
+
+  type private_info =
+    | SinglePrivate of single_private
+    | FontDicts     of fdarray * fdselect
+
+  type predefined_charset =
+    | IsoAdobeCharset
+    | ExpertCharset
+    | ExpertSubsetCharset
+
+  type charset =
+    | PredefinedCharset of predefined_charset
+    | CharsetData       of offset
+
+  type charstring_info = {
+    gsubr_index             : subroutine_index;
+    private_info            : private_info;
+    charset                 : charset;
+    string_index            : string_index;
+    offset_CharString_INDEX : offset;
+  }
 end

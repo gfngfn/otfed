@@ -75,10 +75,12 @@ module Value : sig
       it does owing to the rounding error for design units. *)
   val cubic_path_of_quadratic_path : quadratic_path -> cubic_path
 
-  (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box that includes both [bbox1] and [bbox2]. *)
+  (** [unite_bounding_boxes bbox1 bbox2] returns the minimum bounding box
+      that includes both [bbox1] and [bbox2]. *)
   val unite_bounding_boxes : bounding_box -> bounding_box -> bounding_box
 
-  (** [bounding_box_by_points pt1 pt2] returns the minimum bounding box that contains both [pt1] and [pt2]. *)
+  (** [bounding_box_by_points pt1 pt2] returns the minimum bounding box
+      that contains both [pt1] and [pt2]. *)
   val bounding_box_by_points : point -> point -> bounding_box
 
   (** Returns the bounding box of the given path. *)
@@ -575,6 +577,16 @@ module Intermediate : sig
       number_of_glyphs    : int;
     }
     [@@deriving show]
+
+    type fdindex = int
+    [@@deriving show]
+
+    (** Exported for tests. *)
+    type charstring_data = CharStringData of int * int
+    [@@deriving show]
+
+    (** Exported for tests. *)
+    type subroutine_index = charstring_data array
   end
 end
 
@@ -606,8 +618,6 @@ module Decode : sig
 
   (** Returns the list of tags for the tables contained in the source. *)
   val tables : source -> Value.Tag.t set
-
-  type fdindex = int
 
   (** Handles intermediate representation of [head] tables for decoding. *)
   module Head : sig
@@ -659,7 +669,7 @@ module Decode : sig
   (** Handles intermediate representation of [hmtx] tables for decoding.
       Since the operations provided by this module use only sequential sources and
       do NOT allocate so much additional memory for the representation,
-      they are likely to be efficient in space. *)
+      they are likely to be efficient in time and space. *)
   module Hmtx : sig
     (** The type for representing [hmtx] tables. *)
     type t
@@ -672,16 +682,21 @@ module Decode : sig
     val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
   end
 
-  (** Handles intermediate representation of [OS/2] tables for decoding. *)
+  (** Defines decoding operations for [OS/2] tables. *)
   module Os2 : sig
+    (** Gets the [OS/2] table of a font. *)
     val get : source -> Intermediate.Os2.t ok
   end
 
+  (** Defines decoding operations for [post] tables. *)
   module Post : sig
+    (** Gets the [post] table of a font. *)
     val get : source -> Value.Post.t ok
   end
 
+  (** Defines decoding operations for [name] tables. *)
   module Name : sig
+    (** Gets the [name] table of a font. *)
     val get : source -> Value.Name.t ok
   end
 
@@ -690,7 +705,7 @@ module Decode : sig
     (** The type for representing [GSUB] tables. *)
     type t
 
-    (** Gets the [GSUB] table in a font if it exists. *)
+    (** Gets the [GSUB] table of a font if it exists. *)
     val get : source -> (t option) ok
 
     (** The type for data associated with a Script. *)
@@ -767,7 +782,7 @@ module Decode : sig
     (** The type for representing [GPOS] tables. *)
     type t
 
-    (** Gets the [GPOS] table in a font if it exists. *)
+    (** Gets the [GPOS] table of a font if it exists. *)
     val get : source -> (t option) ok
 
     (** The type for data associated with a Script. *)
@@ -879,6 +894,7 @@ module Decode : sig
     (** The type for representing [kern] tables. *)
     type t
 
+    (** Gets the [kern] table of a font if it exists. *)
     val get : source -> (t option) ok
 
     type kern_info = {
@@ -893,6 +909,7 @@ module Decode : sig
 
   (** Contains decoding operations for [MATH] tables. *)
   module Math : sig
+    (** Gets the [MATH] table of a font if it exists. *)
     val get : source -> (Value.Math.t option) ok
   end
 
@@ -938,7 +955,7 @@ module Decode : sig
 
     (** Returns which FDIndex a given glyph belongs to if the font is a CIDFont, or returns [None] otherwise.
         This function is mainly for experimental use. *)
-    val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
+    val fdindex : cff_source -> Value.glyph_id -> (Intermediate.Cff.fdindex option) ok
 
     (** Handles subroutine INDEXes that contain low-level CharString representations. *)
     module LexicalSubroutineIndex : sig
@@ -956,8 +973,6 @@ module Decode : sig
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end
 
-  type charstring_data = CharStringData of int * int
-  type subroutine_index = charstring_data array
   module ForTest : sig
     module DecodeOperation : (module type of DecodeOperation)
     type 'a decoder = 'a DecodeOperation.Open.decoder
@@ -965,8 +980,8 @@ module Decode : sig
     val d_glyf : Value.Ttf.glyph_info decoder
     val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
     val run_d_charstring :
-      gsubr_index:subroutine_index ->
-      lsubr_index:subroutine_index ->
+      gsubr_index:Intermediate.Cff.subroutine_index ->
+      lsubr_index:Intermediate.Cff.subroutine_index ->
       string -> start:int -> charstring_length:int -> (Intermediate.Cff.charstring_operation list) ok
   end
 end

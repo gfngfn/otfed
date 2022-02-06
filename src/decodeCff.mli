@@ -12,8 +12,8 @@ val top_dict : cff_source -> Intermediate.Cff.top_dict ok
 val access_charset : cff_source -> Value.glyph_id -> (string option) ok
 
 type charstring_constant = {
-  gsubr_index : subroutine_index;
-  lsubr_index : subroutine_index;
+  gsubr_index : Intermediate.Cff.subroutine_index;
+  lsubr_index : Intermediate.Cff.subroutine_index;
 }
 
 type charstring_state
@@ -36,7 +36,7 @@ end
 
 (** Gets the FD index for the given glyph ID.
     Returns nothing for non-CID fonts (i.e. for the case where the font has only one local subroutine). *)
-val fdindex : cff_source -> Value.glyph_id -> (fdindex option) ok
+val fdindex : cff_source -> Value.glyph_id -> (Intermediate.Cff.fdindex option) ok
 
 (** [lexical_charstring cff ~gsubrs ~lsubrs gid] returns [Ok(gsubrs1, lsubrs1, lcs)] where:
     - [cff] is the source,

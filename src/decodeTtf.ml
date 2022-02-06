@@ -176,7 +176,7 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
   aux Alist.empty Alist.empty endPtsOfContours (0, flags, xCoordinates, yCoordinates)
 
 
-let d_simple_glyph (numberOfContours : int) : ttf_simple_glyph_description decoder =
+let d_simple_glyph (numberOfContours : int) : Ttf.simple_glyph_description decoder =
   let open DecodeOperation in
   if numberOfContours = 0 then
     return []
@@ -220,7 +220,7 @@ let d_component_flag : (bool * component_flag) decoder =
   return (more_components, cflag)
 
 
-let d_composite_glyph : ttf_composite_glyph_description decoder =
+let d_composite_glyph : Ttf.composite_glyph_description decoder =
   let open DecodeOperation in
   let rec aux acc =
     d_component_flag >>= fun (more_components, cflags) ->
@@ -231,25 +231,25 @@ let d_composite_glyph : ttf_composite_glyph_description decoder =
     begin
       if cflags.we_have_a_scale then
         d_f2dot14 >>= fun scale ->
-        return @@ Some{a = scale; b = 0.; c = 0.; d = scale}
+        return @@ Some({a = scale; b = 0.; c = 0.; d = scale})
       else if cflags.we_have_an_x_and_y_scale then
         d_f2dot14 >>= fun xscale ->
         d_f2dot14 >>= fun yscale ->
-        return @@ Some{a = xscale; b = 0.; c = 0.; d = yscale}
+        return @@ Some({a = xscale; b = 0.; c = 0.; d = yscale})
       else if cflags.we_have_a_two_by_two then
         d_f2dot14 >>= fun a ->
         d_f2dot14 >>= fun b ->
         d_f2dot14 >>= fun c ->
         d_f2dot14 >>= fun d ->
-        return @@ Some{a = a; b = b; c = c; d = d}
+        return @@ Some({a = a; b = b; c = c; d = d})
       else
         return None
     end >>= fun linear_transform ->
     let v =
       if cflags.args_are_xy_values then
-        Vector(argument1, argument2)
+        Ttf.Vector(argument1, argument2)
       else
-        Matching(argument1, argument2)
+        Ttf.Matching(argument1, argument2)
     in
     let acc = Alist.extend acc (glyphIndex, v, linear_transform) in
     if more_components then
@@ -273,26 +273,26 @@ let d_glyf =
     err @@ Error.InvalidCompositeFormat(numberOfContours)
   else if numberOfContours = -1 then
     d_composite_glyph >>= fun components ->
-    return {
-      description = TtfCompositeGlyph(components);
+    return Ttf.{
+      description = CompositeGlyph(components);
       bounding_box;
     }
   else
     d_simple_glyph numberOfContours >>= fun contours ->
-    return {
-      description = TtfSimpleGlyph(contours);
+    return Ttf.{
+      description = SimpleGlyph(contours);
       bounding_box;
     }
 
 
-let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : ttf_glyph_info ok =
+let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : Ttf.glyph_info ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
   d_glyf |> DecodeOperation.run common.core (offset + reloffset)
 
 
-let path_of_ttf_contour (contour : ttf_contour) : quadratic_path ok =
+let path_of_ttf_contour (contour : Ttf.contour) : quadratic_path ok =
   let open ResultMonad in
   begin
     match contour with

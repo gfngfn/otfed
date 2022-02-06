@@ -131,7 +131,7 @@ let frame_bbox ~units_per_em ~bbox =
   ]
 
 
-let make_ttf_simple ~shift (ttfcontours : V.ttf_simple_glyph_description) (units_per_em : int) =
+let make_ttf_simple ~shift (ttfcontours : V.Ttf.simple_glyph_description) (units_per_em : int) =
   let open ResultMonad in
   ttfcontours |> mapM D.Ttf.path_of_ttf_contour >>= fun qpaths ->
 
@@ -146,7 +146,7 @@ let make_ttf_simple ~shift (ttfcontours : V.ttf_simple_glyph_description) (units
   return (paths, circs)
 
 
-let make_ttf (simples : (V.ttf_simple_glyph_description * (V.design_units * V.design_units)) list) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
+let make_ttf (simples : (V.Ttf.simple_glyph_description * (V.design_units * V.design_units)) list) ~bbox:(bbox : V.bounding_box) ~units_per_em:(units_per_em : int) ~aw:(aw : int) =
   let open ResultMonad in
   foldM (fun (pathacc, circacc) (simple, v) ->
     make_ttf_simple ~shift:v simple units_per_em >>= fun (paths, circs) ->

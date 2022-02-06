@@ -42,7 +42,7 @@ let pp_xxd ppf s =
   Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
 
 
-(** Tests for `DT.chop_two_bytes` *)
+(** Tests for `DecodeOperation.chop_two_bytes` (via `DT.chop_two_bytes`) *)
 let () =
   let cases =
     [
@@ -102,12 +102,9 @@ let () =
 
 (** Tests for `DecodeTtf.d_glyf` (via `DT.d_glyf`) *)
 let () =
-  let pp ppf V.{ description = descr; bounding_box = bbox } =
-    Format.fprintf ppf "(%a, %a)" V.pp_ttf_glyph_description descr V.pp_bounding_box bbox
-  in
   let res = DT.run TestCaseGlyf1.data DT.d_glyf in
   ignore @@ assert_equal
-    ~pp
+    ~pp:V.Ttf.pp_glyph_info
     ~pp_error:D.Error.pp
     ~message:"glyf"
     TestCaseGlyf1.expected

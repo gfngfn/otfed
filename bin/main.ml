@@ -218,11 +218,8 @@ let get_simple_glyph (ttf : D.ttf_source) (gid : V.glyph_id) =
   | Some(loc) ->
       D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; _ } ->
       match descr with
-      | V.TtfCompositeGlyph(_) ->
-          return None
-
-      | V.TtfSimpleGlyph(simple) ->
-          return @@ Some(simple)
+      | V.Ttf.CompositeGlyph(_)   -> return None
+      | V.Ttf.SimpleGlyph(simple) -> return @@ Some(simple)
 
 
 let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
@@ -252,10 +249,10 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
               D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; bounding_box = bbox } ->
               begin
                 match descr with
-                | V.TtfSimpleGlyph(simple) ->
+                | V.Ttf.SimpleGlyph(simple) ->
                     return [(simple, (0, 0))]
 
-                | V.TtfCompositeGlyph(composite_elems) ->
+                | V.Ttf.CompositeGlyph(composite_elems) ->
                     composite_elems |> mapM (fun (gid, composition, _linear_opt) ->
                       get_simple_glyph ttf gid >>= function
                       | None ->
@@ -263,13 +260,13 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
 
                       | Some(simple) ->
                           match composition with
-                          | V.Vector(vx, vy) -> return (simple, (vx, vy))
-                          | V.Matching(_)    -> failwith "matching; not supported"
+                          | V.Ttf.Vector(vx, vy) -> return (simple, (vx, vy))
+                          | V.Ttf.Matching(_)    -> failwith "matching; not supported"
                     )
               end >>= fun simples ->
                     Svg.make_ttf simples ~bbox ~units_per_em ~aw |> inj >>= fun data ->
               Format.printf "  (%a, %a)@,"
-                V.pp_ttf_glyph_description descr
+                V.Ttf.pp_glyph_description descr
                 V.pp_bounding_box bbox;
               write_file path ~data
 

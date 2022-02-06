@@ -48,7 +48,7 @@ let data =
 
 let expected =
   let description =
-    V.TtfSimpleGlyph[
+    V.Ttf.SimpleGlyph[
       [ (true, 432, 911);
         (true, 630, 911);
         (true, 706, 1005);
@@ -156,7 +156,4 @@ let expected =
     ]
   in
   let bounding_box = V.{ x_min = 51; y_min = -147; x_max = 1963; y_max = 1684 } in
-  V.{
-    description;
-    bounding_box;
-  }
+  V.Ttf.{ description; bounding_box }

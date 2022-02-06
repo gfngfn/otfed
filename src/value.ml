@@ -120,7 +120,12 @@ type y_coordinate = design_units
 type point = x_coordinate * y_coordinate
 [@@deriving show { with_path = false }]
 
-type ttf_contour = (bool * x_coordinate * y_coordinate) list
+type bounding_box = {
+  x_min : x_coordinate;
+  y_min : y_coordinate;
+  x_max : x_coordinate;
+  y_max : y_coordinate;
+}
 [@@deriving show { with_path = false }]
 
 type linear_transform = {
@@ -130,35 +135,6 @@ type linear_transform = {
   d : float;
 }
 [@@deriving show { with_path = false }]
-
-type composition =
-  | Vector   of x_coordinate * y_coordinate
-  | Matching of int * int
-[@@deriving show { with_path = false }]
-
-type ttf_simple_glyph_description = ttf_contour list
-[@@deriving show { with_path = false }]
-
-type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-[@@deriving show { with_path = false }]
-
-type ttf_glyph_description =
-  | TtfSimpleGlyph    of ttf_simple_glyph_description
-  | TtfCompositeGlyph of ttf_composite_glyph_description
-[@@deriving show { with_path = false }]
-
-type bounding_box = {
-  x_min : x_coordinate;
-  y_min : y_coordinate;
-  x_max : x_coordinate;
-  y_max : y_coordinate;
-}
-[@@deriving show { with_path = false }]
-
-type ttf_glyph_info = {
-  bounding_box : bounding_box;
-  description  : ttf_glyph_description;
-}
 
 type cubic_path_element =
   | CubicLineTo  of point
@@ -605,6 +581,33 @@ module Name = struct
   type t = {
     name_records : name_record list;
     lang_tags    : (lang_tag list) option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+module Ttf = struct
+  type contour = (bool * x_coordinate * y_coordinate) list
+  [@@deriving show { with_path = false }]
+
+  type composition =
+    | Vector   of x_coordinate * y_coordinate
+    | Matching of int * int
+  [@@deriving show { with_path = false }]
+
+  type simple_glyph_description = contour list
+  [@@deriving show { with_path = false }]
+
+  type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+  [@@deriving show { with_path = false }]
+
+  type glyph_description =
+    | SimpleGlyph    of simple_glyph_description
+    | CompositeGlyph of composite_glyph_description
+  [@@deriving show { with_path = false }]
+
+  type glyph_info = {
+    bounding_box : bounding_box;
+    description  : glyph_description;
   }
   [@@deriving show { with_path = false }]
 end

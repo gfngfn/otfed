@@ -19,14 +19,14 @@ let inj_dec d = Result.map_error (fun e -> DecodeError(e)) d
 let inj_enc e = Result.map_error (fun e -> EncodeError(e)) e
 
 
-let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : ttf_glyph_info ok =
+let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : Ttf.glyph_info ok =
   let open ResultMonad in
   inj_dec @@ Decode.Ttf.loca ttf gid >>= function
   | None      -> err @@ GlyphNotFound(gid)
   | Some(loc) -> inj_dec @@ Decode.Ttf.glyf ttf loc
 
 
-type glyph_accumulator = (glyph_id * ttf_glyph_info) Alist.t * bounding_box
+type glyph_accumulator = (glyph_id * Ttf.glyph_info) Alist.t * bounding_box
 
 
 let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
@@ -35,7 +35,7 @@ let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumul
   return (Alist.extend ggs (gid, g), unite_bounding_boxes bbox_all g.bounding_box)
 
 
-let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * ttf_glyph_info) list * bounding_box) ok =
+let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * Ttf.glyph_info) list * bounding_box) ok =
   let open ResultMonad in
   match gids with
   | [] ->
@@ -51,7 +51,7 @@ let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id
 module OldToNew = Map.Make(Int)
 
 
-let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
+let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info) list) =
   let open ResultMonad in
   let (_, old_to_new) =
     ggs |> List.fold_left (fun (gid_new, old_to_new) (gid_old, _) ->
@@ -60,12 +60,12 @@ let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
   in
   ggs |> mapM (fun gg_old ->
     let (gid_old, g_old) = gg_old in
-    let { bounding_box = bbox; description = descr_old } = g_old in
+    let Ttf.{ bounding_box = bbox; description = descr_old } = g_old in
     match descr_old with
-    | TtfSimpleGlyph(_) ->
+    | Ttf.SimpleGlyph(_) ->
         return gg_old
 
-    | TtfCompositeGlyph(composite_elems_old) ->
+    | Ttf.CompositeGlyph(composite_elems_old) ->
         composite_elems_old |> mapM (fun (gid_elem_old, composition, linear_opt) ->
           match old_to_new |> OldToNew.find_opt gid_elem_old with
           | None ->
@@ -74,7 +74,7 @@ let edit_composite_glyphs (ggs : (glyph_id * ttf_glyph_info) list) =
           | Some(gid_elem_new) ->
               return (gid_elem_new, composition, linear_opt)
         ) >>= fun descr_new ->
-        return (gid_old, { bounding_box = bbox; description = TtfCompositeGlyph(descr_new) })
+        return (gid_old, Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(descr_new) })
   )
 
 
@@ -104,7 +104,7 @@ let update_derived ~current:derived ~new_one:derived_new =
   }
 
 
-let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
+let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * Ttf.glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
@@ -126,7 +126,7 @@ let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * ttf_glyph_info) 
       return (derived, entry, aw)
 
 
-let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * ttf_glyph_info) : hmtx_accumulator ok =
+let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * Ttf.glyph_info) : hmtx_accumulator ok =
   let open ResultMonad in
   let derived = acc.current_hhea_derived in
   get_ttf_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
@@ -139,7 +139,7 @@ let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyp
       }
 
 
-let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * ttf_glyph_info) list) : hmtx_result ok =
+let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * Ttf.glyph_info) list) : hmtx_result ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with

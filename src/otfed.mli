@@ -31,7 +31,12 @@ module Value : sig
 
   type timestamp = wint
 
-  type ttf_contour = (bool * x_coordinate * y_coordinate) list
+  type bounding_box = {
+    x_min : x_coordinate;
+    y_min : y_coordinate;
+    x_max : x_coordinate;
+    y_max : y_coordinate;
+  }
   [@@deriving show]
 
   type linear_transform = {
@@ -41,35 +46,6 @@ module Value : sig
     d : float;
   }
   [@@deriving show]
-
-  type composition =
-    | Vector   of x_coordinate * y_coordinate
-    | Matching of int * int
-  [@@deriving show]
-
-  type ttf_simple_glyph_description = ttf_contour list
-  [@@deriving show]
-
-  type ttf_composite_glyph_description = (glyph_id * composition * linear_transform option) list
-  [@@deriving show]
-
-  type ttf_glyph_description =
-    | TtfSimpleGlyph    of ttf_simple_glyph_description
-    | TtfCompositeGlyph of ttf_composite_glyph_description
-  [@@deriving show]
-
-  type bounding_box = {
-    x_min : x_coordinate;
-    y_min : y_coordinate;
-    x_max : x_coordinate;
-    y_max : y_coordinate;
-  }
-  [@@deriving show]
-
-  type ttf_glyph_info = {
-    bounding_box : bounding_box;
-    description  : ttf_glyph_description;
-  }
 
   (** See [cubic_path]. *)
   type cubic_path_element =
@@ -276,6 +252,33 @@ module Value : sig
 
   (** Defines types for master data in [name] tables. *)
   module Name : (module type of Value.Name)
+
+  module Ttf : sig
+    type contour = (bool * x_coordinate * y_coordinate) list
+    [@@deriving show]
+
+    type composition =
+      | Vector   of x_coordinate * y_coordinate
+      | Matching of int * int
+    [@@deriving show]
+
+    type simple_glyph_description = contour list
+    [@@deriving show]
+
+    type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+    [@@deriving show]
+
+    type glyph_description =
+      | SimpleGlyph    of simple_glyph_description
+      | CompositeGlyph of composite_glyph_description
+    [@@deriving show]
+
+    type glyph_info = {
+      bounding_box : bounding_box;
+      description  : glyph_description;
+    }
+    [@@deriving show]
+  end
 
   (** Defines types for master data in [MATH] tables. *)
   module Math : (module type of Value.Math)
@@ -815,9 +818,9 @@ module Decode : sig
 
     (** [glyf ttf loc] accesses [loca] in the [glyf] table and
         returns the bounding box and the outline of the glyph. *)
-    val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.ttf_glyph_info ok
+    val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.Ttf.glyph_info ok
 
-    val path_of_ttf_contour : Value.ttf_contour -> Value.quadratic_path ok
+    val path_of_ttf_contour : Value.Ttf.contour -> Value.quadratic_path ok
   end
 
   (** The module for decoding CFF-based OpenType fonts. *)
@@ -866,7 +869,7 @@ module Decode : sig
     module DecodeOperation : (module type of DecodeOperation)
     type 'a decoder = 'a DecodeOperation.Open.decoder
     val run : string -> 'a decoder -> 'a ok
-    val d_glyf : Value.ttf_glyph_info decoder
+    val d_glyf : Value.Ttf.glyph_info decoder
     val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
     val run_d_charstring :
       gsubr_index:subroutine_index ->
@@ -934,7 +937,7 @@ module Encode : sig
       val make : Intermediate.Ttf.Maxp.t -> table ok
     end
 
-    val make_glyf : Value.ttf_glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
+    val make_glyf : Value.Ttf.glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
 
     val make_loca : Intermediate.Ttf.glyph_location list -> (table * Intermediate.loc_format) ok
   end

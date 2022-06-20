@@ -14,7 +14,7 @@ let pp_xxd ppf s =
   let pp_single ppf ch =
     Format.fprintf ppf "%02x" (Char.code ch)
   in
-  let chars = Core_kernel.String.to_list_rev s |> List.rev in
+  let chars = Core.String.to_list s in
   Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
 
 

@@ -2,7 +2,7 @@
  (name otfed)
  (public_name otfed)
  (libraries
-   core_kernel)
+   core)
  (preprocess
    (pps
      ppx_deriving.show)))

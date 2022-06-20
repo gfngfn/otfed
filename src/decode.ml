@@ -106,31 +106,3 @@ let tables (src : source) : Value.Tag.t set =
     ) common.table_directory Alist.empty
   in
   acc |> Alist.to_list
-
-
-module ForTest = struct
-  type charstring_data = Intermediate.Cff.charstring_data
-  type subroutine_index = Intermediate.Cff.subroutine_index
-
-  module DecodeOperation = DecodeOperation
-
-  type 'a decoder = 'a DecodeOperation.Open.decoder
-
-  let run s d =
-    DecodeOperation.run { data = s; max = String.length s } 0 d
-
-  let d_glyf =
-    Ttf.d_glyf
-
-  let chop_two_bytes =
-    DecodeOperation.ForTest.chop_two_bytes
-
-  let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
-    let cstate = Cff.initial_charstring_state charstring_length in
-    let dec =
-      let open DecodeOperation in
-      Cff.d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
-      return @@ Alist.to_list opacc
-    in
-    dec |> DecodeOperation.run { data = data; max = String.length data } start
-end

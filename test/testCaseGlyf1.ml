@@ -1,5 +1,5 @@
 
-module V = Otfed.Value
+module Value = Otfed__Value
 
 
 let data =
@@ -47,9 +47,9 @@ let data =
 
 
 let expected =
-  let convert (on_curve, x_coord, y_coord) = V.Ttf.{ on_curve; point = (x_coord, y_coord) } in
+  let convert (on_curve, x_coord, y_coord) = Value.Ttf.{ on_curve; point = (x_coord, y_coord) } in
   let description =
-    V.Ttf.SimpleGlyph[
+    Value.Ttf.SimpleGlyph[
       List.map convert [
         (true, 432, 911);
         (true, 630, 911);
@@ -162,5 +162,5 @@ let expected =
       ];
     ]
   in
-  let bounding_box = V.{ x_min = 51; y_min = -147; x_max = 1963; y_max = 1684 } in
-  V.Ttf.{ description; bounding_box }
+  let bounding_box = Value.{ x_min = 51; y_min = -147; x_max = 1963; y_max = 1684 } in
+  Value.Ttf.{ description; bounding_box }

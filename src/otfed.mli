@@ -983,18 +983,6 @@ module Decode : sig
     (** Converts a CharString into a cubic Bézier path. *)
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
   end
-
-  module ForTest : sig
-    module DecodeOperation : (module type of DecodeOperation)
-    type 'a decoder = 'a DecodeOperation.Open.decoder
-    val run : string -> 'a decoder -> 'a ok
-    val d_glyf : Value.Ttf.glyph_info decoder
-    val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
-    val run_d_charstring :
-      gsubr_index:Intermediate.Cff.subroutine_index ->
-      lsubr_index:Intermediate.Cff.subroutine_index ->
-      string -> start:int -> charstring_length:int -> (Intermediate.Cff.charstring_operation list) ok
-  end
 end
 
 
@@ -1086,12 +1074,6 @@ module Encode : sig
       gsubrs:(Intermediate.Cff.lexical_charstring list) ->
       names_and_charstrings:((string * Intermediate.Cff.lexical_charstring) list) ->
       table ok
-  end
-
-  module ForTest : sig
-    module EncodeOperation : (module type of EncodeOperation)
-    type 'a encoder = 'a EncodeOperation.Open.encoder
-    val run : 'a encoder -> string ok
   end
 end
 

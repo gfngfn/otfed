@@ -178,16 +178,3 @@ let make_font_data_from_tables ~(ttf : bool) (tables : table list) : string ok =
   let prelude_checksum = calculate_checksum (String.sub contents 0 first_offset) in
   let checksum_value = add_checksum prelude_checksum all_table_checksum in
   return (update_checksum_adjustment ~checksum_offset ~checksum_value contents)
-
-
-
-module ForTest = struct
-  module EncodeOperation = EncodeOperation
-
-  type 'a encoder = 'a EncodeOperation.Open.encoder
-
-  let run enc =
-    let open ResultMonad in
-    enc |> EncodeOperation.run >>= fun (contents, _) ->
-    return contents
-end

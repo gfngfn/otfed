@@ -1,12 +1,4 @@
 
-
-let assert_equal ~pp ~pp_error ~message:msg expected res =
-  let ok_testable = Alcotest.of_pp pp in
-  let error_testable = Alcotest.of_pp pp_error in
-  let result_testable = Alcotest.result ok_testable error_testable in
-  Alcotest.check result_testable msg (Ok(expected)) res
-
-
 let get_or_fail ~pp_error k res =
   match res with
   | Ok(v)    -> k v

@@ -32,6 +32,14 @@ let run_encoder enc =
   return contents
 
 
+let decoding testable_ok =
+  Alcotest.(result testable_ok (of_pp DecodeError.pp))
+
+
+let encoding testable_ok =
+  Alcotest.(result testable_ok (of_pp EncodeError.pp))
+
+
 (** Tests for `DecodeOperation.chop_two_bytes` *)
 let chop_two_bytes_tests () =
   let cases =
@@ -46,12 +54,7 @@ let chop_two_bytes_tests () =
   in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
     let got = DecodeOperation.ForTest.chop_two_bytes ~data ~unit_size ~repeat in
-    assert_equal
-      ~pp:(pp_list Format.pp_print_int)
-      ~pp_error:DecodeError.pp
-      ~message:"chop_two_bytes"
-      expected
-      (Ok(got))
+    Alcotest.(check (list int)) "chop_two_bytes" expected got
   )
 
 
@@ -64,33 +67,21 @@ let d_int16_and_e_int16_tests () =
   in
   cases |> List.iter (fun (input, expected) ->
     let res = DecodeOperation.d_int16 |> run_decoder input in
-    assert_equal
-      ~pp:Format.pp_print_int
-      ~pp_error:DecodeError.pp
-      ~message:"d_int16"
-      expected
-      res
+    Alcotest.(check (decoding int)) "d_int16"
+      (Ok(expected)) res
   );
   cases |> List.iter (fun (expected, input) ->
     let res = EncodeOperation.e_int16 input |> run_encoder in
-    assert_equal
-      ~pp:pp_xxd
-      ~pp_error:EncodeError.pp
-      ~message:"e_int16"
-      expected
-      res
+    Alcotest.(check (encoding (of_pp pp_xxd))) "e_int16"
+      (Ok(expected)) res
   )
 
 
 (** Tests for `DecodeTtf.d_glyf` *)
 let d_glyf_tests () =
   let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
-  assert_equal
-    ~pp:Value.Ttf.pp_glyph_info
-    ~pp_error:DecodeError.pp
-    ~message:"glyf"
-    TestCaseGlyf1.expected
-    res
+  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "glyf"
+    (Ok(TestCaseGlyf1.expected)) res
 
 
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)
@@ -126,20 +117,12 @@ let d_charstring_tests () =
     (start, data, charstring_length)
   in
   let res1 = run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
-  assert_equal
-    ~pp:Intermediate.Cff.pp_charstring
-    ~pp_error:DecodeError.pp
-    ~message:"cff"
-    TestCaseCff1.expected_operations
-    res1;
+  Alcotest.(check (decoding (of_pp Intermediate.Cff.pp_charstring))) "cff"
+    (Ok(TestCaseCff1.expected_operations)) res1;
   res1 |> get_or_fail ~pp_error:DecodeError.pp (fun charstring ->
     let res2 = DecodeCff.path_of_charstring charstring in
-    assert_equal
-      ~pp:(pp_list Value.pp_cubic_path)
-      ~pp_error:DecodeError.pp
-      ~message:"cff cubic path"
-      TestCaseCff1.expected_paths
-      res2
+    Alcotest.(check (decoding (list (of_pp Value.pp_cubic_path)))) "cff cubic path"
+      (Ok(TestCaseCff1.expected_paths)) res2
   )
 
 

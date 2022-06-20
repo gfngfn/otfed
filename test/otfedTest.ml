@@ -50,7 +50,7 @@ let chop_two_bytes_tests () =
   in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
     let got = DecodeOperation.ForTest.chop_two_bytes ~data ~unit_size ~repeat in
-    ignore @@ assert_equal
+    assert_equal
       ~pp
       ~pp_error:DecodeError.pp
       ~message:"chop_two_bytes"
@@ -68,7 +68,7 @@ let d_int16_and_e_int16_tests () =
   in
   cases |> List.iter (fun (input, expected) ->
     let res = DecodeOperation.d_int16 |> run_decoder input in
-    ignore @@ assert_equal
+    assert_equal
       ~pp:Format.pp_print_int
       ~pp_error:DecodeError.pp
       ~message:"d_int16"
@@ -77,7 +77,7 @@ let d_int16_and_e_int16_tests () =
   );
   cases |> List.iter (fun (expected, input) ->
     let res = EncodeOperation.e_int16 input |> run_encoder in
-    ignore @@ assert_equal
+    assert_equal
       ~pp:pp_xxd
       ~pp_error:EncodeError.pp
       ~message:"e_int16"
@@ -89,7 +89,7 @@ let d_int16_and_e_int16_tests () =
 (** Tests for `DecodeTtf.d_glyf` *)
 let d_glyf_tests () =
   let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
-  ignore @@ assert_equal
+  assert_equal
     ~pp:Value.Ttf.pp_glyph_info
     ~pp_error:DecodeError.pp
     ~message:"glyf"
@@ -130,21 +130,21 @@ let d_charstring_tests () =
     (start, data, charstring_length)
   in
   let res1 = run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
-  let charstring =
-    assert_equal
-      ~pp:Intermediate.Cff.pp_charstring
-      ~pp_error:DecodeError.pp
-      ~message:"cff"
-      TestCaseCff1.expected_operations
-      res1
-  in
-  let res2 = DecodeCff.path_of_charstring charstring in
-  ignore @@ assert_equal
-    ~pp:(Format.pp_print_list ~pp_sep Value.pp_cubic_path)
+  assert_equal
+    ~pp:Intermediate.Cff.pp_charstring
     ~pp_error:DecodeError.pp
-    ~message:"cff cubic path"
-    TestCaseCff1.expected_paths
-    res2
+    ~message:"cff"
+    TestCaseCff1.expected_operations
+    res1;
+  res1 |> get_or_fail ~pp_error:DecodeError.pp (fun charstring ->
+    let res2 = DecodeCff.path_of_charstring charstring in
+    assert_equal
+      ~pp:(Format.pp_print_list ~pp_sep Value.pp_cubic_path)
+      ~pp_error:DecodeError.pp
+      ~message:"cff cubic path"
+      TestCaseCff1.expected_paths
+      res2
+  )
 
 
 let () =

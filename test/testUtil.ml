@@ -1,26 +1,16 @@
 
 
-let assert_equal ~pp ~pp_error ~message:msg expected = function
-  | Ok(got) ->
-      if got = expected then
-        begin
-          print_endline "OK";
-          got
-        end
-      else
-        begin
-          Format.printf "@[<v>";
-          Format.printf "FAIL \"%s\"@," msg;
-          Format.printf "expected:@,@[<h>%a,@]@," pp expected;
-          Format.printf "got:@,@[<h>%a@]@," pp got;
-          Format.printf "@]";
-          exit 1
-        end
+let assert_equal ~pp ~pp_error ~message:msg expected res =
+  let ok_testable = Alcotest.of_pp pp in
+  let error_testable = Alcotest.of_pp pp_error in
+  let result_testable = Alcotest.result ok_testable error_testable in
+  Alcotest.check result_testable msg (Ok(expected)) res
 
-  | Error(e) ->
-      Format.printf "%s\n" msg;
-      Format.printf "%a\n" pp_error e;
-      exit 1
+
+let get_or_fail ~pp_error k res =
+  match res with
+  | Ok(v)    -> k v
+  | Error(e) -> Alcotest.failf "%a" pp_error e
 
 
 let pp_sep ppf () =

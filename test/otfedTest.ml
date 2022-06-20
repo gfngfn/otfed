@@ -33,7 +33,7 @@ let run_encoder enc =
 
 
 (** Tests for `DecodeOperation.chop_two_bytes` *)
-let () =
+let chop_two_bytes_tests () =
   let cases =
     [
       (0b01_01_01_01_01_00_00_00, 2, 5, [1; 1; 1; 1; 1]);
@@ -60,7 +60,7 @@ let () =
 
 
 (** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
-let () =
+let d_int16_and_e_int16_tests () =
   let cases =
     [
       (make_string_even [0xffec], -20);
@@ -87,7 +87,7 @@ let () =
 
 
 (** Tests for `DecodeTtf.d_glyf` *)
-let () =
+let d_glyf_tests () =
   let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
   ignore @@ assert_equal
     ~pp:Value.Ttf.pp_glyph_info
@@ -98,7 +98,7 @@ let () =
 
 
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)
-let () =
+let d_charstring_tests () =
   let (gsize, gkeyval) = TestCaseCff1.gsubrs in
   let gsubr_index = Array.make gsize (Intermediate.Cff.CharStringData(0, 0)) in
   let (lsize, lkeyval) = TestCaseCff1.lsubrs in
@@ -145,3 +145,17 @@ let () =
     ~message:"cff cubic path"
     TestCaseCff1.expected_paths
     res2
+
+
+let () =
+  let open Alcotest in
+  run "Otfed" [
+    ("Basic", [
+      test_case "chop_two_bytes" `Quick chop_two_bytes_tests;
+      test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
+    ]);
+    ("Glyph", [
+      test_case "d_glyf" `Quick d_glyf_tests;
+      test_case "d_charstring" `Quick d_charstring_tests;
+    ]);
+  ]

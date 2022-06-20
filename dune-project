@@ -14,4 +14,5 @@
   (dune (>= 2.0))
   (core_kernel (>= 0.13.0))
   (ppx_deriving (>= 4.4.1))
-  (uutf (>= 1.0.2))))
+  (uutf (>= 1.0.2))
+  (alcotest (and :with-test (>= 1.4.0)))))

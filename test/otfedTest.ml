@@ -44,14 +44,10 @@ let chop_two_bytes_tests () =
       (0b11111111_00010000, 8, 2, [-1; 16]);
     ]
   in
-  let pp ppf ds =
-    Format.fprintf ppf "%a"
-      (Format.pp_print_list ~pp_sep Format.pp_print_int) ds
-  in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
     let got = DecodeOperation.ForTest.chop_two_bytes ~data ~unit_size ~repeat in
     assert_equal
-      ~pp
+      ~pp:(pp_list Format.pp_print_int)
       ~pp_error:DecodeError.pp
       ~message:"chop_two_bytes"
       expected
@@ -139,7 +135,7 @@ let d_charstring_tests () =
   res1 |> get_or_fail ~pp_error:DecodeError.pp (fun charstring ->
     let res2 = DecodeCff.path_of_charstring charstring in
     assert_equal
-      ~pp:(Format.pp_print_list ~pp_sep Value.pp_cubic_path)
+      ~pp:(pp_list Value.pp_cubic_path)
       ~pp_error:DecodeError.pp
       ~message:"cff cubic path"
       TestCaseCff1.expected_paths

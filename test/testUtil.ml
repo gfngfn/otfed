@@ -13,8 +13,9 @@ let get_or_fail ~pp_error k res =
   | Error(e) -> Alcotest.failf "%a" pp_error e
 
 
-let pp_sep ppf () =
-  Format.fprintf ppf ", "
+let pp_list pp_elem ppf elems =
+  let pp_sep ppf () = Format.fprintf ppf ";@ " in
+  Format.fprintf ppf "[%a]" (Format.pp_print_list ~pp_sep pp_elem) elems
 
 
 let pp_xxd ppf s =

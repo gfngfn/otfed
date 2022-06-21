@@ -15,4 +15,5 @@
   (core (>= 0.13.0))
   (ppx_deriving (>= 4.4.1))
   (uutf (>= 1.0.2))
-  (alcotest (and :with-test (>= 1.4.0)))))
+  (alcotest (and :with-test (>= 1.4.0)))
+  (ppx_inline_test (>= v0.15.0))))

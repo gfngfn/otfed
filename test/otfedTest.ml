@@ -40,24 +40,6 @@ let encoding testable_ok =
   Alcotest.(result testable_ok (of_pp EncodeError.pp))
 
 
-(** Tests for `DecodeOperation.chop_two_bytes` *)
-let chop_two_bytes_tests () =
-  let cases =
-    [
-      (0b01_01_01_01_01_00_00_00, 2, 5, [1; 1; 1; 1; 1]);
-      (0b00_01_10_11_00_00_00_00, 2, 4, [0; 1; -2; -1]);
-      (0b0101_0101_0001_0000, 4, 3, [5; 5; 1]);
-      (0b0101_0101_0001_0000, 4, 4, [5; 5; 1; 0]);
-      (0b1111_1101_0001_0000, 4, 4, [-1; -3; 1; 0]);
-      (0b11111111_00010000, 8, 2, [-1; 16]);
-    ]
-  in
-  cases |> List.iter (fun (data, unit_size, repeat, expected) ->
-    let got = DecodeOperation.ForTest.chop_two_bytes ~data ~unit_size ~repeat in
-    Alcotest.(check (list int)) "chop_two_bytes" expected got
-  )
-
-
 (** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
 let d_int16_and_e_int16_tests () =
   let cases =
@@ -129,12 +111,13 @@ let d_charstring_tests () =
 let () =
   let open Alcotest in
   run "Otfed" [
-    ("Basic", [
-      test_case "chop_two_bytes" `Quick chop_two_bytes_tests;
+    ("DecodeOperation", [
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
     ]);
-    ("Glyph", [
+    ("DecodeTtf", [
       test_case "d_glyf" `Quick d_glyf_tests;
+    ]);
+    ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;
     ]);
   ]

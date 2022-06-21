@@ -1,18 +1,47 @@
 
 open TestUtil
 
-module V = Otfed.Value
-module I = Otfed.Intermediate
-module D = Otfed.Decode
-module E = Otfed.Encode
-module DT = Otfed.Decode.ForTest
-module ET = Otfed.Encode.ForTest
-module DecOp = DT.DecodeOperation
-module EncOp = ET.EncodeOperation
+open Otfed__Basic
+module DecodeOperation = Otfed__DecodeOperation
+module EncodeOperation = Otfed__EncodeOperation
+module DecodeTtf = Otfed__DecodeTtf
+module DecodeCff = Otfed__DecodeCff
+module DecodeError = Otfed__DecodeError
+module EncodeError = Otfed__EncodeError
+module Value = Otfed__Value
+module Intermediate = Otfed__Intermediate
 
 
-(** Tests for `DecodeOperation.chop_two_bytes` (via `DT.chop_two_bytes`) *)
-let () =
+let run_decoder s d =
+  DecodeOperation.run { data = s; max = String.length s } 0 d
+
+
+let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
+  let cstate = DecodeCff.initial_charstring_state charstring_length in
+  let dec =
+    let open DecodeOperation in
+    DecodeCff.d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
+    return @@ Alist.to_list opacc
+  in
+  dec |> DecodeOperation.run { data = data; max = String.length data } start
+
+
+let run_encoder enc =
+  let open ResultMonad in
+  enc |> EncodeOperation.run >>= fun (contents, _) ->
+  return contents
+
+
+let decoding testable_ok =
+  Alcotest.(result testable_ok (of_pp DecodeError.pp))
+
+
+let encoding testable_ok =
+  Alcotest.(result testable_ok (of_pp EncodeError.pp))
+
+
+(** Tests for `DecodeOperation.chop_two_bytes` *)
+let chop_two_bytes_tests () =
   let cases =
     [
       (0b01_01_01_01_01_00_00_00, 2, 5, [1; 1; 1; 1; 1]);
@@ -23,72 +52,51 @@ let () =
       (0b11111111_00010000, 8, 2, [-1; 16]);
     ]
   in
-  let pp ppf ds =
-    Format.fprintf ppf "%a" (Format.pp_print_list ~pp_sep Format.pp_print_int) ds
-  in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
-    let got = DT.chop_two_bytes ~data ~unit_size ~repeat in
-    ignore @@ assert_equal
-      ~pp
-      ~pp_error:D.Error.pp
-      ~message:"chop_two_bytes"
-      expected
-      (Ok(got))
+    let got = DecodeOperation.ForTest.chop_two_bytes ~data ~unit_size ~repeat in
+    Alcotest.(check (list int)) "chop_two_bytes" expected got
   )
 
 
-(** Tests for `DecodeOperation.d_int16` (via `DecOp.d_int16`)
-    and `EncodeOperation.e_int16` (via `EncOp.e_int16`) *)
-let () =
+(** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
+let d_int16_and_e_int16_tests () =
   let cases =
     [
       (make_string_even [0xffec], -20);
     ]
   in
   cases |> List.iter (fun (input, expected) ->
-    let res = DecOp.d_int16 |> DT.run input in
-    ignore @@ assert_equal
-      ~pp:Format.pp_print_int
-      ~pp_error:D.Error.pp
-      ~message:"d_int16"
-      expected
-      res
+    let res = DecodeOperation.d_int16 |> run_decoder input in
+    Alcotest.(check (decoding int)) "d_int16"
+      (Ok(expected)) res
   );
   cases |> List.iter (fun (expected, input) ->
-    let res = EncOp.e_int16 input |> ET.run in
-    ignore @@ assert_equal
-      ~pp:pp_xxd
-      ~pp_error:E.Error.pp
-      ~message:"e_int16"
-      expected
-      res
+    let res = EncodeOperation.e_int16 input |> run_encoder in
+    Alcotest.(check (encoding (of_pp pp_xxd))) "e_int16"
+      (Ok(expected)) res
   )
 
 
-(** Tests for `DecodeTtf.d_glyf` (via `DT.d_glyf`) *)
-let () =
-  let res = DT.run TestCaseGlyf1.data DT.d_glyf in
-  ignore @@ assert_equal
-    ~pp:V.Ttf.pp_glyph_info
-    ~pp_error:D.Error.pp
-    ~message:"glyf"
-    TestCaseGlyf1.expected
-    res
+(** Tests for `DecodeTtf.d_glyf` *)
+let d_glyf_tests () =
+  let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
+  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "glyf"
+    (Ok(TestCaseGlyf1.expected)) res
 
 
-(** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` (via `DT.run_d_charstring`) *)
-let () =
+(** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)
+let d_charstring_tests () =
   let (gsize, gkeyval) = TestCaseCff1.gsubrs in
-  let gsubr_index = Array.make gsize (I.Cff.CharStringData(0, 0)) in
+  let gsubr_index = Array.make gsize (Intermediate.Cff.CharStringData(0, 0)) in
   let (lsize, lkeyval) = TestCaseCff1.lsubrs in
-  let lsubr_index = Array.make lsize (I.Cff.CharStringData(0, 0)) in
+  let lsubr_index = Array.make lsize (Intermediate.Cff.CharStringData(0, 0)) in
   let (start, data, charstring_length) =
     let buf = Buffer.create 1024 in
     let start =
       gkeyval |> List.fold_left (fun start (i, s) ->
         let len = String.length s in
         Format.printf "| Write: global, biased = %d, offset = %d, length = %d\n" i start len;
-        gsubr_index.(i) <- I.Cff.CharStringData(start, len);
+        gsubr_index.(i) <- Intermediate.Cff.CharStringData(start, len);
         Buffer.add_string buf s;
         start + len
       ) 0
@@ -97,7 +105,7 @@ let () =
       lkeyval |> List.fold_left (fun start (i, s) ->
         let len = String.length s in
         Format.printf "| Write: local, biased = %d, offset = %d, length = %d\n" i start len;
-        lsubr_index.(i) <- I.Cff.CharStringData(start, len);
+        lsubr_index.(i) <- Intermediate.Cff.CharStringData(start, len);
         Buffer.add_string buf s;
         start + len
       ) start
@@ -108,19 +116,25 @@ let () =
     let data = Buffer.contents buf in
     (start, data, charstring_length)
   in
-  let res1 = DT.run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
-  let charstring =
-    assert_equal
-      ~pp:I.Cff.pp_charstring
-      ~pp_error:D.Error.pp
-      ~message:"cff"
-      TestCaseCff1.expected_operations
-      res1
-  in
-  let res2 = D.Cff.path_of_charstring charstring in
-  ignore @@ assert_equal
-    ~pp:(Format.pp_print_list ~pp_sep Otfed.Value.pp_cubic_path)
-    ~pp_error:D.Error.pp
-    ~message:"cff cubic path"
-    TestCaseCff1.expected_paths
-    res2
+  let res1 = run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length in
+  Alcotest.(check (decoding (of_pp Intermediate.Cff.pp_charstring))) "cff"
+    (Ok(TestCaseCff1.expected_operations)) res1;
+  res1 |> get_or_fail ~pp_error:DecodeError.pp (fun charstring ->
+    let res2 = DecodeCff.path_of_charstring charstring in
+    Alcotest.(check (decoding (list (of_pp Value.pp_cubic_path)))) "cff cubic path"
+      (Ok(TestCaseCff1.expected_paths)) res2
+  )
+
+
+let () =
+  let open Alcotest in
+  run "Otfed" [
+    ("Basic", [
+      test_case "chop_two_bytes" `Quick chop_two_bytes_tests;
+      test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
+    ]);
+    ("Glyph", [
+      test_case "d_glyf" `Quick d_glyf_tests;
+      test_case "d_charstring" `Quick d_charstring_tests;
+    ]);
+  ]

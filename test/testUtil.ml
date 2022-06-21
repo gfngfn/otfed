@@ -1,37 +1,20 @@
 
-
-let assert_equal ~pp ~pp_error ~message:msg expected = function
-  | Ok(got) ->
-      if got = expected then
-        begin
-          print_endline "OK";
-          got
-        end
-      else
-        begin
-          Format.printf "@[<v>";
-          Format.printf "FAIL \"%s\"@," msg;
-          Format.printf "expected:@,@[<h>%a,@]@," pp expected;
-          Format.printf "got:@,@[<h>%a@]@," pp got;
-          Format.printf "@]";
-          exit 1
-        end
-
-  | Error(e) ->
-      Format.printf "%s\n" msg;
-      Format.printf "%a\n" pp_error e;
-      exit 1
+let get_or_fail ~pp_error k res =
+  match res with
+  | Ok(v)    -> k v
+  | Error(e) -> Alcotest.failf "%a" pp_error e
 
 
-let pp_sep ppf () =
-  Format.fprintf ppf ", "
+let pp_list pp_elem ppf elems =
+  let pp_sep ppf () = Format.fprintf ppf ";@ " in
+  Format.fprintf ppf "[%a]" (Format.pp_print_list ~pp_sep pp_elem) elems
 
 
 let pp_xxd ppf s =
   let pp_single ppf ch =
     Format.fprintf ppf "%02x" (Char.code ch)
   in
-  let chars = Core_kernel.String.to_list_rev s |> List.rev in
+  let chars = Core.String.to_list s in
   Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
 
 

@@ -202,7 +202,7 @@ let print_name (source : D.source) =
 let write_file path ~data =
   let open ResultMonad in
   try
-    Core_kernel.Out_channel.write_all path ~data;
+    Core.Out_channel.write_all path ~data;
     return ()
   with
   | _ ->
@@ -698,7 +698,7 @@ let parse_args () =
 let read_file path =
   let open ResultMonad in
   try
-    let s = Core_kernel.In_channel.read_all path in
+    let s = Core.In_channel.read_all path in
     return s
   with
   | _ ->

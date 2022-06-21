@@ -1,3 +1,6 @@
 (test
  (name otfedTest)
- (libraries otfed))
+ (libraries
+   otfed
+   core
+   alcotest))

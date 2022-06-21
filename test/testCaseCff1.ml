@@ -1,4 +1,8 @@
 
+module Value = Otfed__Value
+module Intermediate = Otfed__Intermediate
+
+
 let charstring_data =
   TestUtil.make_string_even [
   (* `lmroman10-regular.otf`, glyph ID = 50 (offset: 25799, length: 12) *)
@@ -45,7 +49,7 @@ let lsubrs = (264, [
 
 
 let expected_operations =
-  let open Otfed.Intermediate.Cff in
+  let open Intermediate.Cff in
   [
     HStem{ y = -11; dy = 25; rest = [ (217, 21); (174, 22) ] };
     VStem{ x = 28; dx = 83; rest = [ (238, 66) ] };
@@ -70,7 +74,7 @@ let expected_operations =
 
 
 let expected_paths =
-  let open Otfed.Value in
+  let open Value in
   [
     ((415, 119), [
       CubicCurveTo((415, 129), (407, 131), (402, 131));

@@ -303,6 +303,18 @@ let seek_table table_directory tag =
   table_directory |> TableDirectory.find_opt tag
 
 
-module ForTest = struct
-  let chop_two_bytes = chop_two_bytes
-end
+let%test_unit "chop_two_bytes" =
+  let cases =
+    [
+      (0b01_01_01_01_01_00_00_00, 2, 5, [1; 1; 1; 1; 1]);
+      (0b00_01_10_11_00_00_00_00, 2, 4, [0; 1; -2; -1]);
+      (0b0101_0101_0001_0000, 4, 3, [5; 5; 1]);
+      (0b0101_0101_0001_0000, 4, 4, [5; 5; 1; 0]);
+      (0b1111_1101_0001_0000, 4, 4, [-1; -3; 1; 0]);
+      (0b11111111_00010000, 8, 2, [-1; 16]);
+    ]
+  in
+  cases |> List.iter (fun (data, unit_size, repeat, expected) ->
+    let got = chop_two_bytes ~data ~unit_size ~repeat in
+    Alcotest.(check (list int)) "chop_two_bytes" expected got
+  )

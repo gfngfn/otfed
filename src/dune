@@ -1,8 +1,11 @@
 (library
  (name otfed)
+ (inline_tests)
  (public_name otfed)
  (libraries
-   core)
+   core
+   alcotest)
  (preprocess
    (pps
-     ppx_deriving.show)))
+     ppx_deriving.show
+     ppx_inline_test)))

@@ -96,7 +96,3 @@ val d_device : device decoder
 val seek_required_table : table_directory -> Tag.t -> (offset * int) ok
 
 val seek_table : table_directory -> Tag.t -> (offset * int) option
-
-module ForTest : sig
-  val chop_two_bytes : data:int -> unit_size:int -> repeat:int -> int list
-end

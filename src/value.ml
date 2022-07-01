@@ -601,16 +601,7 @@ module Ttf = struct
   [@@deriving show { with_path = false }]
 
   type instruction = string
-
-  let pp_instruction ppf s =
-    let pp_single ppf ch =
-      Format.fprintf ppf "%02x" (Char.code ch)
-    in
-    let chars = Core.String.to_list s in
-    Format.fprintf ppf "%a" (Format.pp_print_list pp_single) chars
-
-  let show_instruction s =
-    Format.asprintf "%a" pp_instruction s
+  [@@deriving show { with_path = false }]
 
   type simple_glyph_description = contour list * instruction
   [@@deriving show { with_path = false }]

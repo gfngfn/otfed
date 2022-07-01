@@ -270,7 +270,10 @@ module Value : sig
       | Matching of int * int
     [@@deriving show]
 
-    type simple_glyph_description = contour list
+    type instruction = string
+    [@@deriving show]
+
+    type simple_glyph_description = contour list * instruction
     [@@deriving show]
 
     type composite_glyph_description = (glyph_id * composition * linear_transform option) list

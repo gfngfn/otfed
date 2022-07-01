@@ -184,7 +184,9 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
 let d_simple_glyph (numberOfContours : int) : Ttf.simple_glyph_description decoder =
   let open DecodeOperation in
   if numberOfContours = 0 then
-    return []
+    d_uint16 >>= fun instructionLength ->
+    d_bytes instructionLength >>= fun instructions ->
+    return ([], instructions)
   else
     d_end_points numberOfContours >>= fun endPtsOfContours ->
     (* `num_points`: the total number of points. *)
@@ -195,12 +197,13 @@ let d_simple_glyph (numberOfContours : int) : Ttf.simple_glyph_description decod
     in
     let endPtsOfContours = Alist.to_list endPtsOfContours in
     d_uint16 >>= fun instructionLength ->
-    d_skip instructionLength >>= fun () ->
+    d_bytes instructionLength >>= fun instructions ->
     d_flags num_points >>= fun flagacc ->
     let flags = Alist.to_list flagacc in
     d_x_coordinates flags >>= fun xCoordinates ->
     d_y_coordinates flags >>= fun yCoordinates ->
-    combine endPtsOfContours num_points flags xCoordinates yCoordinates
+    combine endPtsOfContours num_points flags xCoordinates yCoordinates >>= fun contours ->
+    return (contours, instructions)
 
 
 type component_flag = Intermediate.Ttf.component_flag

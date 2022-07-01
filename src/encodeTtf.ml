@@ -114,9 +114,8 @@ let e_relative (relative : relative) =
   | Long(rel)      -> e_int16 rel
 
 
-let e_simple_glyph (contours : Ttf.simple_glyph_description) : unit encoder =
+let e_simple_glyph ((contours, instructions) : Ttf.simple_glyph_description) : unit encoder =
   let endPtsOfContours = make_end_points contours in
-  let instructions = "" in (* TODO: `instructions` should be extracted from `ttf_simple_glyph_description`. *)
   let instructionLength = String.length instructions in
   let (flags, xCoordinates, yCoordinates) = decompose_contours contours in
   let open EncodeOperation in
@@ -222,8 +221,12 @@ let e_glyph (g : Ttf.glyph_info) =
   let open EncodeOperation in
   let (number_of_contours, enc) =
     match g.description with
-    | Ttf.SimpleGlyph(contours) -> (List.length contours, e_simple_glyph contours)
-    | Ttf.CompositeGlyph(elems) -> (-1, e_composite_glyph elems)
+    | Ttf.SimpleGlyph(simple_glyph) ->
+        let (contours, _) = simple_glyph in
+        (List.length contours, e_simple_glyph simple_glyph)
+
+    | Ttf.CompositeGlyph(elems) ->
+        (-1, e_composite_glyph elems)
   in
   e_int16 number_of_contours   >>= fun () ->
   e_int16 g.bounding_box.x_min >>= fun () ->

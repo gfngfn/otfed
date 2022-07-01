@@ -5,6 +5,7 @@ open Otfed__Basic
 module DecodeOperation = Otfed__DecodeOperation
 module EncodeOperation = Otfed__EncodeOperation
 module DecodeTtf = Otfed__DecodeTtf
+module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
 module DecodeError = Otfed__DecodeError
 module EncodeError = Otfed__EncodeError
@@ -62,8 +63,15 @@ let d_int16_and_e_int16_tests () =
 (** Tests for `DecodeTtf.d_glyf` *)
 let d_glyf_tests () =
   let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
-  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "glyf"
+  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "d_glyf"
     (Ok(TestCaseGlyf1.expected)) res
+
+
+(** Tests for `DecodeTtf.e_glyph` *)
+let e_glyph_tests () =
+  let res = EncodeTtf.e_glyph TestCaseGlyf1.expected |> run_encoder in
+  Alcotest.(check (encoding (of_pp pp_xxd))) "e_glyph"
+    (Ok(TestCaseGlyf1.data)) res
 
 
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)
@@ -111,11 +119,14 @@ let d_charstring_tests () =
 let () =
   let open Alcotest in
   run "Otfed" [
-    ("DecodeOperation", [
+    ("DecodeOperation, EncodeOperation", [
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyf" `Quick d_glyf_tests;
+    ]);
+    ("EncodeTtf", [
+      test_case "e_glyph" `Quick e_glyph_tests;
     ]);
     ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;

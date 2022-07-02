@@ -171,3 +171,20 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 
 * v: done
 * o: no automated test has been given, but seems working correctly for many inputs.
+
+
+## How to develop
+
+Assumes that [Dune](https://dune.build/) (≥2.7) is installed.
+
+### How to build
+
+```console
+$ dune build
+```
+
+### How to run tests
+
+```console
+$ dune test
+```

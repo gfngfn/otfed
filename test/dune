@@ -2,5 +2,6 @@
  (name otfedTest)
  (libraries
    otfed
-   core
+   base
+   stdio
    alcotest))

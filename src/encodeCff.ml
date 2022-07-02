@@ -200,7 +200,7 @@ let e_real_value (r : float) : unit encoder =
         e_quads qs
   in
   let s = Printf.sprintf "%e" r in
-  let chs = Core.String.to_list s in
+  let chs = Base.String.to_list s in
   let qs = aux Alist.empty chs in
   e_uint8 30 >>= fun () ->
   e_quads qs

@@ -3,7 +3,7 @@
  (inline_tests)
  (public_name otfed)
  (libraries
-   core
+   base
    alcotest)
  (preprocess
    (pps

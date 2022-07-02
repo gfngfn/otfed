@@ -1,7 +1,11 @@
 (executable
  (public_name otfedcli)
  (name main)
- (libraries otfed uutf)
+ (libraries
+   otfed
+   stdio
+   base
+   uutf)
  (preprocess
    (pps
      ppx_deriving.show)))

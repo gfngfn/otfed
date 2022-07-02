@@ -600,7 +600,10 @@ module Ttf = struct
     | Matching of int * int
   [@@deriving show { with_path = false }]
 
-  type simple_glyph_description = contour list
+  type instruction = string
+  [@@deriving show { with_path = false }]
+
+  type simple_glyph_description = contour list * instruction
   [@@deriving show { with_path = false }]
 
   type composite_glyph_description = (glyph_id * composition * linear_transform option) list

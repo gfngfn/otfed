@@ -184,7 +184,9 @@ let combine (endPtsOfContours : int list) (num_points : int) (flags : flag list)
 let d_simple_glyph (numberOfContours : int) : Ttf.simple_glyph_description decoder =
   let open DecodeOperation in
   if numberOfContours = 0 then
-    return []
+    d_uint16 >>= fun instructionLength ->
+    d_bytes instructionLength >>= fun instructions ->
+    return ([], instructions)
   else
     d_end_points numberOfContours >>= fun endPtsOfContours ->
     (* `num_points`: the total number of points. *)
@@ -195,12 +197,13 @@ let d_simple_glyph (numberOfContours : int) : Ttf.simple_glyph_description decod
     in
     let endPtsOfContours = Alist.to_list endPtsOfContours in
     d_uint16 >>= fun instructionLength ->
-    d_skip instructionLength >>= fun () ->
+    d_bytes instructionLength >>= fun instructions ->
     d_flags num_points >>= fun flagacc ->
     let flags = Alist.to_list flagacc in
     d_x_coordinates flags >>= fun xCoordinates ->
     d_y_coordinates flags >>= fun yCoordinates ->
-    combine endPtsOfContours num_points flags xCoordinates yCoordinates
+    combine endPtsOfContours num_points flags xCoordinates yCoordinates >>= fun contours ->
+    return (contours, instructions)
 
 
 type component_flag = Intermediate.Ttf.component_flag
@@ -265,7 +268,7 @@ let d_composite_glyph : Ttf.composite_glyph_description decoder =
   aux Alist.empty
 
 
-let d_glyf =
+let d_glyph =
   let open DecodeOperation in
   (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
   d_int16 >>= fun numberOfContours ->
@@ -294,7 +297,7 @@ let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : Ttf.gl
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  d_glyf |> DecodeOperation.run common.core (offset + reloffset)
+  d_glyph |> DecodeOperation.run common.core (offset + reloffset)
 
 
 let path_of_contour (contour : Ttf.contour) : quadratic_path ok =

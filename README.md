@@ -141,7 +141,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td rowspan="6">TTF</td>
       <td>cvt␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>fpgm</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>glyf</td><td>v</td><td>o</td><td>v</td><td>v (simple glyphs only)</td></tr>
+  <tr><td>glyf</td><td>v</td><td>v (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
   <tr><td>loca</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>prep</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
@@ -171,3 +171,20 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 
 * v: done
 * o: no automated test has been given, but seems working correctly for many inputs.
+
+
+## How to develop
+
+Assumes that [Dune](https://dune.build/) (≥2.7) is installed.
+
+### How to build
+
+```console
+$ dune build
+```
+
+### How to run tests
+
+```console
+$ dune test
+```

@@ -1,4 +1,11 @@
 
+open Otfed__Basic
+module DecodeOperation = Otfed__DecodeOperation
+module EncodeOperation = Otfed__EncodeOperation
+module DecodeError = Otfed__DecodeError
+module EncodeError = Otfed__EncodeError
+
+
 let get_or_fail ~pp_error k res =
   match res with
   | Ok(v)    -> k v
@@ -39,3 +46,21 @@ let make_string_even ns =
 
 let make_string_odd ns n =
   string_of_uint16_scheme ns (Some(n))
+
+
+let run_decoder s d =
+  DecodeOperation.run { data = s; max = String.length s } 0 d
+
+
+let run_encoder enc =
+  let open ResultMonad in
+  enc |> EncodeOperation.run >>= fun (contents, _) ->
+  return contents
+
+
+let decoding testable_ok =
+  Alcotest.(result testable_ok (of_pp DecodeError.pp))
+
+
+let encoding =
+  Alcotest.(result (of_pp pp_xxd) (of_pp EncodeError.pp))

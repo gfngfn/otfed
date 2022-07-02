@@ -13,34 +13,6 @@ module Value = Otfed__Value
 module Intermediate = Otfed__Intermediate
 
 
-let run_decoder s d =
-  DecodeOperation.run { data = s; max = String.length s } 0 d
-
-
-let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
-  let cstate = DecodeCff.initial_charstring_state charstring_length in
-  let dec =
-    let open DecodeOperation in
-    DecodeCff.d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
-    return @@ Alist.to_list opacc
-  in
-  dec |> DecodeOperation.run { data = data; max = String.length data } start
-
-
-let run_encoder enc =
-  let open ResultMonad in
-  enc |> EncodeOperation.run >>= fun (contents, _) ->
-  return contents
-
-
-let decoding testable_ok =
-  Alcotest.(result testable_ok (of_pp DecodeError.pp))
-
-
-let encoding testable_ok =
-  Alcotest.(result testable_ok (of_pp EncodeError.pp))
-
-
 (** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
 let d_int16_and_e_int16_tests () =
   let cases =
@@ -72,6 +44,16 @@ let e_glyph_tests () =
   let got = EncodeTtf.e_glyph TestCaseGlyf1.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseGlyf1.marshaled) in
   Alcotest.(check (encoding (of_pp pp_xxd))) "e_glyph" expected got
+
+
+let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =
+  let cstate = DecodeCff.initial_charstring_state charstring_length in
+  let dec =
+    let open DecodeOperation in
+    DecodeCff.d_charstring { gsubr_index; lsubr_index } cstate >>= fun (_, opacc) ->
+    return @@ Alist.to_list opacc
+  in
+  dec |> DecodeOperation.run { data = data; max = String.length data } start
 
 
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)

@@ -22,13 +22,11 @@ let d_int16_and_e_int16_tests () =
   in
   cases |> List.iter (fun (input, expected) ->
     let res = DecodeOperation.d_int16 |> run_decoder input in
-    Alcotest.(check (decoding int)) "d_int16"
-      (Ok(expected)) res
+    Alcotest.(check (decoding int)) "d_int16" (Ok(expected)) res
   );
   cases |> List.iter (fun (expected, input) ->
     let res = EncodeOperation.e_int16 input |> run_encoder in
-    Alcotest.(check (encoding (of_pp pp_xxd))) "e_int16"
-      (Ok(expected)) res
+    Alcotest.(check encoding) "e_int16" (Ok(expected)) res
   )
 
 
@@ -43,7 +41,7 @@ let d_glyph_tests () =
 let e_glyph_tests () =
   let got = EncodeTtf.e_glyph TestCaseGlyf1.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseGlyf1.marshaled) in
-  Alcotest.(check (encoding (of_pp pp_xxd))) "e_glyph" expected got
+  Alcotest.(check encoding) "e_glyph" expected got
 
 
 let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =

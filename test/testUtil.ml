@@ -62,5 +62,5 @@ let decoding testable_ok =
   Alcotest.(result testable_ok (of_pp DecodeError.pp))
 
 
-let encoding testable_ok =
-  Alcotest.(result testable_ok (of_pp EncodeError.pp))
+let encoding =
+  Alcotest.(result (of_pp pp_xxd) (of_pp EncodeError.pp))

@@ -60,18 +60,18 @@ let d_int16_and_e_int16_tests () =
   )
 
 
-(** Tests for `DecodeTtf.d_glyf` *)
-let d_glyf_tests () =
-  let res = DecodeTtf.d_glyf |> run_decoder TestCaseGlyf1.data in
-  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "d_glyf"
-    (Ok(TestCaseGlyf1.expected)) res
+(** Tests for `DecodeTtf.d_glyph` *)
+let d_glyph_tests () =
+  let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
+  let expected = Ok(TestCaseGlyf1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "d_glyph" expected got
 
 
 (** Tests for `DecodeTtf.e_glyph` *)
 let e_glyph_tests () =
-  let res = EncodeTtf.e_glyph TestCaseGlyf1.expected |> run_encoder in
-  Alcotest.(check (encoding (of_pp pp_xxd))) "e_glyph"
-    (Ok(TestCaseGlyf1.data)) res
+  let got = EncodeTtf.e_glyph TestCaseGlyf1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseGlyf1.marshaled) in
+  Alcotest.(check (encoding (of_pp pp_xxd))) "e_glyph" expected got
 
 
 (** Tests for `DecodeCff.d_charstring` and `DecodeCff.path_of_charstring` *)
@@ -123,7 +123,7 @@ let () =
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
     ]);
     ("DecodeTtf", [
-      test_case "d_glyf" `Quick d_glyf_tests;
+      test_case "d_glyph" `Quick d_glyph_tests;
     ]);
     ("EncodeTtf", [
       test_case "e_glyph" `Quick e_glyph_tests;

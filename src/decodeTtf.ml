@@ -268,7 +268,7 @@ let d_composite_glyph : Ttf.composite_glyph_description decoder =
   aux Alist.empty
 
 
-let d_glyf =
+let d_glyph =
   let open DecodeOperation in
   (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
   d_int16 >>= fun numberOfContours ->
@@ -297,7 +297,7 @@ let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : Ttf.gl
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  d_glyf |> DecodeOperation.run common.core (offset + reloffset)
+  d_glyph |> DecodeOperation.run common.core (offset + reloffset)
 
 
 let path_of_contour (contour : Ttf.contour) : quadratic_path ok =

@@ -2,7 +2,7 @@
 module Value = Otfed__Value
 
 
-let data =
+let marshaled =
   TestUtil.make_string_odd [
     (* `ipaexm.ttf`, glyph ID 1000 (offset: 520500, length: 608) without padded bytes *)
     0x0006; 0x0033; 0xff6d; 0x07ab; 0x0694; 0x001f; 0x0023; 0x0055;
@@ -46,7 +46,7 @@ let data =
   ] 0x6c
 
 
-let expected =
+let unmarshaled =
   let convert (on_curve, x_coord, y_coord) = Value.Ttf.{ on_curve; point = (x_coord, y_coord) } in
   let description =
     Value.Ttf.SimpleGlyph([

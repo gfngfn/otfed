@@ -12,7 +12,8 @@
  (description "Long description")
  (depends
   (dune (>= 2.0))
-  (core (>= 0.13.0))
+  (base (>= v0.15.0))
+  (stdio (>= v0.15.0))
   (ppx_deriving (>= 4.4.1))
   (uutf (>= 1.0.2))
   (alcotest (and :with-test (>= 1.4.0)))

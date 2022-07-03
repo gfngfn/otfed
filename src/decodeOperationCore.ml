@@ -212,7 +212,10 @@ let d_timestamp : timestamp decoder =
         let s2 = (of_byte by4 lsl 8) lor of_byte by5 in
         let s3 = (of_byte by6 lsl 8) lor of_byte by7 in
         let v = (s0 lsl 48) lor (s1 lsl 32) lor (s2 lsl 16) lor s3 in
+(*
         let unix_epoch = !%% 2_082_844_800L in (* in seconds since 1904-01-01 00:00:00 *)
         v -% unix_epoch
+*)
+        v
       in
       return (advance state 8, n)

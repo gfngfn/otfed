@@ -5,6 +5,7 @@ open Otfed__Basic
 module DecodeOperation = Otfed__DecodeOperation
 module EncodeOperation = Otfed__EncodeOperation
 module DecodeHead = Otfed__DecodeHead
+module EncodeHead = Otfed__EncodeHead
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -36,6 +37,13 @@ let d_head_tests () =
   let got = DecodeHead.d_head Intermediate.LongLocFormat |> run_decoder TestCaseHead1.marshaled in
   let expected = Ok(TestCaseHead1.unmarshaled) in
   Alcotest.(check (decoding (of_pp Intermediate.Head.pp))) "d_head" expected got
+
+
+(** Tests for `EncodeHead.e_head` *)
+let e_head_tests () =
+  let got = EncodeHead.e_head TestCaseHead1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseHead1.marshaled) in
+  Alcotest.(check encoding) "e_head" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -112,6 +120,9 @@ let () =
     ]);
     ("DecodeHead", [
       test_case "d_head" `Quick d_head_tests;
+    ]);
+    ("EncodeHead", [
+      test_case "e_head" `Quick e_head_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

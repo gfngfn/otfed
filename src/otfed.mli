@@ -29,6 +29,7 @@ module Value : sig
       and thus differs for each font in general. *)
   type point = x_coordinate * y_coordinate
 
+  (** A signed integer representing a datetime in number of seconds since 1904-01-01T00:00:00. *)
   type timestamp = wint
 
   type bounding_box = {

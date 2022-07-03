@@ -7,6 +7,7 @@ module EncodeOperation = Otfed__EncodeOperation
 module DecodeHead = Otfed__DecodeHead
 module EncodeHead = Otfed__EncodeHead
 module DecodeHhea = Otfed__DecodeHhea
+module EncodeHhea = Otfed__EncodeHhea
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -52,6 +53,13 @@ let d_hhea_tests () =
   let got = DecodeHhea.d_hhea |> run_decoder TestCaseHhea1.marshaled in
   let expected = Ok(TestCaseHhea1.unmarshaled) in
   Alcotest.(check (decoding (of_pp Intermediate.Hhea.pp))) "d_hhea" expected got
+
+(** Tests for `EncodeHhea.e_hhea` *)
+let e_hhea_tests () =
+  let number_of_h_metrics = TestCaseHhea1.number_of_h_metrics in
+  let got = EncodeHhea.e_hhea ~number_of_h_metrics TestCaseHhea1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseHhea1.marshaled) in
+  Alcotest.(check encoding) "e_hhea" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -134,6 +142,9 @@ let () =
     ]);
     ("DecodeHhea", [
       test_case "d_hhea" `Quick d_hhea_tests;
+    ]);
+    ("EncodeHhea", [
+      test_case "e_hhea" `Quick e_hhea_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

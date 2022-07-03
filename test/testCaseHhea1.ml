@@ -12,6 +12,9 @@ let marshaled =
   ]
 
 
+let number_of_h_metrics = 12218
+
+
 let unmarshaled =
   Intermediate.Hhea.{
     value = Value.Hhea.{

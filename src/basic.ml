@@ -82,10 +82,13 @@ module ResultMonad = struct
     return @@ Alist.to_list acc
 
   let foldM f xs acc =
+    xs |> Base.List.fold_result ~f ~init:acc
+(*
     xs |> List.fold_left (fun res x ->
       res >>= fun acc ->
       f acc x
     ) (Ok(acc))
+*)
 end
 
 type offset = int

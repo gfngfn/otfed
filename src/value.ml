@@ -506,8 +506,8 @@ module Os2 = struct
     ul_code_page_range2         : wint option;
     s_x_height                  : design_units option;
     s_cap_height                : design_units option;
-    us_default_char             : int option;
-    us_break_char               : int option;
+    us_default_char             : Uchar.t option; [@printer (pp_option pp_uchar)]
+    us_break_char               : Uchar.t option; [@printer (pp_option pp_uchar)]
     us_lower_optical_point_size : int option;
     us_upper_optical_point_size : int option;
   }

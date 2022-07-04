@@ -63,8 +63,8 @@ let unmarshaled =
       s_x_height   = Some(1008);
       s_cap_height = Some(1464);
 
-      us_default_char = Some(0);
-      us_break_char   = Some(32);
+      us_default_char = Some(Uchar.of_int 0x0000);
+      us_break_char   = Some(Uchar.of_int 0x0020);
 
       us_lower_optical_point_size = None;
       us_upper_optical_point_size = None;

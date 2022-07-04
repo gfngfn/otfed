@@ -242,8 +242,8 @@ module Value : sig
       ul_code_page_range2         : wint option;
       s_x_height                  : design_units option;
       s_cap_height                : design_units option;
-      us_default_char             : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
-      us_break_char               : int option; (* TODO: consider replacing `int` with `Uchar.t` *)
+      us_default_char             : Uchar.t option;
+      us_break_char               : Uchar.t option;
       us_lower_optical_point_size : int option;
       us_upper_optical_point_size : int option;
     }

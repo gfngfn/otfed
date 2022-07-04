@@ -14,8 +14,8 @@ type extension5 =
 type extension2_contents = {
   s_x_height      : int;
   s_cap_height    : int;
-  us_default_char : int;
-  us_break_char   : int;
+  us_default_char : Uchar.t;
+  us_break_char   : Uchar.t;
   us_max_context  : int;
 }
 
@@ -23,8 +23,8 @@ type extension2 =
   extension2_contents * extension5 option
 
 type extension1_contents = {
-  ul_code_page_range_1 : wint;
-  ul_code_page_range_2 : wint;
+  ul_code_page_range1 : wint;
+  ul_code_page_range2 : wint;
 }
 
 type extension1 =
@@ -38,12 +38,12 @@ let form_extension_structure (d : Intermediate.Os2.derived) (v : Value.Os2.t) : 
     ( v.ul_code_page_range1,
       v.ul_code_page_range2 )
   with
-  | ( Some(ul_code_page_range_1),
-      Some(ul_code_page_range_2) ) ->
+  | ( Some(ul_code_page_range1),
+      Some(ul_code_page_range2) ) ->
       let extension1_contents =
         {
-          ul_code_page_range_1;
-          ul_code_page_range_2;
+          ul_code_page_range1;
+          ul_code_page_range2;
         }
       in
       let extension2_option =
@@ -115,8 +115,8 @@ let e_extension2 ((ext2, ext5_option) : extension2) =
   let open EncodeOperation in
   e_int16  ext2.s_x_height       >>= fun () ->
   e_int16  ext2.s_cap_height     >>= fun () ->
-  e_uint16 ext2.us_default_char  >>= fun () ->
-  e_uint16 ext2.us_break_char    >>= fun () ->
+  e_bmp_code_point ext2.us_default_char >>= fun () ->
+  e_bmp_code_point ext2.us_break_char   >>= fun () ->
   e_uint16 ext2.us_max_context   >>= fun () ->
   e_opt e_extension5 ext5_option >>= fun () ->
   return ()
@@ -124,9 +124,9 @@ let e_extension2 ((ext2, ext5_option) : extension2) =
 
 let e_extension1 ((ext1, ext2_option) : extension1) =
   let open EncodeOperation in
-  e_uint32 ext1.ul_code_page_range_1 >>= fun () ->
-  e_uint32 ext1.ul_code_page_range_2 >>= fun () ->
-  e_opt e_extension2 ext2_option     >>= fun () ->
+  e_uint32 ext1.ul_code_page_range1 >>= fun () ->
+  e_uint32 ext1.ul_code_page_range2 >>= fun () ->
+  e_opt e_extension2 ext2_option    >>= fun () ->
   return ()
 
 

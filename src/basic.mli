@@ -73,3 +73,5 @@ val ( !%% ) : int64 -> wint
 val is_in_range : lower:int -> upper:int -> int -> bool
 
 val pp_uchar : Format.formatter -> Uchar.t -> unit
+
+val pp_option : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a option -> unit

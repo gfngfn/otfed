@@ -8,6 +8,8 @@ module DecodeHead = Otfed__DecodeHead
 module EncodeHead = Otfed__EncodeHead
 module DecodeHhea = Otfed__DecodeHhea
 module EncodeHhea = Otfed__EncodeHhea
+module DecodeOs2 = Otfed__DecodeOs2
+module EncodeOs2 = Otfed__EncodeOs2
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -54,12 +56,27 @@ let d_hhea_tests () =
   let expected = Ok(TestCaseHhea1.unmarshaled) in
   Alcotest.(check (decoding (of_pp Intermediate.Hhea.pp))) "d_hhea" expected got
 
+
 (** Tests for `EncodeHhea.e_hhea` *)
 let e_hhea_tests () =
   let number_of_h_metrics = TestCaseHhea1.number_of_h_metrics in
   let got = EncodeHhea.e_hhea ~number_of_h_metrics TestCaseHhea1.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseHhea1.marshaled) in
   Alcotest.(check encoding) "e_hhea" expected got
+
+
+(** Tests for `DecodeOs2.d_os2` *)
+let d_os2_tests () =
+  let got = DecodeOs2.d_os2 |> run_decoder TestCaseOs21.marshaled in
+  let expected = Ok(TestCaseOs21.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Os2.pp))) "d_os2" expected got
+
+
+(** Tests for `EncodeOs2.e_os2` *)
+let e_os2_tests () =
+  let got = EncodeOs2.e_os2 TestCaseOs21.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseOs21.marshaled) in
+  Alcotest.(check encoding) "e_os2" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -145,6 +162,12 @@ let () =
     ]);
     ("EncodeHhea", [
       test_case "e_hhea" `Quick e_hhea_tests;
+    ]);
+    ("DecodeOs2", [
+      test_case "d_os2" `Quick d_os2_tests;
+    ]);
+    ("EncodeOs2", [
+      test_case "e_os2" `Quick e_os2_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

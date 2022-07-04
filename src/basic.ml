@@ -159,3 +159,7 @@ let is_in_range ~lower:a ~upper:b x = (a <= x && x <= b)
 
 let pp_uchar ppf uchar =
   Format.fprintf ppf "U+%04X" (Uchar.to_int uchar)
+
+let pp_option pp ppf = function
+  | None   -> Format.fprintf ppf "None"
+  | Some v -> Format.fprintf ppf "Some@[<v2>@,%a@]" pp v

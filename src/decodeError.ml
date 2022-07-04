@@ -60,6 +60,7 @@ type t =
   | UnknownWeightClass        of int
   | UnknownWidthClass         of int
   | InvalidFsType             of int
+  | InvalidFsSelection        of int
 
   | InconsistentNumberOfPoints of {
       num_points : int;

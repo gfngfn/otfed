@@ -475,6 +475,20 @@ module Os2 = struct
   }
   [@@deriving show { with_path = false }]
 
+  type fs_selection = {
+    italic           : bool;
+    underscore       : bool;
+    negative         : bool;
+    outlined         : bool;
+    strikeout        : bool;
+    bold             : bool;
+    regular          : bool;
+    use_typo_metrics : bool;
+    wws              : bool;
+    oblique          : bool;
+  }
+  [@@deriving show { with_path = false }]
+
   type t = {
     us_weight_class             : weight_class;
     us_width_class              : width_class;
@@ -496,18 +510,18 @@ module Os2 = struct
     ul_unicode_range3           : wint;
     ul_unicode_range4           : wint;
     ach_vend_id                 : string;  (* 4 bytes. *)
-    fs_selection                : int;
+    fs_selection                : fs_selection;
     s_typo_ascender             : design_units;
     s_typo_descender            : design_units;
     s_typo_linegap              : design_units;
     us_win_ascent               : design_units;
     us_win_descent              : design_units;
-    ul_code_page_range_1        : wint option;
-    ul_code_page_range_2        : wint option;
+    ul_code_page_range1         : wint option;
+    ul_code_page_range2         : wint option;
     s_x_height                  : design_units option;
     s_cap_height                : design_units option;
-    us_default_char             : int option;
-    us_break_char               : int option;
+    us_default_char             : Uchar.t option; [@printer (pp_option pp_uchar)]
+    us_break_char               : Uchar.t option; [@printer (pp_option pp_uchar)]
     us_lower_optical_point_size : int option;
     us_upper_optical_point_size : int option;
   }

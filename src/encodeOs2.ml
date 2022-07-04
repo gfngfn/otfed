@@ -35,8 +35,8 @@ type extension =
 
 let form_extension_structure (d : Intermediate.Os2.derived) (v : Value.Os2.t) : extension =
   match
-    ( v.ul_code_page_range_1,
-      v.ul_code_page_range_2 )
+    ( v.ul_code_page_range1,
+      v.ul_code_page_range2 )
   with
   | ( Some(ul_code_page_range_1),
       Some(ul_code_page_range_2) ) ->

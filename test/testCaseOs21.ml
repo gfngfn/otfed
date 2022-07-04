@@ -57,8 +57,8 @@ let unmarshaled =
       us_win_ascent    = 1876;
       us_win_descent   = 571;
 
-      ul_code_page_range_1 = Some(WideInt.of_int 0x20001);
-      ul_code_page_range_2 = Some(WideInt.of_int 0x0);
+      ul_code_page_range1 = Some(WideInt.of_int 0x20001);
+      ul_code_page_range2 = Some(WideInt.of_int 0x0);
 
       s_x_height   = Some(1008);
       s_cap_height = Some(1464);

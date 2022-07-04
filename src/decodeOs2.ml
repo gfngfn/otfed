@@ -92,8 +92,8 @@ let d_os2 =
   d_int16    >>= fun s_typo_linegap ->
   d_uint16   >>= fun us_win_ascent ->
   d_uint16   >>= fun us_win_descent ->
-  opt 0x0001 d_uint32 >>= fun ul_code_page_range_1 ->
-  opt 0x0001 d_uint32 >>= fun ul_code_page_range_2 ->
+  opt 0x0001 d_uint32 >>= fun ul_code_page_range1 ->
+  opt 0x0001 d_uint32 >>= fun ul_code_page_range2 ->
   opt 0x0002 d_int16  >>= fun s_x_height ->
   opt 0x0002 d_int16  >>= fun s_cap_height ->
   opt 0x0002 d_uint16 >>= fun us_default_char ->
@@ -129,8 +129,8 @@ let d_os2 =
       s_typo_linegap;
       us_win_ascent;
       us_win_descent;
-      ul_code_page_range_1;
-      ul_code_page_range_2;
+      ul_code_page_range1;
+      ul_code_page_range2;
       s_x_height;
       s_cap_height;
       us_default_char;

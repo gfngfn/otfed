@@ -238,8 +238,8 @@ module Value : sig
       s_typo_linegap              : design_units;
       us_win_ascent               : design_units;
       us_win_descent              : design_units;
-      ul_code_page_range_1        : wint option;
-      ul_code_page_range_2        : wint option;
+      ul_code_page_range1         : wint option;
+      ul_code_page_range2         : wint option;
       s_x_height                  : design_units option;
       s_cap_height                : design_units option;
       us_default_char             : int option; (* TODO: consider replacing `int` with `Uchar.t` *)

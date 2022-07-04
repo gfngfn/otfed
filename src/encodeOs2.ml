@@ -175,6 +175,22 @@ let e_fs_type (fs_type : Value.Os2.fs_type) =
   e_uint16 u
 
 
+let e_fs_selection (fs_selection : Value.Os2.fs_selection) =
+  let open EncodeOperation in
+  let u = 0 in
+  let u = if fs_selection.italic           then u + 1 else u in
+  let u = if fs_selection.underscore       then u + 2 else u in
+  let u = if fs_selection.negative         then u + 4 else u in
+  let u = if fs_selection.outlined         then u + 8 else u in
+  let u = if fs_selection.strikeout        then u + 16 else u in
+  let u = if fs_selection.bold             then u + 32 else u in
+  let u = if fs_selection.regular          then u + 64 else u in
+  let u = if fs_selection.use_typo_metrics then u + 128 else u in
+  let u = if fs_selection.wws              then u + 256 else u in
+  let u = if fs_selection.oblique          then u + 512 else u in
+  e_uint16 u
+
+
 let make (ios2 : Intermediate.Os2.t) : table ok =
   let d = ios2.Intermediate.Os2.derived in
   let v = ios2.Intermediate.Os2.value in
@@ -223,7 +239,7 @@ let make (ios2 : Intermediate.Os2.t) : table ok =
     e_uint32 v.ul_unicode_range3      >>= fun () ->
     e_uint32 v.ul_unicode_range4      >>= fun () ->
     e_bytes  v.ach_vend_id            >>= fun () -> (* asserted to be 4 bytes long *)
-    e_uint16 v.fs_selection           >>= fun () ->
+    e_fs_selection v.fs_selection          >>= fun () ->
     e_bmp_code_point d.us_first_char_index >>= fun () ->
     e_bmp_code_point d.us_last_char_index  >>= fun () ->
     e_int16  v.s_typo_ascender        >>= fun () ->

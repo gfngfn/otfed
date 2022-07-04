@@ -49,7 +49,19 @@ let unmarshaled =
       ul_unicode_range4 = WideInt.of_int 0x0;
 
       ach_vend_id  = "IPA ";
-      fs_selection = 64;
+
+      fs_selection = Value.Os2.{
+        italic           = false;
+        underscore       = false;
+        negative         = false;
+        outlined         = false;
+        strikeout        = false;
+        bold             = false;
+        regular          = true;
+        use_typo_metrics = false;
+        wws              = false;
+        oblique          = false;
+      };
 
       s_typo_ascender  = 1802;
       s_typo_descender = -246;

@@ -50,6 +50,26 @@ let d_fs_type : Value.Os2.fs_type decoder =
     }
 
 
+let d_fs_selection : Value.Os2.fs_selection decoder =
+  let open DecodeOperation in
+  d_uint16 >>= fun u ->
+  if u land (1024 + 2048 + 4096 + 8192 + 16384 + 32768) > 0 then
+    err @@ InvalidFsSelection(u)
+  else
+    return Value.Os2.{
+      italic           = (u land 1 > 0);
+      underscore       = (u land 2 > 0);
+      negative         = (u land 4 > 0);
+      outlined         = (u land 8 > 0);
+      strikeout        = (u land 16 > 0);
+      bold             = (u land 32 > 0);
+      regular          = (u land 64 > 0);
+      use_typo_metrics = (u land 128 > 0);
+      wws              = (u land 256 > 0);
+      oblique          = (u land 512 > 0);
+    }
+
+
 let d_os2 =
   let open DecodeOperation in
   d_uint16 >>= fun version ->
@@ -84,7 +104,7 @@ let d_os2 =
   d_uint32   >>= fun ul_unicode_range3 ->
   d_uint32   >>= fun ul_unicode_range4 ->
   d_bytes 4  >>= fun ach_vend_id ->
-  d_uint16   >>= fun fs_selection ->
+  d_fs_selection   >>= fun fs_selection ->
   d_bmp_code_point >>= fun us_first_char_index ->
   d_bmp_code_point >>= fun us_last_char_index ->
   d_int16    >>= fun s_typo_ascender ->

@@ -12,6 +12,7 @@ module DecodeOs2 = Otfed__DecodeOs2
 module EncodeOs2 = Otfed__EncodeOs2
 module DecodeTtfMaxp = Otfed__DecodeTtfMaxp
 module EncodeTtfMaxp = Otfed__EncodeTtfMaxp
+module DecodeCffMaxp = Otfed__DecodeCffMaxp
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -93,6 +94,13 @@ let e_ttf_maxp_tests () =
   let got = EncodeTtfMaxp.e_maxp TestCaseTtfMaxp1.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseTtfMaxp1.marshaled) in
   Alcotest.(check encoding) "e_maxp" expected got
+
+
+(** Tests for `DecodeCffMaxp.d_maxp` *)
+let d_cff_maxp_tests () =
+  let got = DecodeCffMaxp.d_maxp |> run_decoder TestCaseCffMaxp1.marshaled in
+  let expected = Ok(TestCaseCffMaxp1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Cff.Maxp.pp))) "d_maxp" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -190,6 +198,9 @@ let () =
     ]);
     ("EncodeTtfMaxp", [
       test_case "e_maxp" `Quick e_ttf_maxp_tests;
+    ]);
+    ("DecodeCffMaxp", [
+      test_case "d_maxp" `Quick d_cff_maxp_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

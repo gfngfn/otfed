@@ -16,6 +16,7 @@ type t =
   | NotEncodableAsTimestamp    of wint
   | NotA10BytePanose           of string
   | NotA4ByteAchVendId         of string
+  | Version4FsSelection        of Value.Os2.fs_selection
   | TooLargeToDetermineOffSize of int
   | NotEncodableAsDictValue    of int
   | Unsupported                of unsupported_report

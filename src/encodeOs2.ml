@@ -33,6 +33,7 @@ type extension1 =
 type extension =
   extension1 option
 
+
 let form_extension_structure (d : Intermediate.Os2.derived) (v : Value.Os2.t) : extension =
   match
     ( v.ul_code_page_range1,
@@ -191,18 +192,15 @@ let e_fs_selection (fs_selection : Value.Os2.fs_selection) =
   e_uint16 u
 
 
-let make (ios2 : Intermediate.Os2.t) : table ok =
+let fs_selection_requires_table_version4_or_later (fs_selection : Value.Os2.fs_selection) : bool =
+  let Value.Os2.{ use_typo_metrics; wws; oblique; _ } = fs_selection in
+  use_typo_metrics || wws || oblique
+
+
+let e_os2 (ios2 : Intermediate.Os2.t) =
+  let open EncodeOperation in
   let d = ios2.Intermediate.Os2.derived in
   let v = ios2.Intermediate.Os2.value in
-  let extension = form_extension_structure d v in
-  let table_version =
-    match extension with
-    | None                                -> 0x0000
-    | Some((_, None))                     -> 0x0001
-    | Some((_, Some((_, None))))          -> 0x0002
-    | Some((_, Some((_, Some((_, ())))))) -> 0x0005
-  in
-  let open ResultMonad in
   begin
     if String.length v.panose <> 10 then
       err @@ Error.NotA10BytePanose(v.panose)
@@ -215,42 +213,58 @@ let make (ios2 : Intermediate.Os2.t) : table ok =
     else
       return ()
   end >>= fun () ->
-  let enc =
-    let open EncodeOperation in
-    e_uint16 table_version            >>= fun () ->
-    e_int16  d.x_avg_char_width       >>= fun () ->
-    e_weight_class v.us_weight_class  >>= fun () ->
-    e_width_class v.us_width_class    >>= fun () ->
-    e_fs_type v.fs_type               >>= fun () ->
-    e_int16  v.y_subscript_x_size     >>= fun () ->
-    e_int16  v.y_subscript_y_size     >>= fun () ->
-    e_int16  v.y_subscript_x_offset   >>= fun () ->
-    e_int16  v.y_subscript_y_offset   >>= fun () ->
-    e_int16  v.y_superscript_x_size   >>= fun () ->
-    e_int16  v.y_superscript_y_size   >>= fun () ->
-    e_int16  v.y_superscript_x_offset >>= fun () ->
-    e_int16  v.y_superscript_y_offset >>= fun () ->
-    e_int16  v.y_strikeout_size       >>= fun () ->
-    e_int16  v.y_strikeout_position   >>= fun () ->
-    e_int16  v.s_family_class         >>= fun () ->
-    e_bytes  v.panose                 >>= fun () -> (* asserted to be 10 bytes long *)
-    e_uint32 v.ul_unicode_range1      >>= fun () ->
-    e_uint32 v.ul_unicode_range2      >>= fun () ->
-    e_uint32 v.ul_unicode_range3      >>= fun () ->
-    e_uint32 v.ul_unicode_range4      >>= fun () ->
-    e_bytes  v.ach_vend_id            >>= fun () -> (* asserted to be 4 bytes long *)
-    e_fs_selection v.fs_selection          >>= fun () ->
-    e_bmp_code_point d.us_first_char_index >>= fun () ->
-    e_bmp_code_point d.us_last_char_index  >>= fun () ->
-    e_int16  v.s_typo_ascender        >>= fun () ->
-    e_int16  v.s_typo_descender       >>= fun () ->
-    e_int16  v.s_typo_linegap         >>= fun () ->
-    e_uint16 v.us_win_ascent          >>= fun () ->
-    e_uint16 v.us_win_descent         >>= fun () ->
-    e_opt e_extension1 extension      >>= fun () ->
-    return ()
+  let extension = form_extension_structure d v in
+  let table_version =
+    match extension with
+    | None                                -> 0x0000
+    | Some((_, None))                     -> 0x0001
+    | Some((_, Some((_, None))))          -> 0x0002
+    | Some((_, Some((_, Some((_, ())))))) -> 0x0005
   in
-  enc |> EncodeOperation.run >>= fun (contents, ()) ->
+  let fs_selection = v.fs_selection in
+  begin
+    if fs_selection_requires_table_version4_or_later fs_selection && table_version < 0x0004 then
+      err @@ Version4FsSelection(fs_selection)
+    else
+      return ()
+  end >>= fun () ->
+  e_uint16 table_version            >>= fun () ->
+  e_int16  d.x_avg_char_width       >>= fun () ->
+  e_weight_class v.us_weight_class  >>= fun () ->
+  e_width_class v.us_width_class    >>= fun () ->
+  e_fs_type v.fs_type               >>= fun () ->
+  e_int16  v.y_subscript_x_size     >>= fun () ->
+  e_int16  v.y_subscript_y_size     >>= fun () ->
+  e_int16  v.y_subscript_x_offset   >>= fun () ->
+  e_int16  v.y_subscript_y_offset   >>= fun () ->
+  e_int16  v.y_superscript_x_size   >>= fun () ->
+  e_int16  v.y_superscript_y_size   >>= fun () ->
+  e_int16  v.y_superscript_x_offset >>= fun () ->
+  e_int16  v.y_superscript_y_offset >>= fun () ->
+  e_int16  v.y_strikeout_size       >>= fun () ->
+  e_int16  v.y_strikeout_position   >>= fun () ->
+  e_int16  v.s_family_class         >>= fun () ->
+  e_bytes  v.panose                 >>= fun () -> (* asserted to be 10 bytes long *)
+  e_uint32 v.ul_unicode_range1      >>= fun () ->
+  e_uint32 v.ul_unicode_range2      >>= fun () ->
+  e_uint32 v.ul_unicode_range3      >>= fun () ->
+  e_uint32 v.ul_unicode_range4      >>= fun () ->
+  e_bytes  v.ach_vend_id            >>= fun () -> (* asserted to be 4 bytes long *)
+  e_fs_selection fs_selection            >>= fun () ->
+  e_bmp_code_point d.us_first_char_index >>= fun () ->
+  e_bmp_code_point d.us_last_char_index  >>= fun () ->
+  e_int16  v.s_typo_ascender        >>= fun () ->
+  e_int16  v.s_typo_descender       >>= fun () ->
+  e_int16  v.s_typo_linegap         >>= fun () ->
+  e_uint16 v.us_win_ascent          >>= fun () ->
+  e_uint16 v.us_win_descent         >>= fun () ->
+  e_opt e_extension1 extension      >>= fun () ->
+  return ()
+
+
+let make (ios2 : Intermediate.Os2.t) : table ok =
+  let open ResultMonad in
+  e_os2 ios2 |> EncodeOperation.run >>= fun (contents, ()) ->
   return {
     tag = Value.Tag.table_os2;
     contents;

@@ -5,6 +5,7 @@ open Otfed__Basic
 module DecodeBasic = Otfed__DecodeBasic
 module DecodeOperation = Otfed__DecodeOperation
 module EncodeOperation = Otfed__EncodeOperation
+module Encode = Otfed__Encode
 module DecodeHead = Otfed__DecodeHead
 module EncodeHead = Otfed__EncodeHead
 module DecodeHhea = Otfed__DecodeHhea
@@ -16,6 +17,7 @@ module EncodeTtfMaxp = Otfed__EncodeTtfMaxp
 module DecodeCffMaxp = Otfed__DecodeCffMaxp
 module EncodeCffMaxp = Otfed__EncodeCffMaxp
 module DecodeHmtx = Otfed__DecodeHmtx
+module EncodeHmtx = Otfed__EncodeHmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -132,6 +134,17 @@ let access_hmtx_tests () =
   )
 
 
+let make_hmtx_tests () =
+  let got =
+    EncodeHmtx.make_exact
+      TestCaseHmtx1.unmarshaled_long_hor_metrics
+      TestCaseHmtx1.unmarshaled_left_side_bearings
+    |> Result.map Encode.get_contents
+  in
+  let expected = Ok(TestCaseHmtx1.marshaled) in
+  Alcotest.(check encoding) "make_hmtx" expected got
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -236,6 +249,9 @@ let () =
     ]);
     ("DecodeHmtx", [
       test_case "access_hmtx" `Quick access_hmtx_tests;
+    ]);
+    ("EncodeHmtx", [
+      test_case "make_hmtx" `Quick make_hmtx_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

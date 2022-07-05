@@ -1057,6 +1057,7 @@ module Encode : sig
 
   (** Defines encoding operations for [hmtx] tables. *)
   module Hmtx : sig
+    val make_exact : (Value.design_units * Value.design_units) list -> Value.design_units list -> table ok
     val make : (Value.design_units * Value.design_units) list -> table ok
   end
 

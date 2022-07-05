@@ -13,9 +13,9 @@ See also:
 
 Some unit tests use data extracted from the following fonts:
 
-* [IPAex明朝 (IPAex Mincho)](https://moji.or.jp/ipafont/), `ipaexm.ttf`
+* [IPAex明朝 (IPAex Mincho)](https://moji.or.jp/ipafont/): `ipaexm.ttf`
   - See the license [here](https://moji.or.jp/ipafont/license/)
-* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern), `lmroman10-regular.otf`
+* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
   - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
 
 
@@ -132,7 +132,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
       <td>cmap</td><td>v (Format 12 only)</td><td>o</td><td>v (Format 4, 12, and 13 only)</td><td>o</td></tr>
   <tr><td>head</td><td>v</td><td>v</td><td>v</td><td>v</td></tr>
   <tr><td>hhea</td><td>v</td><td>v</td><td>v</td><td>v</td></tr>
-  <tr><td>hmtx</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
+  <tr><td>hmtx</td><td>v</td><td>v</td><td>v</td><td>v</td></tr>
   <tr><td>maxp</td><td>v</td><td>v</td><td>v</td><td>v</td></tr>
   <tr><td>name</td><td>v</td><td>o</td><td>v</td><td>o</td></tr>
   <tr><td>OS/2</td><td>v</td><td>v (version 2 only)</td><td>v</td><td>v (version 2 only)</td></tr>

@@ -2,8 +2,10 @@
 open TestUtil
 
 open Otfed__Basic
+module DecodeBasic = Otfed__DecodeBasic
 module DecodeOperation = Otfed__DecodeOperation
 module EncodeOperation = Otfed__EncodeOperation
+module Encode = Otfed__Encode
 module DecodeHead = Otfed__DecodeHead
 module EncodeHead = Otfed__EncodeHead
 module DecodeHhea = Otfed__DecodeHhea
@@ -14,6 +16,8 @@ module DecodeTtfMaxp = Otfed__DecodeTtfMaxp
 module EncodeTtfMaxp = Otfed__EncodeTtfMaxp
 module DecodeCffMaxp = Otfed__DecodeCffMaxp
 module EncodeCffMaxp = Otfed__EncodeCffMaxp
+module DecodeHmtx = Otfed__DecodeHmtx
+module EncodeHmtx = Otfed__EncodeHmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -109,6 +113,36 @@ let e_cff_maxp_tests () =
   let got = EncodeCffMaxp.e_maxp TestCaseCffMaxp1.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseCffMaxp1.marshaled) in
   Alcotest.(check encoding) "e_maxp" expected got
+
+
+let access_hmtx_tests () =
+  let hmtx =
+    let data = TestCaseHmtx1.marshaled in
+    let length = String.length data in
+    let core = DecodeBasic.{ data = data; max = length; } in
+    DecodeHmtx.make_scheme core 0 length
+      {
+        num_glyphs    = TestCaseHmtx1.number_of_glyphs;
+        num_h_metrics = TestCaseHmtx1.number_of_h_metrics;
+      }
+  in
+  TestCaseHmtx1.test_cases |> List.iteri (fun index (gid, pair_opt) ->
+    let title = Printf.sprintf "access_hmtx (%d)" index in
+    let got = DecodeHmtx.access hmtx gid in
+    let expected = Ok(pair_opt) in
+    Alcotest.(check (decoding (option (pair int int)))) title expected got
+  )
+
+
+let make_hmtx_tests () =
+  let got =
+    EncodeHmtx.make_exact
+      TestCaseHmtx1.unmarshaled_long_hor_metrics
+      TestCaseHmtx1.unmarshaled_left_side_bearings
+    |> Result.map Encode.get_contents
+  in
+  let expected = Ok(TestCaseHmtx1.marshaled) in
+  Alcotest.(check encoding) "make_hmtx" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -212,6 +246,12 @@ let () =
     ]);
     ("EncodeCffMaxp", [
       test_case "e_maxp" `Quick e_cff_maxp_tests;
+    ]);
+    ("DecodeHmtx", [
+      test_case "access_hmtx" `Quick access_hmtx_tests;
+    ]);
+    ("EncodeHmtx", [
+      test_case "make_hmtx" `Quick make_hmtx_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

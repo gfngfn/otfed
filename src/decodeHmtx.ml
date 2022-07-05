@@ -21,17 +21,31 @@ let get (src : source) : t ok =
   return @@ make_scheme common.core offset length { num_glyphs; num_h_metrics }
 
 
-let access (hmtx : t) (gid : glyph_id) : ((int * int) option) ok =
+let d_long_hor_metric =
+  let open DecodeOperation in
+  d_uint16 >>= fun advanceWidth ->
+  d_int16 >>= fun lsb ->
+  return @@ (advanceWidth, lsb)
+
+
+let d_left_side_bearing =
+  let open DecodeOperation in
+  d_int16
+
+
+let access (hmtx : t) (gid : glyph_id) : ((design_units * design_units) option) ok =
   let open ResultMonad in
   let info = get_info hmtx in
+  let num_h_metrics = info.num_h_metrics in
   if gid < 0 || info.num_glyphs <= gid then
     return None
+  else if gid < num_h_metrics then
+    let reloffset = 4 * gid in
+    d_long_hor_metric |> DecodeOperation.run hmtx.core (hmtx.offset + reloffset) >>= fun (aw, lsb) ->
+    return (Some((aw, lsb)))
   else
-    let index = if gid >= info.num_h_metrics then info.num_h_metrics - 1 else gid in
-    let dec =
-      let open DecodeOperation in
-      d_uint16 >>= fun advanceWidth ->
-      d_int16 >>= fun lsb ->
-      return @@ Some((advanceWidth, lsb))
-    in
-    dec |> DecodeOperation.run hmtx.core (hmtx.offset + 4 * index)
+    let reloffset1 = 4 * (num_h_metrics - 1) in
+    d_long_hor_metric |> DecodeOperation.run hmtx.core (hmtx.offset + reloffset1) >>= fun (aw_last, _) ->
+    let reloffset2 = 4 * num_h_metrics + 2 * (gid - num_h_metrics) in
+    d_left_side_bearing |> DecodeOperation.run hmtx.core (hmtx.offset + reloffset2) >>= fun lsb ->
+    return (Some((aw_last, lsb)))

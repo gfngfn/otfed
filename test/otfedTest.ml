@@ -10,6 +10,10 @@ module DecodeHhea = Otfed__DecodeHhea
 module EncodeHhea = Otfed__EncodeHhea
 module DecodeOs2 = Otfed__DecodeOs2
 module EncodeOs2 = Otfed__EncodeOs2
+module DecodeTtfMaxp = Otfed__DecodeTtfMaxp
+module EncodeTtfMaxp = Otfed__EncodeTtfMaxp
+module DecodeCffMaxp = Otfed__DecodeCffMaxp
+module EncodeCffMaxp = Otfed__EncodeCffMaxp
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -77,6 +81,34 @@ let e_os2_tests () =
   let got = EncodeOs2.e_os2 TestCaseOs21.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseOs21.marshaled) in
   Alcotest.(check encoding) "e_os2" expected got
+
+
+(** Tests for `DecodeTtfMaxp.d_maxp` *)
+let d_ttf_maxp_tests () =
+  let got = DecodeTtfMaxp.d_maxp |> run_decoder TestCaseTtfMaxp1.marshaled in
+  let expected = Ok(TestCaseTtfMaxp1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Ttf.Maxp.pp))) "d_maxp" expected got
+
+
+(** Tests for `EncodeTtfMaxp.e_maxp` *)
+let e_ttf_maxp_tests () =
+  let got = EncodeTtfMaxp.e_maxp TestCaseTtfMaxp1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseTtfMaxp1.marshaled) in
+  Alcotest.(check encoding) "e_maxp" expected got
+
+
+(** Tests for `DecodeCffMaxp.d_maxp` *)
+let d_cff_maxp_tests () =
+  let got = DecodeCffMaxp.d_maxp |> run_decoder TestCaseCffMaxp1.marshaled in
+  let expected = Ok(TestCaseCffMaxp1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Cff.Maxp.pp))) "d_maxp" expected got
+
+
+(** Tests for `EncodeCffMaxp.e_maxp` *)
+let e_cff_maxp_tests () =
+  let got = EncodeCffMaxp.e_maxp TestCaseCffMaxp1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseCffMaxp1.marshaled) in
+  Alcotest.(check encoding) "e_maxp" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -168,6 +200,18 @@ let () =
     ]);
     ("EncodeOs2", [
       test_case "e_os2" `Quick e_os2_tests;
+    ]);
+    ("DecodeTtfMaxp", [
+      test_case "d_maxp" `Quick d_ttf_maxp_tests;
+    ]);
+    ("EncodeTtfMaxp", [
+      test_case "e_maxp" `Quick e_ttf_maxp_tests;
+    ]);
+    ("DecodeCffMaxp", [
+      test_case "d_maxp" `Quick d_cff_maxp_tests;
+    ]);
+    ("EncodeCffMaxp", [
+      test_case "e_maxp" `Quick e_cff_maxp_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

@@ -18,6 +18,7 @@ module DecodeCffMaxp = Otfed__DecodeCffMaxp
 module EncodeCffMaxp = Otfed__EncodeCffMaxp
 module DecodeHmtx = Otfed__DecodeHmtx
 module EncodeHmtx = Otfed__EncodeHmtx
+module DecodeCmap = Otfed__DecodeCmap
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -115,6 +116,7 @@ let e_cff_maxp_tests () =
   Alcotest.(check encoding) "e_maxp" expected got
 
 
+(** Tests for `DecodeHmtx.access` *)
 let access_hmtx_tests () =
   let hmtx =
     let data = TestCaseHmtx1.marshaled in
@@ -134,6 +136,7 @@ let access_hmtx_tests () =
   )
 
 
+(** Tests for `EncodeHmtx.make_exact` *)
 let make_hmtx_tests () =
   let got =
     EncodeHmtx.make_exact
@@ -143,6 +146,18 @@ let make_hmtx_tests () =
   in
   let expected = Ok(TestCaseHmtx1.marshaled) in
   Alcotest.(check encoding) "make_hmtx" expected got
+
+
+(** Tests for `DecodeCmap.d_cmap_subtable` *)
+let d_cmap_subtable_tests () =
+  let dec =
+    let open DecodeOperation in
+    DecodeCmap.d_cmap_subtable (fun acc segment -> Alist.extend acc segment) Alist.empty >>= fun acc ->
+    return (Alist.to_list acc)
+  in
+  let got = dec |> run_decoder "" in
+  let expected = Error DecodeError.LayeredTtc in
+  Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "d_cmap_subtable" expected got
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -252,6 +267,9 @@ let () =
     ]);
     ("EncodeHmtx", [
       test_case "make_hmtx" `Quick make_hmtx_tests;
+    ]);
+    ("DecodeCmap", [
+      test_case "d_cmap_subtable" `Quick d_cmap_subtable_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

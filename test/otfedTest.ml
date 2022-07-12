@@ -155,8 +155,8 @@ let d_cmap_subtable_tests () =
     DecodeCmap.d_cmap_subtable (fun acc segment -> Alist.extend acc segment) Alist.empty >>= fun acc ->
     return (Alist.to_list acc)
   in
-  let got = dec |> run_decoder "" in
-  let expected = Error DecodeError.LayeredTtc in
+  let got = dec |> run_decoder TestCaseCmap1.marshaled in
+  let expected = Ok(TestCaseCmap1.unmarshaled) in
   Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "d_cmap_subtable" expected got
 
 

@@ -169,6 +169,7 @@ let d_cmap_subtable_tests () =
   end
 
 
+(** Tests for `EncodeCmap.e_cmap_mapping` *)
 let e_cmap_mapping_tests () =
   let input = TestCaseCmap2.unmarshaled in
   let cmap_mapping =
@@ -184,7 +185,6 @@ let e_cmap_mapping_tests () =
   let got = EncodeCmap.e_cmap_mapping cmap_mapping |> run_encoder in
   let expected = Ok(TestCaseCmap2.marshaled) in
   Alcotest.(check encoding) "e_cmap_mapping" expected got
-
 
 
 (** Tests for `DecodeTtf.d_glyph` *)

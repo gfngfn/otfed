@@ -19,6 +19,7 @@ module EncodeCffMaxp = Otfed__EncodeCffMaxp
 module DecodeHmtx = Otfed__DecodeHmtx
 module EncodeHmtx = Otfed__EncodeHmtx
 module DecodeCmap = Otfed__DecodeCmap
+module EncodeCmap = Otfed__EncodeCmap
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -148,23 +149,47 @@ let make_hmtx_tests () =
   Alcotest.(check encoding) "make_hmtx" expected got
 
 
+let d_cmap_subtable_to_list =
+  let open DecodeOperation in
+  DecodeCmap.d_cmap_subtable (fun acc segment -> Alist.extend acc segment) Alist.empty >>= fun acc ->
+  return (Alist.to_list acc)
+
+
 (** Tests for `DecodeCmap.d_cmap_subtable` *)
 let d_cmap_subtable_tests () =
-  let dec =
-    let open DecodeOperation in
-    DecodeCmap.d_cmap_subtable (fun acc segment -> Alist.extend acc segment) Alist.empty >>= fun acc ->
-    return (Alist.to_list acc)
-  in
   begin
-    let got = dec |> run_decoder TestCaseCmap1.marshaled in
+    let got = d_cmap_subtable_to_list |> run_decoder TestCaseCmap1.marshaled in
     let expected = Ok(TestCaseCmap1.unmarshaled) in
     Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "d_cmap_subtable (1: Format 4)" expected got
   end;
   begin
-    let got = dec |> run_decoder TestCaseCmap2.marshaled in
+    let got = d_cmap_subtable_to_list |> run_decoder TestCaseCmap2.marshaled in
     let expected = Ok(TestCaseCmap2.unmarshaled) in
     Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "d_cmap_subtable (2: Format 12)" expected got
   end
+
+
+let e_cmap_mapping_tests () =
+  let input = TestCaseCmap2.unmarshaled in
+  let cmap_mapping =
+    input |> List.fold_left (fun cmap_mapping segment ->
+      match segment with
+      | DecodeCmap.Incremental(start, last, gid) ->
+          cmap_mapping |> Value.Cmap.Mapping.add_incremental_range ~start ~last ~gid
+
+      | DecodeCmap.Constant(start, last, gid) ->
+          cmap_mapping |> Value.Cmap.Mapping.add_constant_range ~start ~last ~gid
+    ) Value.Cmap.Mapping.empty
+  in
+  match EncodeCmap.e_cmap_mapping cmap_mapping |> run_encoder with
+  | Ok(encoded) ->
+      let got = d_cmap_subtable_to_list |> run_decoder encoded in
+      let expected = Ok(input) in
+      Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "e_cmap_mapping -> d_cmap_subtable" expected got
+
+  | Error(e) ->
+      Alcotest.failf "error: %a" EncodeError.pp e
+
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -277,6 +302,9 @@ let () =
     ]);
     ("DecodeCmap", [
       test_case "d_cmap_subtable" `Quick d_cmap_subtable_tests;
+    ]);
+    ("EncodeCmap", [
+      test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

@@ -181,14 +181,9 @@ let e_cmap_mapping_tests () =
           cmap_mapping |> Value.Cmap.Mapping.add_constant_range ~start ~last ~gid
     ) Value.Cmap.Mapping.empty
   in
-  match EncodeCmap.e_cmap_mapping cmap_mapping |> run_encoder with
-  | Ok(encoded) ->
-      let got = d_cmap_subtable_to_list |> run_decoder encoded in
-      let expected = Ok(input) in
-      Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "e_cmap_mapping -> d_cmap_subtable" expected got
-
-  | Error(e) ->
-      Alcotest.failf "error: %a" EncodeError.pp e
+  let got = EncodeCmap.e_cmap_mapping cmap_mapping |> run_encoder in
+  let expected = Ok(TestCaseCmap2.marshaled) in
+  Alcotest.(check encoding) "e_cmap_mapping" expected got
 
 
 

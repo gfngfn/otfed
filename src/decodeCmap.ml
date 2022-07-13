@@ -18,6 +18,15 @@ type segment =
   | Incremental of Uchar.t * Uchar.t * Value.glyph_id
   | Constant    of Uchar.t * Uchar.t * Value.glyph_id
 
+
+let pp_segment ppf = function
+  | Incremental(uch1, uch2, gid) ->
+      Format.fprintf ppf "Incremental(%a, %a, %d)" pp_uchar uch1 pp_uchar uch2 gid
+
+  | Constant(uch1, uch2, gid) ->
+      Format.fprintf ppf "Constant(%a, %a, %d)" pp_uchar uch1 pp_uchar uch2 gid
+
+
 type format = int
 
 type subtable = t * offset * Value.Cmap.subtable_ids * format
@@ -242,18 +251,20 @@ let d_cmap_13 f =
   ) f
 
 
+let d_cmap_subtable f acc =
+  let open DecodeOperation in
+  (* Position: at the beginning of the designated cmap subtable *)
+  d_uint16 >>= fun format ->
+  match format with
+  | 4  -> d_cmap_4 f acc
+  | 12 -> d_cmap_12 f acc
+  | 13 -> d_cmap_13 f acc
+  | _  -> err @@ UnsupportedCmapFormat(format)
+
+
 let fold_subtable (subtable : subtable) f acc =
   let (cmap, offset, _, _) = subtable in
-  let dec =
-    (* Position: at the beginning of the designated cmap subtable *)
-    d_uint16 >>= fun format ->
-    match format with
-    | 4  -> d_cmap_4 f acc
-    | 12 -> d_cmap_12 f acc
-    | 13 -> d_cmap_13 f acc
-    | _  -> err @@ UnsupportedCmapFormat(format)
-  in
-  run cmap.core offset dec
+  run cmap.core offset (d_cmap_subtable f acc)
 
 
 let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =

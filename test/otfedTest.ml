@@ -23,6 +23,7 @@ module EncodeCmap = Otfed__EncodeCmap
 module DecodeName = Otfed__DecodeName
 module EncodeName = Otfed__EncodeName
 module DecodePost = Otfed__DecodePost
+module EncodePost = Otfed__EncodePost
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -228,6 +229,13 @@ let d_post_tests () =
   end
 
 
+(** Tests for `EncodePost.e_post` *)
+let e_post_tests () =
+  let got = EncodePost.e_post TestCasePost1.unmarshaled |> run_encoder in
+  let expect = Ok(TestCasePost1.marshaled) in
+  Alcotest.(check encoding) "e_post" expect got
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -350,6 +358,9 @@ let () =
     ]);
     ("DecodePost", [
       test_case "d_post" `Quick d_post_tests;
+    ]);
+    ("EncodePost", [
+      test_case "e_post" `Quick e_post_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

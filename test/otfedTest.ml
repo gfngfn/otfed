@@ -21,6 +21,7 @@ module EncodeHmtx = Otfed__EncodeHmtx
 module DecodeCmap = Otfed__DecodeCmap
 module EncodeCmap = Otfed__EncodeCmap
 module DecodeName = Otfed__DecodeName
+module EncodeName = Otfed__EncodeName
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -195,6 +196,13 @@ let d_name_tests () =
   Alcotest.(check (decoding (of_pp Value.Name.pp))) "d_name" expected got
 
 
+(** Tests for `DecodeName.d_name` *)
+let encode_name_tests () =
+  let got = EncodeName.encode_name TestCaseName1.unmarshaled in
+  let expected = Ok(TestCaseName1.marshaled) in
+  Alcotest.(check encoding) "encode_name" expected got
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -311,6 +319,9 @@ let () =
     ]);
     ("DecodeName", [
       test_case "d_name" `Quick d_name_tests;
+    ]);
+    ("EecodeName", [
+      test_case "encode_name" `Quick encode_name_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

@@ -9,7 +9,7 @@ val d_loca : num_glyphs:int -> Intermediate.loc_format -> glyph_id -> ((int * in
 
 val loca : ttf_source -> glyph_id -> (Intermediate.Ttf.glyph_location option) ok
 
-val d_glyph : Ttf.glyph_info decoder
+val d_glyph : length:int -> Ttf.glyph_info decoder
 
 val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Ttf.glyph_info ok
 

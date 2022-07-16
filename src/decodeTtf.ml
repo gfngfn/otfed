@@ -54,8 +54,8 @@ let loca (ttf : ttf_source) (gid : glyph_id) : (Intermediate.Ttf.glyph_location 
   | None ->
       return None
 
-  | Some((reloffset, _length)) ->
-      return @@ Some(Intermediate.Ttf.GlyphLocation(reloffset))
+  | Some((reloffset, length)) ->
+      return @@ Some(Intermediate.Ttf.GlyphLocation{ reloffset; length })
 
 
 let d_end_points (numberOfContours : int) : (int Alist.t) decoder =
@@ -233,9 +233,9 @@ let d_component_flag : (bool * component_flag) decoder =
   return (more_components, cflag)
 
 
-let d_composite_glyph : Ttf.composite_glyph_description decoder =
+let d_composite_glyph ~(start_offset : int) ~(length : int) : Ttf.composite_glyph_description decoder =
   let open DecodeOperation in
-  let rec aux acc =
+  let rec aux ~(start_offset : int) acc =
     d_component_flag >>= fun (more_components, cflags) ->
     d_uint16 >>= fun glyphIndex ->
     let dec = if cflags.arg_1_and_2_are_words then d_int16 else d_int8 in
@@ -276,16 +276,27 @@ let d_composite_glyph : Ttf.composite_glyph_description decoder =
     in
     let acc = Alist.extend acc component in
     if more_components then
-      aux acc
+      aux ~start_offset acc
+    else if cflags.we_have_instructions then
+      current >>= fun end_offset ->
+      d_bytes (length - (end_offset - start_offset)) >>= fun instructions ->
+      return @@ Value.Ttf.{
+        composite_components  = Alist.to_list acc;
+        composite_instruction = Some(instructions);
+      }
     else
-      return @@ Alist.to_list acc
+      return @@ Value.Ttf.{
+        composite_components  = Alist.to_list acc;
+        composite_instruction = None;
+      }
   in
-  aux Alist.empty
+  aux ~start_offset Alist.empty
 
 
-let d_glyph =
+let d_glyph ~(length : int) =
   let open DecodeOperation in
   (* The position is set to the beginning of a glyph. See 5.3.3.1 *)
+  current >>= fun start_offset ->
   d_int16 >>= fun numberOfContours ->
   d_int16 >>= fun xMin ->
   d_int16 >>= fun yMin ->
@@ -295,7 +306,7 @@ let d_glyph =
   if numberOfContours < -1 then
     err @@ Error.InvalidCompositeFormat(numberOfContours)
   else if numberOfContours = -1 then
-    d_composite_glyph >>= fun components ->
+    d_composite_glyph ~start_offset ~length >>= fun components ->
     return Ttf.{
       description = CompositeGlyph(components);
       bounding_box;
@@ -308,11 +319,12 @@ let d_glyph =
     }
 
 
-let glyf (ttf : ttf_source) (Intermediate.Ttf.GlyphLocation(reloffset)) : Ttf.glyph_info ok =
+let glyf (ttf : ttf_source) (gloc : Intermediate.Ttf.glyph_location) : Ttf.glyph_info ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  d_glyph |> DecodeOperation.run common.core (offset + reloffset)
+  let (Intermediate.Ttf.GlyphLocation{ reloffset; length }) = gloc in
+  d_glyph ~length |> DecodeOperation.run common.core (offset + reloffset)
 
 
 let path_of_contour (contour : Ttf.contour) : quadratic_path ok =

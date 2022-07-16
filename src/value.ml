@@ -634,7 +634,10 @@ module Ttf = struct
   }
   [@@deriving show { with_path = false }]
 
-  type composite_glyph_description = composite_glyph_component list
+  type composite_glyph_description = {
+    composite_components  : composite_glyph_component list;
+    composite_instruction : instruction option;
+  }
   [@@deriving show { with_path = false }]
 
   type glyph_description =

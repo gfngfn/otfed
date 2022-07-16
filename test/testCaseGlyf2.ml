@@ -19,22 +19,25 @@ let unmarshaled =
       y_max = 1407;
     };
     description =
-      CompositeGlyph([
-        {
-          component_glyph_id        = 174;
-          composition               = Vector((484, -1));
-          component_scale           = None;
-          round_xy_to_grid          = true;
-          use_my_metrics            = false;
-          unscaled_component_offset = true;
-        };
-        {
-          component_glyph_id        = 263;
-          composition               = Vector((0, 0));
-          component_scale           = None;
-          round_xy_to_grid          = true;
-          use_my_metrics            = false;
-          unscaled_component_offset = true;
-        };
-      ]);
+      CompositeGlyph({
+        composite_components = [
+          {
+            component_glyph_id        = 174;
+            composition               = Vector((484, -1));
+            component_scale           = None;
+            round_xy_to_grid          = true;
+            use_my_metrics            = false;
+            unscaled_component_offset = true;
+          };
+          {
+            component_glyph_id        = 263;
+            composition               = Vector((0, 0));
+            component_scale           = None;
+            round_xy_to_grid          = true;
+            use_my_metrics            = false;
+            unscaled_component_offset = true;
+          };
+        ];
+        composite_instruction = Some("");
+      });
   }

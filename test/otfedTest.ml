@@ -272,12 +272,14 @@ let make_loca_tests () =
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   begin
-    let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
+    let input = TestCaseGlyf1.marshaled in
+    let got = DecodeTtf.d_glyph ~length:(String.length input) |> run_decoder input in
     let expected = Ok(TestCaseGlyf1.unmarshaled) in
     Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "d_glyph (1: simple)" expected got
   end;
   begin
-    let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf2.marshaled in
+    let input = TestCaseGlyf2.marshaled in
+    let got = DecodeTtf.d_glyph  ~length:(String.length input) |> run_decoder input in
     let expected = Ok(TestCaseGlyf2.unmarshaled) in
     Alcotest.(check (decoding (of_pp Value.Ttf.pp_glyph_info))) "d_glyph (2: composite)" expected got
   end

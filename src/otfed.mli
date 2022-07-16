@@ -301,7 +301,10 @@ module Value : sig
     }
     [@@deriving show]
 
-    type composite_glyph_description = composite_glyph_component list
+    type composite_glyph_description = {
+      composite_components  : composite_glyph_component list;
+      composite_instruction : instruction option;
+    }
     [@@deriving show]
 
     type glyph_description =
@@ -1083,11 +1086,13 @@ module Encode : sig
       val make : Intermediate.Ttf.Maxp.t -> table ok
     end
 
+    type glyph_relative_offset
+
     (** Encodes a [glyf] table and produces glyph locations that will constitute a [loca] table. *)
-    val make_glyf : Value.Ttf.glyph_info list -> (table * Intermediate.Ttf.glyph_location list) ok
+    val make_glyf : Value.Ttf.glyph_info list -> (table * glyph_relative_offset list) ok
 
     (** Encodes a [loca] table and produces a value for the [indexToLocFormat] entry of the [head] table. *)
-    val make_loca : Intermediate.Ttf.glyph_location list -> (table * Intermediate.loc_format) ok
+    val make_loca : glyph_relative_offset list -> (table * Intermediate.loc_format) ok
   end
 
   (** Defines encoding operations for tables specific to CFF-based fonts. *)

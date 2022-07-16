@@ -285,9 +285,16 @@ let d_glyph_tests () =
 
 (** Tests for `DecodeTtf.e_glyph` *)
 let e_glyph_tests () =
-  let got = EncodeTtf.e_glyph TestCaseGlyf1.unmarshaled |> run_encoder in
-  let expected = Ok(TestCaseGlyf1.marshaled) in
-  Alcotest.(check encoding) "e_glyph (1: simple)" expected got
+  begin
+    let got = EncodeTtf.e_glyph TestCaseGlyf1.unmarshaled |> run_encoder in
+    let expected = Ok(TestCaseGlyf1.marshaled) in
+    Alcotest.(check encoding) "e_glyph (1: simple)" expected got
+  end;
+  begin
+    let got = EncodeTtf.e_glyph TestCaseGlyf2.unmarshaled |> run_encoder in
+    let expected = Ok(TestCaseGlyf2.marshaled) in
+    Alcotest.(check encoding) "e_glyph (2: composite)" expected got
+  end
 
 
 let run_d_charstring ~gsubr_index ~lsubr_index data ~start ~charstring_length =

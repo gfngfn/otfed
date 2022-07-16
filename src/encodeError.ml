@@ -19,5 +19,6 @@ type t =
   | Version4FsSelection        of Value.Os2.fs_selection
   | TooLargeToDetermineOffSize of int
   | NotEncodableAsDictValue    of int
+  | InvalidNumberOfGlyphNames  of { expected : int; got : int }
   | Unsupported                of unsupported_report
 [@@deriving show { with_path = false }]

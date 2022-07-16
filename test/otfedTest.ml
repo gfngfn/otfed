@@ -22,6 +22,8 @@ module DecodeCmap = Otfed__DecodeCmap
 module EncodeCmap = Otfed__EncodeCmap
 module DecodeName = Otfed__DecodeName
 module EncodeName = Otfed__EncodeName
+module DecodePost = Otfed__DecodePost
+module EncodePost = Otfed__EncodePost
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -209,6 +211,40 @@ let encode_name_tests () =
       Alcotest.failf "%a" EncodeError.pp e
 
 
+(** Tests for `DecodePost.d_post` *)
+let d_post_tests () =
+  begin
+    let input = TestCasePost1.marshaled in
+    let num_glyphs = TestCasePost1.num_glyphs in
+    let got = DecodePost.d_post ~num_glyphs ~length:(String.length input) |> run_decoder input in
+    let expected = Ok(TestCasePost1.unmarshaled) in
+    Alcotest.(check (decoding (of_pp Value.Post.pp))) "d_post (1: Version 3)" expected got
+  end;
+  begin
+    let input = TestCasePost2.marshaled in
+    let num_glyphs = TestCasePost2.num_glyphs in
+    let got = DecodePost.d_post ~num_glyphs ~length:(String.length input) |> run_decoder input in
+    let expected = Ok(TestCasePost2.unmarshaled) in
+    Alcotest.(check (decoding (of_pp Value.Post.pp))) "d_post (2: Version 2)" expected got
+  end
+
+
+(** Tests for `EncodePost.e_post` *)
+let e_post_tests () =
+  begin
+    let num_glyphs = TestCasePost1.num_glyphs in
+    let got = EncodePost.e_post ~num_glyphs TestCasePost1.unmarshaled |> run_encoder in
+    let expect = Ok(TestCasePost1.marshaled) in
+    Alcotest.(check encoding) "e_post (1: Version 3)" expect got
+  end;
+  begin
+    let num_glyphs = TestCasePost2.num_glyphs in
+    let got = EncodePost.e_post ~num_glyphs TestCasePost2.unmarshaled |> run_encoder in
+    let expect = Ok(TestCasePost2.marshaled) in
+    Alcotest.(check encoding) "e_post (2: Version 2)" expect got
+  end
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -328,6 +364,12 @@ let () =
     ]);
     ("EncodeName", [
       test_case "encode_name" `Quick encode_name_tests;
+    ]);
+    ("DecodePost", [
+      test_case "d_post" `Quick d_post_tests;
+    ]);
+    ("EncodePost", [
+      test_case "e_post" `Quick e_post_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

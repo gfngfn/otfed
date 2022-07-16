@@ -1047,7 +1047,7 @@ module Encode : sig
 
   (** Defines encoding operations for [post] tables. *)
   module Post : sig
-    val make : Value.Post.t -> table ok
+    val make : num_glyphs:int -> Value.Post.t -> table ok
   end
 
   (** Defines encoding operations for [name] tables. *)

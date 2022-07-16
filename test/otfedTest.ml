@@ -231,7 +231,8 @@ let d_post_tests () =
 
 (** Tests for `EncodePost.e_post` *)
 let e_post_tests () =
-  let got = EncodePost.e_post TestCasePost1.unmarshaled |> run_encoder in
+  let num_glyphs = TestCasePost1.num_glyphs in
+  let got = EncodePost.e_post ~num_glyphs TestCasePost1.unmarshaled |> run_encoder in
   let expect = Ok(TestCasePost1.marshaled) in
   Alcotest.(check encoding) "e_post" expect got
 

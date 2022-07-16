@@ -539,6 +539,8 @@ module Post = struct
     val of_list : string list -> t
 
     val to_list : t -> string list
+
+    val length : t -> int
   end = struct
     type t = string array
 
@@ -558,6 +560,8 @@ module Post = struct
     let of_list = Array.of_list
 
     let to_list = Array.to_list
+
+    let length = Array.length
   end
 
   type value = {

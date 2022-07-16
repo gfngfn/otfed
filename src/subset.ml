@@ -339,6 +339,7 @@ let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uch
 
 
 let make_common
+    ~(num_glyphs : int)
     ~(omit_cmap : bool)
     ~(bbox_all : bounding_box)
     ~(index_to_loc_format : Intermediate.loc_format)
@@ -351,7 +352,7 @@ let make_common
 
   (* Make `post`. *)
   inj_dec @@ Decode.Post.get src >>= fun post ->
-  inj_enc @@ Encode.Post.make post >>= fun table_post ->
+  inj_enc @@ Encode.Post.make ~num_glyphs post >>= fun table_post ->
 
   (* Make `name`. *)
   inj_dec @@ Decode.Name.get src >>= fun name ->
@@ -427,6 +428,7 @@ let make_ttf_subset ~(omit_cmap : bool) (ttf : Decode.ttf_source) (gids : glyph_
   make_ttf_hmtx src ggs >>= fun hmtx_result ->
 
   make_common
+    ~num_glyphs
     ~omit_cmap
     ~bbox_all
     ~index_to_loc_format
@@ -649,6 +651,7 @@ let make_cff_subset ~(omit_cmap : bool) (cff : Decode.cff_source) (gids : glyph_
   make_cff_hmtx cff gids >>= fun (hmtx_result, bbox_all) ->
 
   make_common
+    ~num_glyphs
     ~omit_cmap
     ~bbox_all
     ~index_to_loc_format:Intermediate.ShortLocFormat

@@ -212,11 +212,20 @@ let encode_name_tests () =
 
 (** Tests for `DecodePost.d_post` *)
 let d_post_tests () =
-  let input = TestCasePost1.marshaled in
-  let num_glyphs = TestCasePost1.num_glyphs in
-  let got = DecodePost.d_post ~num_glyphs ~length:(String.length input) |> run_decoder input in
-  let expected = Ok(TestCasePost1.unmarshaled) in
-  Alcotest.(check (decoding (of_pp Value.Post.pp))) "d_post" expected got
+  begin
+    let input = TestCasePost1.marshaled in
+    let num_glyphs = TestCasePost1.num_glyphs in
+    let got = DecodePost.d_post ~num_glyphs ~length:(String.length input) |> run_decoder input in
+    let expected = Ok(TestCasePost1.unmarshaled) in
+    Alcotest.(check (decoding (of_pp Value.Post.pp))) "d_post (1: Version 3)" expected got
+  end;
+  begin
+    let input = TestCasePost2.marshaled in
+    let num_glyphs = TestCasePost2.num_glyphs in
+    let got = DecodePost.d_post ~num_glyphs ~length:(String.length input) |> run_decoder input in
+    let expected = Ok(TestCasePost2.unmarshaled) in
+    Alcotest.(check (decoding (of_pp Value.Post.pp))) "d_post (2: Version 2)" expected got
+  end
 
 
 (** Tests for `DecodeTtf.d_glyph` *)

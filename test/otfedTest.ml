@@ -196,11 +196,17 @@ let d_name_tests () =
   Alcotest.(check (decoding (of_pp Value.Name.pp))) "d_name" expected got
 
 
-(** Tests for `DecodeName.d_name` *)
+(** Tests for `EncodeName.encode_name` *)
 let encode_name_tests () =
   let got = EncodeName.encode_name TestCaseName1.unmarshaled in
-  let expected = Ok(TestCaseName1.marshaled) in
-  Alcotest.(check encoding) "encode_name" expected got
+  match got with
+  | Ok(s) ->
+      let got = DecodeName.d_name |> run_decoder s in
+      let expected = Ok(TestCaseName1.unmarshaled) in
+      Alcotest.(check (decoding (of_pp Value.Name.pp))) "encode_name -> d_name" expected got
+
+  | Error(e) ->
+      Alcotest.failf "%a" EncodeError.pp e
 
 
 (** Tests for `DecodeTtf.d_glyph` *)
@@ -320,7 +326,7 @@ let () =
     ("DecodeName", [
       test_case "d_name" `Quick d_name_tests;
     ]);
-    ("EecodeName", [
+    ("EncodeName", [
       test_case "encode_name" `Quick encode_name_tests;
     ]);
     ("DecodeTtf", [

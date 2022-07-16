@@ -86,7 +86,7 @@ module Ttf = struct
   end
 
   type glyph_location =
-    | GlyphLocation of int
+    | GlyphLocation of { reloffset : int; length : int }
   [@@deriving show { with_path = false }]
 
   type flag = {
@@ -99,14 +99,15 @@ module Ttf = struct
   [@@deriving show { with_path = false }]
 
   type component_flag = {
-    arg_1_and_2_are_words    : bool;
-    args_are_xy_values       : bool;
-    round_xy_to_grid         : bool;
-    we_have_a_scale          : bool;
-    we_have_an_x_and_y_scale : bool;
-    we_have_a_two_by_two     : bool;
-    we_have_instructions     : bool;
-    use_my_metrics           : bool;
+    arg_1_and_2_are_words     : bool;
+    args_are_xy_values        : bool;
+    round_xy_to_grid          : bool;
+    we_have_a_scale           : bool;
+    we_have_an_x_and_y_scale  : bool;
+    we_have_a_two_by_two      : bool;
+    we_have_instructions      : bool;
+    use_my_metrics            : bool;
+    unscaled_component_offset : bool;
   }
   [@@deriving show { with_path = false }]
 end

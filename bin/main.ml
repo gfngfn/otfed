@@ -252,14 +252,14 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
                 | V.Ttf.SimpleGlyph(simple) ->
                     return [(simple, (0, 0))]
 
-                | V.Ttf.CompositeGlyph(composite_elems) ->
-                    composite_elems |> mapM (fun (gid, composition, _linear_opt) ->
-                      get_simple_glyph ttf gid >>= function
+                | V.Ttf.CompositeGlyph(composite_glyph) ->
+                    composite_glyph.V.Ttf.composite_components |> mapM (fun component ->
+                      get_simple_glyph ttf component.V.Ttf.component_glyph_id >>= function
                       | None ->
                           failwith "invalid"
 
                       | Some(simple) ->
-                          match composition with
+                          match component.V.Ttf.composition with
                           | V.Ttf.Vector(vx, vy) -> return (simple, (vx, vy))
                           | V.Ttf.Matching(_)    -> failwith "matching; not supported"
                     )

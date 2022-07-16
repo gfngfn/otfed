@@ -17,6 +17,8 @@ Some unit tests use data extracted from the following fonts:
   - See the license [here](https://moji.or.jp/ipafont/license/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
   - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
+* [Junicode](https://junicode.sourceforge.io/)
+  - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)
 
 
 ## How to install
@@ -119,6 +121,9 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 
 ## Status
 
+* v: done
+* o: no automated test has been given, but seems working correctly for many inputs.
+
 <table>
   <tr>
     <th rowspan="2" colspan="2">Tables</th>
@@ -141,7 +146,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td rowspan="6">TTF</td>
       <td>cvt␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>fpgm</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>glyf</td><td>v</td><td>v (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
+  <tr><td>glyf</td><td>v</td><td>v</td><td>v</td><td>v</td></tr>
   <tr><td>loca</td><td>v</td><td>v (short only)</td><td>v</td><td>v (long only)</td></tr>
   <tr><td>prep</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
@@ -168,9 +173,6 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>JSTF</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>o</td></tr>
 </table>
-
-* v: done
-* o: no automated test has been given, but seems working correctly for many inputs.
 
 
 ## How to develop

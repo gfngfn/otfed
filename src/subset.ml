@@ -68,16 +68,19 @@ let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info) list) =
     | Ttf.SimpleGlyph(_) ->
         return gg_old
 
-    | Ttf.CompositeGlyph(composite_elems_old) ->
-        composite_elems_old |> mapM (fun (gid_elem_old, composition, linear_opt) ->
+    | Ttf.CompositeGlyph(composite_glyph) ->
+        let composite_elems_old = composite_glyph.Value.Ttf.composite_components in
+        composite_elems_old |> mapM (fun component ->
+          let gid_elem_old = component.Value.Ttf.component_glyph_id in
           match old_to_new |> OldToNew.find_opt gid_elem_old with
           | None ->
               err @@ Error.DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
 
           | Some(gid_elem_new) ->
-              return (gid_elem_new, composition, linear_opt)
-        ) >>= fun descr_new ->
-        return (gid_old, Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(descr_new) })
+              return Value.Ttf.{ component with component_glyph_id =  gid_elem_new }
+        ) >>= fun composite_components ->
+        let composite_glyph_new = { composite_glyph with composite_components } in
+        return (gid_old, Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(composite_glyph_new) })
   )
 
 

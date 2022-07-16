@@ -142,16 +142,26 @@ let e_component_flag (more_components : bool) (cflag : Intermediate.Ttf.componen
     cflag.we_have_a_two_by_two;
     cflag.we_have_instructions;
     cflag.use_my_metrics;
+    false; (* a reserved bit *)
+    false; (* a reserved bit *)
+    cflag.unscaled_component_offset;
   ]
 
 
-let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
+let e_composite_glyph (composite_glyph : Ttf.composite_glyph_description) : unit encoder =
   let open EncodeOperation in
   let rec aux = function
     | [] ->
-        return ()
+        begin
+          match composite_glyph.Value.Ttf.composite_instruction with
+          | None    -> return ()
+          | Some(s) -> e_bytes s
+        end
 
-    | (gid, composition, linear_opt) :: elems ->
+    | component :: elems ->
+        let gid = component.Value.Ttf.component_glyph_id in
+        let composition = component.Value.Ttf.composition in
+        let linear_opt = component.Value.Ttf.component_scale in
         let (args_are_xy_values, arg1, arg2) =
           match composition with
           | Ttf.Vector(x, y)   -> (true, x, y)
@@ -163,16 +173,22 @@ let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
           else
             (true, e_int16)
         in
+        let we_have_instructions =
+          match (elems, composite_glyph.Value.Ttf.composite_instruction) with
+          | ([], Some(_)) -> true
+          | _             -> false
+        in
         let cflags_base =
           Intermediate.Ttf.{
             arg_1_and_2_are_words;
             args_are_xy_values;
-            round_xy_to_grid = true; (* TODO: should be extracted from `ttf_composite_glyph_description` *)
-            we_have_a_scale          = false;
-            we_have_an_x_and_y_scale = false;
-            we_have_a_two_by_two     = false;
-            we_have_instructions = false; (* TODO *)
-            use_my_metrics       = false; (* TODO *)
+            round_xy_to_grid          = component.Value.Ttf.round_xy_to_grid;
+            we_have_a_scale           = false;
+            we_have_an_x_and_y_scale  = false;
+            we_have_a_two_by_two      = false;
+            we_have_instructions;
+            use_my_metrics            = component.Value.Ttf.use_my_metrics;
+            unscaled_component_offset = component.Value.Ttf.unscaled_component_offset;
           }
         in
         let (cflags, e_linear_transform) =
@@ -214,7 +230,7 @@ let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
         e_linear_transform >>= fun () ->
         aux elems
   in
-  aux elems
+  aux composite_glyph.Value.Ttf.composite_components
 
 
 let e_glyph (g : Ttf.glyph_info) =
@@ -236,7 +252,11 @@ let e_glyph (g : Ttf.glyph_info) =
   enc
 
 
-let make_glyf (gs : Ttf.glyph_info list) : (table * Intermediate.Ttf.glyph_location list) ok =
+type glyph_relative_offset =
+  | GlyphRelativeOffset of int
+
+
+let make_glyf (gs : Ttf.glyph_info list) : (table * glyph_relative_offset list) ok =
   let enc =
     let open EncodeOperation in
     gs |> mapM (fun g ->
@@ -244,7 +264,7 @@ let make_glyf (gs : Ttf.glyph_info list) : (table * Intermediate.Ttf.glyph_locat
       pad_to_long_aligned >>= fun () ->
         (* Every glyph location should begin and end at long-aligned local offsets. *)
       current             >>= fun reloffset ->
-      return @@ Intermediate.Ttf.GlyphLocation(reloffset)
+      return @@ GlyphRelativeOffset(reloffset)
     )
   in
   let open ResultMonad in
@@ -258,25 +278,24 @@ let make_glyf (gs : Ttf.glyph_info list) : (table * Intermediate.Ttf.glyph_locat
   return (table, locs)
 
 
-let can_use_short_loc_format (locs : Intermediate.Ttf.glyph_location list) : bool =
-  let open Intermediate.Ttf in
+let can_use_short_loc_format (locs : glyph_relative_offset list) : bool =
   match List.rev locs with
-  | []                                 -> true
-  | GlyphLocation(last_reloffset) :: _ -> last_reloffset / 2 < 65536
+  | []                                       -> true
+  | GlyphRelativeOffset(last_reloffset) :: _ -> last_reloffset / 2 < 65536
 
 
-let make_loca (locs : Intermediate.Ttf.glyph_location list) : (table * Intermediate.loc_format) ok =
+let make_loca (locs : glyph_relative_offset list) : (table * Intermediate.loc_format) ok =
   let enc =
     let open EncodeOperation in
     let open Intermediate in
     let (loc_format, e_single) =
       if can_use_short_loc_format locs then
-        (ShortLocFormat, function Ttf.GlyphLocation(reloffset) -> e_uint16 (reloffset / 2))
+        (ShortLocFormat, function GlyphRelativeOffset(reloffset) -> e_uint16 (reloffset / 2))
       else
-        (LongLocFormat, function Ttf.GlyphLocation(reloffset) -> e_uint32 (!% reloffset))
+        (LongLocFormat, function GlyphRelativeOffset(reloffset) -> e_uint32 (!% reloffset))
     in
-    e_single (GlyphLocation(0)) >>= fun () ->
-    e_list e_single locs        >>= fun () ->
+    e_single (GlyphRelativeOffset(0)) >>= fun () ->
+    e_list e_single locs              >>= fun () ->
     return loc_format
   in
   let open ResultMonad in

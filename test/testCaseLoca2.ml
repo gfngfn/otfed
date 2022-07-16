@@ -1,6 +1,7 @@
 
 open! Otfed__Basic
 module Intermediate = Otfed__Intermediate
+module EncodeTtf = Otfed__EncodeTtf
 
 
 let marshaled =
@@ -16,7 +17,7 @@ let marshaled =
 
 
 let unmarshaled =
-  List.map (fun reloffset -> Intermediate.Ttf.GlyphLocation(reloffset)) [
+  List.map (fun reloffset -> EncodeTtf.GlyphRelativeOffset(reloffset)) [
     0x0000; 0x00a0; 0x00a0; 0x00a0; 0x00a0; 0x011c; 0x0190; 0x0290;
     0x03c8; 0x04e0; 0x0624; 0x066c; 0x06cc; 0x072c; 0x0808; 0x087c;
     0x08c4; 0x08fc; 0x0948; 0x0984; 0x0a24; 0x0a70; 0x0b58; 0x0c6c;

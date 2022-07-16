@@ -219,14 +219,15 @@ let d_component_flag : (bool * component_flag) decoder =
   let more_components = (twobytes land 32 > 0) in
   let cflag =
     Intermediate.Ttf.{
-      arg_1_and_2_are_words    = (twobytes land 1 > 0);
-      args_are_xy_values       = (twobytes land 2 > 0);
-      round_xy_to_grid         = (twobytes land 4 > 0);
-      we_have_a_scale          = (twobytes land 8 > 0);
-      we_have_an_x_and_y_scale = (twobytes land 64 > 0);
-      we_have_a_two_by_two     = (twobytes land 128 > 0);
-      we_have_instructions     = (twobytes land 256 > 0);
-      use_my_metrics           = (twobytes land 512 > 0);
+      arg_1_and_2_are_words     = (twobytes land 1 > 0);
+      args_are_xy_values        = (twobytes land 2 > 0);
+      round_xy_to_grid          = (twobytes land 4 > 0);
+      we_have_a_scale           = (twobytes land 8 > 0);
+      we_have_an_x_and_y_scale  = (twobytes land 64 > 0);
+      we_have_a_two_by_two      = (twobytes land 128 > 0);
+      we_have_instructions      = (twobytes land 256 > 0);
+      use_my_metrics            = (twobytes land 512 > 0);
+      unscaled_component_offset = (twobytes land 4096 > 0);
     }
   in
   return (more_components, cflag)
@@ -265,11 +266,12 @@ let d_composite_glyph : Ttf.composite_glyph_description decoder =
     in
     let component =
       Value.Ttf.{
-        component_glyph_id = glyphIndex;
-        composition        = v;
-        component_scale    = linear_transform;
-        round_xy_to_grid   = cflags.round_xy_to_grid;
-        use_my_metrics     = cflags.use_my_metrics;
+        component_glyph_id        = glyphIndex;
+        composition               = v;
+        component_scale           = linear_transform;
+        round_xy_to_grid          = cflags.round_xy_to_grid;
+        use_my_metrics            = cflags.use_my_metrics;
+        unscaled_component_offset = cflags.unscaled_component_offset;
       }
     in
     let acc = Alist.extend acc component in

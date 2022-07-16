@@ -625,11 +625,12 @@ module Ttf = struct
   [@@deriving show { with_path = false }]
 
   type composite_glyph_component = {
-    component_glyph_id : glyph_id;
-    composition        : composition;
-    component_scale    : linear_transform option;
-    round_xy_to_grid   : bool;
-    use_my_metrics     : bool;
+    component_glyph_id        : glyph_id;
+    composition               : composition;
+    component_scale           : linear_transform option;
+    round_xy_to_grid          : bool;
+    use_my_metrics            : bool;
+    unscaled_component_offset : bool;
   }
   [@@deriving show { with_path = false }]
 

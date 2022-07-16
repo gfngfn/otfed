@@ -142,6 +142,9 @@ let e_component_flag (more_components : bool) (cflag : Intermediate.Ttf.componen
     cflag.we_have_a_two_by_two;
     cflag.we_have_instructions;
     cflag.use_my_metrics;
+    false; (* a reserved bit *)
+    false; (* a reserved bit *)
+    cflag.unscaled_component_offset;
   ]
 
 
@@ -170,12 +173,13 @@ let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
           Intermediate.Ttf.{
             arg_1_and_2_are_words;
             args_are_xy_values;
-            round_xy_to_grid         = component.Value.Ttf.round_xy_to_grid;
-            we_have_a_scale          = false;
-            we_have_an_x_and_y_scale = false;
-            we_have_a_two_by_two     = false;
-            we_have_instructions     = false; (* TODO *)
-            use_my_metrics           = component.Value.Ttf.use_my_metrics;
+            round_xy_to_grid          = component.Value.Ttf.round_xy_to_grid;
+            we_have_a_scale           = false;
+            we_have_an_x_and_y_scale  = false;
+            we_have_a_two_by_two      = false;
+            we_have_instructions      = false; (* TODO *)
+            use_my_metrics            = component.Value.Ttf.use_my_metrics;
+            unscaled_component_offset = component.Value.Ttf.unscaled_component_offset;
           }
         in
         let (cflags, e_linear_transform) =

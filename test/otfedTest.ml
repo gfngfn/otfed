@@ -254,6 +254,21 @@ let d_loca_tests () =
   )
 
 
+(** Tests for `EncodeTtf.make_loca` *)
+let make_loca_tests () =
+  let got = EncodeTtf.make_loca TestCaseLoca2.unmarshaled in
+  let expected_table = Ok(TestCaseLoca2.marshaled) in
+  let expected_loc_format = TestCaseLoca2.loc_format in
+  match got with
+  | Ok((got_table, got_loc_format)) ->
+      Alcotest.(check (of_pp Intermediate.pp_loc_format)) "make_loca (locFormat)"
+        expected_loc_format got_loc_format;
+      Alcotest.(check encoding) "make_loca (table)" expected_table (Ok(Encode.get_contents got_table))
+
+  | Error(e) ->
+      Alcotest.failf "%a" EncodeError.pp e
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -386,6 +401,7 @@ let () =
     ]);
     ("EncodeTtf", [
       test_case "e_glyph" `Quick e_glyph_tests;
+      test_case "make_loca" `Quick make_loca_tests;
     ]);
     ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;

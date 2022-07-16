@@ -142,7 +142,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
       <td>cvt␣</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>fpgm</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>glyf</td><td>v</td><td>v (simple glyphs only)</td><td>v</td><td>v (simple glyphs only)</td></tr>
-  <tr><td>loca</td><td>v</td><td>o</td><td>v</td><td>v (long only)</td></tr>
+  <tr><td>loca</td><td>v</td><td>v (short only)</td><td>v</td><td>v (long only)</td></tr>
   <tr><td>prep</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>gasp</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 

@@ -64,3 +64,23 @@ let decoding testable_ok =
 
 let encoding =
   Alcotest.(result (of_pp pp_xxd) (of_pp EncodeError.pp))
+
+
+let utf8_to_utf16be s_utf8 =
+  let buffer = Buffer.create (String.length s_utf8 * 4) in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(s_utf8)) in
+  let encoder = Uutf.encoder `UTF_16BE (`Buffer(buffer)) in
+  let rec loop () =
+    match Uutf.decode decoder with
+    | `Await | `Malformed(_) ->
+        assert false
+
+    | `End ->
+        Uutf.encode encoder `End |> ignore
+
+    | `Uchar(ch) ->
+        Uutf.encode encoder (`Uchar(ch)) |> ignore;
+        loop ()
+  in
+  loop ();
+  Buffer.contents buffer

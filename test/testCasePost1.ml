@@ -11,6 +11,9 @@ let marshaled =
   ]
 
 
+let num_glyphs = 821
+
+
 let unmarshaled =
   Value.Post.{
     value = {

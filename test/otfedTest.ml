@@ -20,6 +20,8 @@ module DecodeHmtx = Otfed__DecodeHmtx
 module EncodeHmtx = Otfed__EncodeHmtx
 module DecodeCmap = Otfed__DecodeCmap
 module EncodeCmap = Otfed__EncodeCmap
+module DecodeName = Otfed__DecodeName
+module EncodeName = Otfed__EncodeName
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -187,6 +189,26 @@ let e_cmap_mapping_tests () =
   Alcotest.(check encoding) "e_cmap_mapping" expected got
 
 
+(** Tests for `DecodeName.d_name` *)
+let d_name_tests () =
+  let got = DecodeName.d_name |> run_decoder TestCaseName1.marshaled in
+  let expected = Ok(TestCaseName1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Value.Name.pp))) "d_name" expected got
+
+
+(** Tests for `EncodeName.encode_name` *)
+let encode_name_tests () =
+  let got = EncodeName.encode_name TestCaseName1.unmarshaled in
+  match got with
+  | Ok(s) ->
+      let got = DecodeName.d_name |> run_decoder s in
+      let expected = Ok(TestCaseName1.unmarshaled) in
+      Alcotest.(check (decoding (of_pp Value.Name.pp))) "encode_name -> d_name" expected got
+
+  | Error(e) ->
+      Alcotest.failf "%a" EncodeError.pp e
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -300,6 +322,12 @@ let () =
     ]);
     ("EncodeCmap", [
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;
+    ]);
+    ("DecodeName", [
+      test_case "d_name" `Quick d_name_tests;
+    ]);
+    ("EncodeName", [
+      test_case "encode_name" `Quick encode_name_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

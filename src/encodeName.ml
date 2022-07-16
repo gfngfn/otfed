@@ -64,46 +64,50 @@ let e_lang_tag_records ~starts_at:(starts_at : relative_offset) (lang_tags_and_r
   )
 
 
-let make (name : Value.Name.t) : table ok =
+let encode_name (name : Value.Name.t) : string ok =
   let open ResultMonad in
   let name_records = name.name_records in
   let count = List.length name_records in
-  make_name_string_storage name_records >>= fun (storage1, names_and_reloffsets) ->
+  make_name_string_storage name.name_records >>= fun (storage1, names_and_reloffsets) ->
   let length_storage1 = String.length storage1 in
-  let res =
-    match name.lang_tags with
-    | None ->
-        let offset_string_storage = 6 + 12 * count in
-        let enc =
-          let open EncodeOperation in
-          e_uint16 0                          >>= fun () -> (* format number *)
-          e_uint16 count                      >>= fun () ->
-          e_uint16 offset_string_storage      >>= fun () ->
-          e_name_records names_and_reloffsets >>= fun () ->
-          e_bytes storage1
-        in
-        enc |> EncodeOperation.run
+  match name.lang_tags with
+  | None ->
+      let offset_string_storage = 6 + 12 * count in
+      let enc =
+        let open EncodeOperation in
+        e_uint16 0                          >>= fun () -> (* format number *)
+        e_uint16 count                      >>= fun () ->
+        e_uint16 offset_string_storage      >>= fun () ->
+        e_name_records names_and_reloffsets >>= fun () ->
+        e_bytes storage1
+      in
+      enc |> EncodeOperation.run >>= fun (contents, ()) ->
+      return contents
 
-    | Some(lang_tags) ->
-        let lang_tag_count = List.length lang_tags in
-        let offset_string_storage = 6 + 12 * count + 4 * lang_tag_count in
-        make_lang_tag_string_storage lang_tags >>= fun (storage2, lang_tags_and_reloffsets) ->
-        let enc =
-          let open EncodeOperation in
-          e_uint16 1                          >>= fun () -> (* format number *)
-          e_uint16 count                      >>= fun () ->
-          e_uint16 offset_string_storage      >>= fun () ->
-          e_name_records names_and_reloffsets >>= fun () ->
-          e_uint16 lang_tag_count             >>= fun () ->
-          e_lang_tag_records
-            ~starts_at:length_storage1
-            lang_tags_and_reloffsets          >>= fun () ->
-          e_bytes storage1                    >>= fun () ->
-          e_bytes storage2
-        in
-        enc |> EncodeOperation.run
-  in
-  res >>= fun (contents, ()) ->
+  | Some(lang_tags) ->
+      let lang_tag_count = List.length lang_tags in
+      let offset_string_storage = 6 + 12 * count + 4 * lang_tag_count in
+      make_lang_tag_string_storage lang_tags >>= fun (storage2, lang_tags_and_reloffsets) ->
+      let enc =
+        let open EncodeOperation in
+        e_uint16 1                          >>= fun () -> (* format number *)
+        e_uint16 count                      >>= fun () ->
+        e_uint16 offset_string_storage      >>= fun () ->
+        e_name_records names_and_reloffsets >>= fun () ->
+        e_uint16 lang_tag_count             >>= fun () ->
+        e_lang_tag_records
+          ~starts_at:length_storage1
+          lang_tags_and_reloffsets          >>= fun () ->
+        e_bytes storage1                    >>= fun () ->
+        e_bytes storage2
+      in
+      enc |> EncodeOperation.run >>= fun (contents, ()) ->
+      return contents
+
+
+let make (name : Value.Name.t) : table ok =
+  let open ResultMonad in
+  encode_name name >>= fun contents ->
   return {
     tag = Value.Tag.table_name;
     contents;

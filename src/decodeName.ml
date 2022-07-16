@@ -39,32 +39,34 @@ let d_lang_tag_records ~offset_string_storage:(offset_string_storage : offset) :
   d_repeat lang_tag_count (d_lang_tag_record ~offset_string_storage)
 
 
+let d_name =
+  let open DecodeOperation in
+  current >>= fun offset_name ->
+  d_uint16 >>= fun format ->
+  d_uint16 >>= fun count ->
+  d_offset offset_name >>= fun offset_string_storage ->
+  match format with
+  | 0 ->
+      d_name_records ~count ~offset_string_storage >>= fun name_records ->
+      return Value.Name.{
+        name_records;
+        lang_tags = None;
+      }
+
+  | 1 ->
+      d_name_records ~count ~offset_string_storage >>= fun name_records ->
+      d_lang_tag_records ~offset_string_storage >>= fun lang_tags ->
+      return Value.Name.{
+        name_records;
+        lang_tags = Some(lang_tags);
+      }
+
+  | _ ->
+      err @@ Error.UnknownTableVersion(!% format)
+
+
 let get (src : source) =
   let open ResultMonad in
   let common = get_common_source src in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_name >>= fun (offset_name, _length) ->
-  let dec =
-    let open DecodeOperation in
-    d_uint16 >>= fun format ->
-    d_uint16 >>= fun count ->
-    d_offset offset_name >>= fun offset_string_storage ->
-    match format with
-    | 0 ->
-        d_name_records ~count ~offset_string_storage >>= fun name_records ->
-        return Value.Name.{
-          name_records;
-          lang_tags = None;
-        }
-
-    | 1 ->
-        d_name_records ~count ~offset_string_storage >>= fun name_records ->
-        d_lang_tag_records ~offset_string_storage >>= fun lang_tags ->
-        return Value.Name.{
-          name_records;
-          lang_tags = Some(lang_tags);
-        }
-
-    | _ ->
-        err @@ Error.UnknownTableVersion(!% format)
-  in
-  dec |> DecodeOperation.run common.core offset_name
+  d_name |> DecodeOperation.run common.core offset_name

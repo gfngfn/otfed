@@ -263,7 +263,16 @@ let d_composite_glyph : Ttf.composite_glyph_description decoder =
       else
         Ttf.Matching(argument1, argument2)
     in
-    let acc = Alist.extend acc (glyphIndex, v, linear_transform) in
+    let component =
+      Value.Ttf.{
+        component_glyph_id = glyphIndex;
+        composition        = v;
+        component_scale    = linear_transform;
+        round_xy_to_grid   = cflags.round_xy_to_grid;
+        use_my_metrics     = cflags.use_my_metrics;
+      }
+    in
+    let acc = Alist.extend acc component in
     if more_components then
       aux acc
     else

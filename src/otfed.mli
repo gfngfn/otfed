@@ -291,7 +291,16 @@ module Value : sig
     type simple_glyph_description = contour list * instruction
     [@@deriving show]
 
-    type composite_glyph_description = (glyph_id * composition * linear_transform option) list
+    type composite_glyph_component = {
+      component_glyph_id : glyph_id;
+      composition        : composition;
+      component_scale    : linear_transform option;
+      round_xy_to_grid   : bool;
+      use_my_metrics     : bool;
+    }
+    [@@deriving show]
+
+    type composite_glyph_description = composite_glyph_component list
     [@@deriving show]
 
     type glyph_description =

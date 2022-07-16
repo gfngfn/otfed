@@ -20,7 +20,19 @@ let unmarshaled =
     };
     description =
       CompositeGlyph([
-        (174, Vector((484, -1)), None);
-        (263, Vector((0, 0)), None);
+        {
+          component_glyph_id = 174;
+          composition        = Vector((484, -1));
+          component_scale    = None;
+          round_xy_to_grid   = true;
+          use_my_metrics     = false;
+        };
+        {
+          component_glyph_id = 263;
+          composition        = Vector((0, 0));
+          component_scale    = None;
+          round_xy_to_grid   = true;
+          use_my_metrics     = false;
+        };
       ]);
   }

@@ -151,7 +151,10 @@ let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
     | [] ->
         return ()
 
-    | (gid, composition, linear_opt) :: elems ->
+    | component :: elems ->
+        let gid = component.Value.Ttf.component_glyph_id in
+        let composition = component.Value.Ttf.composition in
+        let linear_opt = component.Value.Ttf.component_scale in
         let (args_are_xy_values, arg1, arg2) =
           match composition with
           | Ttf.Vector(x, y)   -> (true, x, y)
@@ -167,12 +170,12 @@ let e_composite_glyph (elems : Ttf.composite_glyph_description) : unit encoder =
           Intermediate.Ttf.{
             arg_1_and_2_are_words;
             args_are_xy_values;
-            round_xy_to_grid = true; (* TODO: should be extracted from `ttf_composite_glyph_description` *)
+            round_xy_to_grid         = component.Value.Ttf.round_xy_to_grid;
             we_have_a_scale          = false;
             we_have_an_x_and_y_scale = false;
             we_have_a_two_by_two     = false;
-            we_have_instructions = false; (* TODO *)
-            use_my_metrics       = false; (* TODO *)
+            we_have_instructions     = false; (* TODO *)
+            use_my_metrics           = component.Value.Ttf.use_my_metrics;
           }
         in
         let (cflags, e_linear_transform) =

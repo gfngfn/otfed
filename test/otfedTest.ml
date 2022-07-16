@@ -245,6 +245,15 @@ let e_post_tests () =
   end
 
 
+(** Tests for `DecodeTtf.d_loca` *)
+let d_loca_tests () =
+  TestCaseLoca1.cases |> List.iter (fun (gid, expected) ->
+    let num_glyphs = TestCaseLoca1.num_glyphs in
+    let got = DecodeTtf.d_loca ~num_glyphs TestCaseLoca1.loc_format gid |> run_decoder TestCaseLoca1.marshaled in
+    Alcotest.(check (decoding (option (pair int int)))) "d_loca" expected got
+  )
+
+
 (** Tests for `DecodeTtf.d_glyph` *)
 let d_glyph_tests () =
   let got = DecodeTtf.d_glyph |> run_decoder TestCaseGlyf1.marshaled in
@@ -373,6 +382,7 @@ let () =
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;
+      test_case "d_loca" `Quick d_loca_tests;
     ]);
     ("EncodeTtf", [
       test_case "e_glyph" `Quick e_glyph_tests;

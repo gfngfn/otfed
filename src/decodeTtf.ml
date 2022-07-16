@@ -10,7 +10,7 @@ module Maxp = DecodeTtfMaxp
 
 let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
   let open DecodeOperation in
-  (* The position is set to the begging of `loca` table. *)
+  (* The position is set to the beginning of a `loca` table. *)
   d_skip (gid * 2) >>= fun () ->
   d_uint16 >>= fun half1 ->
   d_uint16 >>= fun half2 ->
@@ -24,7 +24,7 @@ let d_loca_short (gid : glyph_id) : ((int * int) option) decoder =
 
 let d_loca_long (gid : glyph_id) : ((int * int) option) decoder =
   let open DecodeOperation in
-  (* The position is set to the begging of `loca` table. *)
+  (* The position is set to the beginning of a `loca` table. *)
   d_skip (gid * 4) >>= fun () ->
   d_uint32_int >>= fun glyf_offset1 ->
   d_uint32_int >>= fun glyf_offset2 ->
@@ -34,24 +34,28 @@ let d_loca_long (gid : glyph_id) : ((int * int) option) decoder =
     return @@ Some(glyf_offset1, glyf_offset2 - glyf_offset1)
 
 
-let d_loca (loc_format : Intermediate.loc_format) (gid : glyph_id) : (Intermediate.Ttf.glyph_location option) decoder =
+let d_loca ~(num_glyphs : int) (loc_format : Intermediate.loc_format) (gid : glyph_id) : ((int * int) option) decoder =
   let open DecodeOperation in
-  (* The position is set to the begging of `loca` table. *)
-  let dec =
+  (* The position is set to the beginning of a `loca` table. *)
+  if gid < 0 || num_glyphs <= gid then
+    return None
+  else
     match loc_format with
     | ShortLocFormat -> d_loca_short gid
     | LongLocFormat  -> d_loca_long gid
-  in
-  dec >>= function
-  | None                         -> return None
-  | Some((glyf_offset, _length)) -> return @@ Some(Intermediate.Ttf.GlyphLocation(glyf_offset))
 
 
 let loca (ttf : ttf_source) (gid : glyph_id) : (Intermediate.Ttf.glyph_location option) ok =
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_loca >>= fun (offset, _length) ->
-  DecodeOperation.run common.core offset (d_loca common.loc_format gid)
+  let num_glyphs = common.num_glyphs in
+  d_loca ~num_glyphs common.loc_format gid |> DecodeOperation.run common.core offset >>= function
+  | None ->
+      return None
+
+  | Some((reloffset, _length)) ->
+      return @@ Some(Intermediate.Ttf.GlyphLocation(reloffset))
 
 
 let d_end_points (numberOfContours : int) : (int Alist.t) decoder =

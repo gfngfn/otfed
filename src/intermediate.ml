@@ -87,6 +87,7 @@ module Ttf = struct
 
   type glyph_location =
     | GlyphLocation of int
+  [@@deriving show { with_path = false }]
 
   type flag = {
     on_curve       : bool;

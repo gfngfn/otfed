@@ -231,10 +231,18 @@ let d_post_tests () =
 
 (** Tests for `EncodePost.e_post` *)
 let e_post_tests () =
-  let num_glyphs = TestCasePost1.num_glyphs in
-  let got = EncodePost.e_post ~num_glyphs TestCasePost1.unmarshaled |> run_encoder in
-  let expect = Ok(TestCasePost1.marshaled) in
-  Alcotest.(check encoding) "e_post" expect got
+  begin
+    let num_glyphs = TestCasePost1.num_glyphs in
+    let got = EncodePost.e_post ~num_glyphs TestCasePost1.unmarshaled |> run_encoder in
+    let expect = Ok(TestCasePost1.marshaled) in
+    Alcotest.(check encoding) "e_post (1: Version 3)" expect got
+  end;
+  begin
+    let num_glyphs = TestCasePost2.num_glyphs in
+    let got = EncodePost.e_post ~num_glyphs TestCasePost2.unmarshaled |> run_encoder in
+    let expect = Ok(TestCasePost2.marshaled) in
+    Alcotest.(check encoding) "e_post (2: Version 2)" expect got
+  end
 
 
 (** Tests for `DecodeTtf.d_glyph` *)

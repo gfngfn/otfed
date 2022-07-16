@@ -111,3 +111,10 @@ let make ~(num_glyphs : int) (post : Value.Post.t) =
     tag = Value.Tag.table_post;
     contents;
   }
+
+
+let%test_unit "make_index_list_and_name_list" =
+  let input = [".notdef"; "foo"; "bar"; "baz"] in
+  let got = make_index_list_and_name_list input in
+  let expected = ([0; 258; 95; 259], ["foo"; "baz"]) in
+  Alcotest.(check (pair (list int) (list string))) "make_index_list_and_name_list" expected got

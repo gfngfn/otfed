@@ -17,6 +17,8 @@ Some unit tests use data extracted from the following fonts:
   - See the license [here](https://moji.or.jp/ipafont/license/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
   - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
+* [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math)
+  - See the license [here](https://www.latex-project.org/lppl/)
 * [Junicode](https://junicode.sourceforge.io/)
   - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)
 

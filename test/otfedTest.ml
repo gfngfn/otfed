@@ -27,6 +27,7 @@ module EncodePost = Otfed__EncodePost
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
+module DecodeMath = Otfed__DecodeMath
 module DecodeError = Otfed__DecodeError
 module EncodeError = Otfed__EncodeError
 module Value = Otfed__Value
@@ -351,6 +352,12 @@ let d_charstring_tests () =
   )
 
 
+let math_decoder_tests () =
+  let got = DecodeMath.d_math_constants |> run_decoder TestCaseMath1.marshaled_constants in
+  let expected = Ok(TestCaseMath1.unmarshaled_constants) in
+  Alcotest.(check (decoding (of_pp Value.Math.pp_math_constants))) "math_constants" expected got
+
+
 let () =
   let open Alcotest in
   run "Otfed" [
@@ -421,5 +428,8 @@ let () =
     ]);
     ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;
+    ]);
+    ("DecodeMath", [
+      test_case "math_decoder" `Quick math_decoder_tests;
     ]);
   ]

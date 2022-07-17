@@ -186,14 +186,7 @@ let d_math_glyph_info : Math.math_glyph_info decoder =
   d_fetch offset_MathGlyphInfo d_math_top_accent_attachment >>= fun math_top_accent_attachment ->
   d_fetch_opt offset_MathGlyphInfo d_coverage >>= fun _ ->
   d_fetch_opt offset_MathGlyphInfo d_math_kern_info >>= fun math_kern_info_opt ->
-  begin
-    match math_kern_info_opt with
-    | None ->
-        return []
-
-    | Some(math_kern_info) ->
-        return math_kern_info
-  end >>= fun math_kern_info ->
+  let math_kern_info = math_kern_info_opt |> Option.value ~default:[] in
   return Math.{
     math_italics_correction;
     math_top_accent_attachment;
@@ -225,11 +218,11 @@ let d_glyph_assembly : (Math.math_value_record * Math.glyph_part_record list) de
   return (italicsCorrection, partRecords)
 
 
-let d_math_glyph_variant_record : (glyph_id * int) decoder =
+let d_math_glyph_variant_record : Math.math_glyph_variant_record decoder =
   let open DecodeOperation in
-  d_uint16 >>= fun variantGlyph ->
-  d_uint16 >>= fun advanceMeasurement ->
-  return (variantGlyph, advanceMeasurement)
+  d_uint16 >>= fun variant_glyph ->
+  d_uint16 >>= fun advance_measurement ->
+  return @@ Math.{ variant_glyph; advance_measurement }
 
 
 let d_math_glyph_construction : Math.math_glyph_construction decoder =

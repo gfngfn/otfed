@@ -739,21 +739,27 @@ module Math = struct
 
   type glyph_part_record = {
     glyph_id_for_part      : glyph_id;
-    start_connector_length : int;
-    end_connector_length   : int;
-    full_advance           : int;
+    start_connector_length : design_units;
+    end_connector_length   : design_units;
+    full_advance           : design_units;
     part_flags             : int;
+  }
+  [@@deriving show { with_path = false }]
+
+  type math_glyph_variant_record = {
+    variant_glyph       : glyph_id;
+    advance_measurement : design_units;
   }
   [@@deriving show { with_path = false }]
 
   type math_glyph_construction = {
     glyph_assembly                 : (math_value_record * glyph_part_record list) option;
-    math_glyph_variant_record_list : (glyph_id * int) list;
+    math_glyph_variant_record_list : math_glyph_variant_record list;
   }
   [@@deriving show { with_path = false }]
 
   type math_variants = {
-    min_connector_overlap : int;
+    min_connector_overlap : design_units;
     vert_glyph_assoc      : (glyph_id * math_glyph_construction) list;
     horiz_glyph_assoc     : (glyph_id * math_glyph_construction) list;
   }

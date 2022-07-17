@@ -81,4 +81,45 @@ let unmarshaled_constants =
      radical_kern_before_degree                    = (278, None);
      radical_kern_after_degree                     = (-556, None);
      radical_degree_bottom_raise_percent           = 60;
-   };
+   }
+
+
+let marshaled_italics_correction_info =
+  let marshaled_coverage =
+    TestUtil.make_string_even [
+      (* `CoverageFormat` and `GlyphCount` *)
+      0x0001; 0x0014;
+
+      (* `latinmodern-math.otf` (offset: 693492) truncated to the first 20 entries *)
+      0x0018; 0x0033; 0x0037; 0x0038; 0x0039; 0x003a; 0x003c; 0x003f;
+      0x0040; 0x0042; 0x0047; 0x0048; 0x0049; 0x004c; 0x004d; 0x004e;
+      0x004f; 0x0052; 0x0056; 0x0057;
+    ]
+  in
+  let marshaled_value_record_list =
+    TestUtil.make_string_even [
+      (* `latinmodern-math.otf` (offset: 693492) truncated to the first 20 entries *)
+      0x000d; 0x0000; 0x0018; 0x0000; 0x0008; 0x0000; 0x0009; 0x0000;
+      0x0004; 0x0000; 0x0010; 0x0000; 0x0006; 0x0000; 0x0021; 0x0000;
+      0x001c; 0x0000; 0x000b; 0x0000; 0x004f; 0x0000; 0x000d; 0x0000;
+      0x0007; 0x0000; 0x000b; 0x0000; 0x0005; 0x0000; 0x0008; 0x0000;
+      0x0007; 0x0000; 0x001b; 0x0000; 0x0007; 0x0000; 0x0008; 0x0000;
+    ]
+  in
+  let reloffset_coverage = 4 + (String.length marshaled_value_record_list) in
+  let italics_correction_count = 20 in
+  String.concat "" [
+    TestUtil.make_string_even [ reloffset_coverage; italics_correction_count; ];
+    marshaled_value_record_list;
+    marshaled_coverage;
+  ]
+
+
+let unmarshaled_italics_correction_info =
+  [
+    (24, (13, None)); (51, (24, None)); (55, (8, None)); (56, (9, None));
+    (57, (4, None)); (58, (16, None)); (60, (6, None)); (63, (33, None));
+    (64, (28, None)); (66, (11, None)); (71, (79, None)); (72, (13, None));
+    (73, (7, None)); (76, (11, None)); (77, (5, None)); (78, (8, None));
+    (79, (7, None)); (82, (27, None)); (86, (7, None)); (87, (8, None));
+  ]

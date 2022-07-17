@@ -352,10 +352,22 @@ let d_charstring_tests () =
   )
 
 
+(** Tests for `DecodeMath` *)
 let math_decoder_tests () =
-  let got = DecodeMath.d_math_constants |> run_decoder TestCaseMath1.marshaled_constants in
-  let expected = Ok(TestCaseMath1.unmarshaled_constants) in
-  Alcotest.(check (decoding (of_pp Value.Math.pp_math_constants))) "math_constants" expected got
+  begin
+    let got = DecodeMath.d_math_constants |> run_decoder TestCaseMath1.marshaled_constants in
+    let expected = Ok(TestCaseMath1.unmarshaled_constants) in
+    Alcotest.(check (decoding (of_pp Value.Math.pp_math_constants))) "math_constants" expected got
+  end;
+  begin
+    let got =
+      DecodeMath.d_math_italics_correction_info
+        |> run_decoder TestCaseMath1.marshaled_italics_correction_info
+    in
+    let expected = Ok(TestCaseMath1.unmarshaled_italics_correction_info) in
+    Alcotest.(check (decoding (list (of_pp Value.Math.pp_math_italics_correction))))
+      "math_italics_correction_info" expected got
+  end
 
 
 let () =

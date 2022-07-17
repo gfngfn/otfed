@@ -727,8 +727,11 @@ module Math = struct
   }
   [@@deriving show { with_path = false }]
 
+  type math_italics_correction = glyph_id * math_value_record
+  [@@deriving show { with_path = false }]
+
   type math_glyph_info = {
-    math_italics_correction    : (glyph_id * math_value_record) list;
+    math_italics_correction    : math_italics_correction list;
     math_top_accent_attachment : (glyph_id * math_value_record) list;
     math_kern_info             : (glyph_id * math_kern_info_record) list;
   }

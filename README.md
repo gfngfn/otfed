@@ -17,6 +17,8 @@ Some unit tests use data extracted from the following fonts:
   - See the license [here](https://moji.or.jp/ipafont/license/)
 * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
   - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
+* [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math)
+  - See the license [here](https://www.latex-project.org/lppl/)
 * [Junicode](https://junicode.sourceforge.io/)
   - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)
 
@@ -122,7 +124,8 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 ## Status
 
 * v: done
-* o: no automated test has been given, but seems working correctly for many inputs.
+* o: no automated test has been given, but seems working correctly for many inputs
+* \-: not supported yet
 
 <table>
   <tr>
@@ -171,7 +174,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>o</td></tr>
   <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>o</td></tr>
   <tr><td>JSTF</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>
 </table>
 
 

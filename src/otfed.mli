@@ -136,7 +136,39 @@ module Value : sig
   (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
   type mark2_record = anchor array
 
-  module Cmap : (module type of Value.Cmap)
+  module Cmap : sig
+    module Mapping : sig
+      type t
+
+      val empty : t
+
+      val find : Uchar.t -> t -> glyph_id option
+
+      val add_single : Uchar.t -> glyph_id -> t -> t
+
+      val add_incremental_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
+
+      val add_constant_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
+
+      val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
+
+      val number_of_entries : t -> int
+    end
+
+    type subtable_ids = {
+      platform_id : int;
+      encoding_id : int;
+    }
+
+    type subtable = {
+      subtable_ids : subtable_ids;
+      mapping      : Mapping.t;
+    }
+
+    type t
+
+    val subtables : t -> subtable set
+  end
 
   (** Defines types for master data in [head] tables. *)
   module Head : sig
@@ -265,10 +297,59 @@ module Value : sig
   end
 
   (** Defines types for master data in [post] tables. *)
-  module Post : (module type of Value.Post)
+  module Post : sig
+    module GlyphNameArray : sig
+      type t
+      [@@deriving show]
+
+      val access : glyph_id -> t -> string option
+
+      val of_list : string list -> t
+
+      val to_list : t -> string list
+
+      val length : t -> int
+    end
+
+    type value = {
+      italic_angle        : int;
+      underline_position  : int;
+      underline_thickness : int;
+      is_fixed_pitch      : bool;
+      min_mem_type_42     : int;
+      max_mem_type_42     : int;
+      min_mem_type_1      : int;
+      max_mem_type_1      : int;
+    }
+    [@@deriving show]
+
+    type t = {
+      value       : value;
+      glyph_names : GlyphNameArray.t option;
+    }
+    [@@deriving show]
+  end
 
   (** Defines types for master data in [name] tables. *)
-  module Name : (module type of Value.Name)
+  module Name : sig
+    type name_record = {
+      platform_id : int;
+      encoding_id : int;
+      language_id : int;
+      name_id     : int;
+      name        : string;
+    }
+    [@@deriving show]
+
+    type lang_tag = string
+    [@@deriving show]
+
+    type t = {
+      name_records : name_record list;
+      lang_tags    : (lang_tag list) option;
+    }
+    [@@deriving show]
+  end
 
   module Ttf : sig
     type contour_element = {
@@ -320,7 +401,126 @@ module Value : sig
   end
 
   (** Defines types for master data in [MATH] tables. *)
-  module Math : (module type of Value.Math)
+  module Math : sig
+    type math_value_record = int * device option
+    [@@deriving show]
+
+    type math_constants = {
+      script_percent_scale_down                     : int;
+      script_script_percent_scale_down              : int;
+      delimited_sub_formula_min_height              : int;
+      display_operator_min_height                   : int;
+      math_leading                                  : math_value_record;
+      axis_height                                   : math_value_record;
+      accent_base_height                            : math_value_record;
+      flattened_accent_base_height                  : math_value_record;
+      subscript_shift_down                          : math_value_record;
+      subscript_top_max                             : math_value_record;
+      subscript_baseline_drop_min                   : math_value_record;
+      superscript_shift_up                          : math_value_record;
+      superscript_shift_up_cramped                  : math_value_record;
+      superscript_bottom_min                        : math_value_record;
+      superscript_baseline_drop_max                 : math_value_record;
+      sub_superscript_gap_min                       : math_value_record;
+      superscript_bottom_max_with_subscript         : math_value_record;
+      space_after_script                            : math_value_record;
+      upper_limit_gap_min                           : math_value_record;
+      upper_limit_baseline_rise_min                 : math_value_record;
+      lower_limit_gap_min                           : math_value_record;
+      lower_limit_baseline_drop_min                 : math_value_record;
+      stack_top_shift_up                            : math_value_record;
+      stack_top_display_style_shift_up              : math_value_record;
+      stack_bottom_shift_down                       : math_value_record;
+      stack_bottom_display_style_shift_down         : math_value_record;
+      stack_gap_min                                 : math_value_record;
+      stack_display_style_gap_min                   : math_value_record;
+      stretch_stack_top_shift_up                    : math_value_record;
+      stretch_stack_bottom_shift_down               : math_value_record;
+      stretch_stack_gap_above_min                   : math_value_record;
+      stretch_stack_gap_below_min                   : math_value_record;
+      fraction_numerator_shift_up                   : math_value_record;
+      fraction_numerator_display_style_shift_up     : math_value_record;
+      fraction_denominator_shift_down               : math_value_record;
+      fraction_denominator_display_style_shift_down : math_value_record;
+      fraction_numerator_gap_min                    : math_value_record;
+      fraction_num_display_style_gap_min            : math_value_record;
+      fraction_rule_thickness                       : math_value_record;
+      fraction_denominator_gap_min                  : math_value_record;
+      fraction_denom_display_style_gap_min          : math_value_record;
+      skewed_fraction_horizontal_gap                : math_value_record;
+      skewed_fraction_vertical_gap                  : math_value_record;
+      overbar_vertical_gap                          : math_value_record;
+      overbar_rule_thickness                        : math_value_record;
+      overbar_extra_ascender                        : math_value_record;
+      underbar_vertical_gap                         : math_value_record;
+      underbar_rule_thickness                       : math_value_record;
+      underbar_extra_descender                      : math_value_record;
+      radical_vertical_gap                          : math_value_record;
+      radical_display_style_vertical_gap            : math_value_record;
+      radical_rule_thickness                        : math_value_record;
+      radical_extra_ascender                        : math_value_record;
+      radical_kern_before_degree                    : math_value_record;
+      radical_kern_after_degree                     : math_value_record;
+      radical_degree_bottom_raise_percent           : int;
+    }
+    [@@deriving show]
+
+    type math_kern = math_value_record list * math_value_record list
+    [@@deriving show]
+
+    type math_kern_info_record = {
+      top_right_math_kern    : math_kern option;
+      top_left_math_kern     : math_kern option;
+      bottom_right_math_kern : math_kern option;
+      bottom_left_math_kern  : math_kern option;
+    }
+    [@@deriving show]
+
+    type math_italics_correction = glyph_id * math_value_record
+    [@@deriving show]
+
+    type math_glyph_info = {
+      math_italics_correction    : math_italics_correction list;
+      math_top_accent_attachment : (glyph_id * math_value_record) list;
+      math_kern_info             : (glyph_id * math_kern_info_record) list;
+    }
+    [@@deriving show]
+
+    type glyph_part_record = {
+      glyph_id_for_part      : glyph_id;
+      start_connector_length : design_units;
+      end_connector_length   : design_units;
+      full_advance           : design_units;
+      f_extender             : bool;
+    }
+    [@@deriving show]
+
+    type math_glyph_variant_record = {
+      variant_glyph       : glyph_id;
+      advance_measurement : design_units;
+    }
+    [@@deriving show]
+
+    type math_glyph_construction = {
+      glyph_assembly                 : (math_value_record * glyph_part_record list) option;
+      math_glyph_variant_record_list : math_glyph_variant_record list;
+    }
+    [@@deriving show]
+
+    type math_variants = {
+      min_connector_overlap : design_units;
+      vert_glyph_assoc      : (glyph_id * math_glyph_construction) list;
+      horiz_glyph_assoc     : (glyph_id * math_glyph_construction) list;
+    }
+    [@@deriving show]
+
+    type t = {
+      math_constants  : math_constants;
+      math_glyph_info : math_glyph_info;
+      math_variants   : math_variants;
+    }
+    [@@deriving show]
+  end
 end
 
 (** Handles in-memory representation of OpenType tables
@@ -428,8 +628,14 @@ module Intermediate : sig
       [@@deriving show]
     end
 
+    type key =
+      | ShortKey of int
+      | LongKey  of int
+    [@@deriving show]
+
     (** Represents a bit vector of arbitrary finite length equipped with [hintmask (19)] or [cntrmask (20)]. *)
     type stem_argument = string
+    [@@deriving show]
 
     (** Represents a token in CharStrings. *)
     type charstring_token =
@@ -477,7 +683,7 @@ module Intermediate : sig
 
     (** Represents a relative vector used in CharString. *)
     type vector = Value.design_units * Value.design_units
-    [@@deriving show { with_path = false }]
+    [@@deriving show]
 
     type charstring_operation =
       | HStem of {
@@ -624,7 +830,92 @@ end
 (** Contains types and operations for decoding fonts. *)
 module Decode : sig
   (** Handles values that represent errors that can happen while decoding fonts. *)
-  module Error : (module type of DecodeError)
+  module Error : sig
+    type unsupported_report =
+      | CharstringArithmeticOperator of int
+    [@@deriving show]
+
+    type t =
+      | UnknownFormatVersion      of Value.Tag.t
+      | UnknownTtcVersion         of wint
+      | LayeredTtc
+      | InvalidOffset             of offset
+      | UnexpectedEnd
+      | MissingRequiredTable      of Value.Tag.t
+      | UnknownTableVersion       of wint
+      | UnsupportedCmapFormat     of int
+      | InvalidCodePoint          of int
+      | InvalidCodePointRange     of Uchar.t * Uchar.t
+      | InvalidLocFormat          of int
+      | InvalidCompositeFormat    of int
+      | InvalidOffsize            of int
+      | InvalidFirstOffsetInIndex of wint
+      | NotASingletonIndex
+      | NotACffDictElement        of int
+      | NotANibbleElement         of int
+      | InvalidEndOfReal          of int
+      | InconsistentDictLength
+      | NotAnIntegerInDict
+      | NotARealInDict
+      | NotAnIntegerPairInDict
+      | NotAQuadrupleInDict
+      | UnknownCharstringType     of int
+      | RequiredKeyNotFound       of Intermediate.Cff.key
+      | InvalidRos
+      | SidOutOfBounds            of int
+      | NoPrivateDict
+      | UnknownFdselectFormat     of int
+      | FdindexOutOfBounds        of int
+      | FdselectOutOfBounds       of int
+      | CharstringWithoutWidth
+      | InvalidCharstring
+      | InvalidTtfContour
+      | UnknownCoverageFormat     of int
+      | InvalidCoverageLength
+      | UnknownLookupOrder        of int
+      | InvalidFeatureIndex       of int
+      | UnknownGsubLookupType     of int
+      | UnknownGposLookupType     of int
+      | UnknownFormatNumber       of int
+      | LayeredExtensionPosition
+      | InvalidMarkClass          of int
+      | CffContainsTtfMaxpTable
+      | TtfContainsCffMaxpTable
+      | UnexpectedMacStyle        of int
+      | UnknownCharstringToken    of int
+      | NegativeLengthForBytes    of int
+      | UnknownWeightClass        of int
+      | UnknownWidthClass         of int
+      | InvalidFsType             of int
+      | InvalidFsSelection        of int
+
+      | InconsistentNumberOfPoints of {
+          num_points : int;
+          num_flags  : int;
+          num_xs     : int;
+          num_ys     : int;
+        }
+
+      | InconsistentNumberOfCmapSegments of {
+          seg_count            : int;
+          num_end_codes        : int;
+          num_start_codes      : int;
+          num_id_deltas        : int;
+          num_id_range_offsets : int;
+        }
+
+      | InvalidCmapSegment of {
+          incremental    : bool;
+          start_char     : Uchar.t;
+          end_char       : Uchar.t;
+          start_glyph_id : Value.glyph_id;
+        }
+
+      | InvalidReservedPad        of int
+      | InvalidGlyphNameIndex     of int
+      | Unsupported               of unsupported_report
+    [@@deriving show]
+  end
 
   type 'a ok = ('a, Error.t) result
 
@@ -1019,7 +1310,29 @@ end
 
 module Encode : sig
   (** Handles values that represent errors that can happen while encoding fonts. *)
-  module Error : (module type of EncodeError)
+  module Error : sig
+    type unsupported_report =
+      | LocalSubrOperation
+    [@@deriving show]
+
+    type t =
+      | NotEncodableAsUint8        of int
+      | NotEncodableAsInt8         of int
+      | NotEncodableAsUint16       of int
+      | NotEncodableAsInt16        of int
+      | NotEncodableAsUint24       of int
+      | NotEncodableAsUint32       of wint
+      | NotEncodableAsInt32        of wint
+      | NotEncodableAsTimestamp    of wint
+      | NotA10BytePanose           of string
+      | NotA4ByteAchVendId         of string
+      | Version4FsSelection        of Value.Os2.fs_selection
+      | TooLargeToDetermineOffSize of int
+      | NotEncodableAsDictValue    of int
+      | InvalidNumberOfGlyphNames  of { expected : int; got : int }
+      | Unsupported                of unsupported_report
+    [@@deriving show]
+  end
 
   type 'a ok = ('a, Error.t) result
 

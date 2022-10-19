@@ -534,6 +534,8 @@ module Post = struct
 
     val pp : Format.formatter -> t -> unit
 
+    val show : t -> string
+
     val access : glyph_id -> t -> string option
 
     val of_list : string list -> t
@@ -549,6 +551,11 @@ module Post = struct
       Format.fprintf ppf "%a"
         (Format.pp_print_list ~pp_sep Format.pp_print_string)
         (Array.to_list names)
+
+
+    let show names =
+      Format.asprintf "%a" pp names
+
 
     let access gid names =
       try

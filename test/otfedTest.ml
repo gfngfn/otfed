@@ -367,6 +367,12 @@ let math_decoder_tests () =
     let expected = Ok(TestCaseMath1.unmarshaled_italics_correction_info) in
     Alcotest.(check (decoding (list (of_pp Value.Math.pp_math_italics_correction))))
       "math_italics_correction_info" expected got
+  end;
+  begin
+    let got = DecodeMath.d_math_variants |> run_decoder TestCaseMath1.marshaled_variants in
+    let expected = Ok(TestCaseMath1.unmarshaled_variants) in
+    Alcotest.(check (decoding (of_pp Value.Math.pp_math_variants)))
+      "math_variants" expected got
   end
 
 

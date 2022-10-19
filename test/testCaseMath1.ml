@@ -123,3 +123,164 @@ let unmarshaled_italics_correction_info =
     (73, (7, None)); (76, (11, None)); (77, (5, None)); (78, (8, None));
     (79, (7, None)); (82, (27, None)); (86, (7, None)); (87, (8, None));
   ]
+
+
+let marshaled_variants =
+  let vert_glyph_ids = [] in
+  let horiz_glyph_ids = [ 0x0937 (* GID 2359 *) ] in
+
+  let vert_glyph_count = List.length vert_glyph_ids in
+  let horiz_glyph_count = List.length horiz_glyph_ids in
+  let marshaled_vert_glyph_coverage =
+    TestUtil.make_string_even (List.concat [
+      (* `CoverageFormat` and `GlyphCount`: *)
+      [ 0x0001; vert_glyph_count ];
+      vert_glyph_ids;
+    ])
+  in
+  let marshaled_horiz_glyph_coverage =
+    TestUtil.make_string_even (List.concat [
+      (* `CoverageFormat` and `GlyphCount`: *)
+      [ 0x0001; horiz_glyph_count ];
+      horiz_glyph_ids;
+    ])
+  in
+  let marshaled_math_glyph_construction_and_glyph_assembly =
+    let marshaled_math_glyph_construction =
+      TestUtil.make_string_even [
+        (* `GlyphAssembly` (offset): *)
+        0x0024;
+
+        (* `VariantCount`: *)
+        0x0008;
+
+        (* `MathGlyphVariantRecord[VariantCount]`: *)
+        0x0937; 0x01ed;
+        0x094d; 0x03e2;
+        0x0963; 0x05d7;
+        0x0979; 0x07cd;
+        0x098f; 0x09c3;
+        0x09a5; 0x0bb9;
+        0x09bb; 0x0daf;
+        0x09f1; 0x0fa7;
+      ]
+    in
+    let marshaled_glyph_assembly =
+      TestUtil.make_string_even [
+        (* `latinmodern-math.otf` (offset 713688), the `GlyphAssembly` table for GID 2359 *)
+        0x0000; 0x0000; 0x0005; 0x09f3; 0x0000; 0x01f1; 0x03ea; 0x0000;
+        0x09f4; 0x03e2; 0x03e2; 0x03e2; 0x0001; 0x09f5; 0x01f1; 0x01f1;
+        0x07d3; 0x0000; 0x09f4; 0x03e2; 0x03e2; 0x03e2; 0x0001; 0x09f6;
+        0x01f1; 0x0000; 0x03e9; 0x0000;
+      ]
+    in
+    String.concat "" [
+      marshaled_math_glyph_construction;
+      marshaled_glyph_assembly;
+    ]
+  in
+  let constant_entry_length = 10 in
+  let reloffset_contents = constant_entry_length + 2 * vert_glyph_count + 2 * horiz_glyph_count in
+  let marshaled_vert_glyph_construction_array =
+    ""
+  in
+  let marshaled_horiz_glyph_construction_array =
+    TestUtil.make_string_even [
+      reloffset_contents; (* GID 2359 *)
+    ]
+  in
+  let reloffset_vert_glyph_coverage =
+    reloffset_contents + String.length marshaled_math_glyph_construction_and_glyph_assembly
+  in
+  let reloffset_horiz_glyph_coverage =
+    reloffset_vert_glyph_coverage + String.length marshaled_vert_glyph_coverage
+  in
+  String.concat "" [
+    TestUtil.make_string_even [
+      (* `MinConnectorOverlap`: *)
+      0x0014;
+
+      (* `VertGlyphCoverage`: *)
+      reloffset_vert_glyph_coverage;
+
+      (* `HorizGlyphCoverage`: *)
+      reloffset_horiz_glyph_coverage;
+
+      (* `VertGlyphCount`: *)
+      vert_glyph_count;
+
+      (* `HorizGlyphCount`: *)
+      horiz_glyph_count;
+    ];
+    (* `VertGlyphConstruction[VertGlyphCount]`: *)
+    marshaled_vert_glyph_construction_array;
+
+    (* `HorizGlyphConstruction[HorizGlyphCount]`: *)
+    marshaled_horiz_glyph_construction_array;
+
+    marshaled_math_glyph_construction_and_glyph_assembly;
+    marshaled_vert_glyph_coverage;
+    marshaled_horiz_glyph_coverage;
+  ]
+
+
+let unmarshaled_variants =
+  Value.Math.{
+    min_connector_overlap = 20;
+    vert_glyph_assoc = [];
+    horiz_glyph_assoc = [
+      (* Overbrace: *)
+      (2359,
+       { glyph_assembly =
+           Some((
+             (0, None),
+             [
+               {
+                 glyph_id_for_part      = 2547;
+                 start_connector_length = 0;
+                 end_connector_length   = 497;
+                 full_advance           = 1002;
+                 f_extender             = false;
+               };
+               {
+                 glyph_id_for_part      = 2548;
+                 start_connector_length = 994;
+                 end_connector_length   = 994;
+                 full_advance           = 994;
+                 f_extender             = true;
+               };
+               { glyph_id_for_part      = 2549;
+                 start_connector_length = 497;
+                 end_connector_length   = 497;
+                 full_advance           = 2003;
+                 f_extender             = false;
+               };
+               {
+                 glyph_id_for_part      = 2548;
+                 start_connector_length = 994;
+                 end_connector_length   = 994;
+                 full_advance           = 994;
+                 f_extender             = true;
+               };
+               {
+                 glyph_id_for_part      = 2550;
+                 start_connector_length = 497;
+                 end_connector_length   = 0;
+                 full_advance           = 1001;
+                 f_extender             = false;
+               };
+             ]));
+         math_glyph_variant_record_list =
+           [
+             { variant_glyph = 2359; advance_measurement = 493 };
+             { variant_glyph = 2381; advance_measurement = 994 };
+             { variant_glyph = 2403; advance_measurement = 1495 };
+             { variant_glyph = 2425; advance_measurement = 1997 };
+             { variant_glyph = 2447; advance_measurement = 2499 };
+             { variant_glyph = 2469; advance_measurement = 3001 };
+             { variant_glyph = 2491; advance_measurement = 3503 };
+             { variant_glyph = 2545; advance_measurement = 4007 };
+           ]
+       });
+    ];
+  }

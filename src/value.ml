@@ -742,7 +742,7 @@ module Math = struct
     start_connector_length : design_units;
     end_connector_length   : design_units;
     full_advance           : design_units;
-    part_flags             : int;
+    f_extender             : bool;
   }
   [@@deriving show { with_path = false }]
 

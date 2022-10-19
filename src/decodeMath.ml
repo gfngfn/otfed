@@ -206,7 +206,7 @@ let d_glyph_part_record : Math.glyph_part_record decoder =
     start_connector_length;
     end_connector_length;
     full_advance;
-    part_flags;
+    f_extender = (part_flags land 1 > 0);
   }
 
 

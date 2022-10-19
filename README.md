@@ -124,7 +124,8 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 ## Status
 
 * v: done
-* o: no automated test has been given, but seems working correctly for many inputs.
+* o: no automated test has been given, but seems working correctly for many inputs
+* \-: not supported yet
 
 <table>
   <tr>
@@ -173,7 +174,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td>GPOS</td><td>-</td><td>-</td><td>v (LookupType 1, 2, 4, 5, 6, and 9 only)</td><td>o</td></tr>
   <tr><td>GSUB</td><td>-</td><td>-</td><td>v (LookupType 1, 2, and 4 only)</td><td>o</td></tr>
   <tr><td>JSTF</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
-  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>o</td></tr>
+  <tr><td>MATH</td><td>-</td><td>-</td><td>v</td><td>v</td></tr>
 </table>
 
 

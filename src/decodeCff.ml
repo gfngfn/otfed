@@ -1130,10 +1130,9 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
   let open DecodeOperation in
   let open Intermediate.Cff in
   let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token_and_info Alist.t) =
-    let cslstate = lcstate.lexical_lexing in
-    d_charstring_token cslstate >>= fun (lstate, cstoken) ->
+    d_charstring_token lcstate.lexical_lexing >>= fun (lstate, cstoken) ->
     let lcstate = { lcstate with lexical_lexing = lstate } in
-    let acc = Alist.extend acc (cstoken, cslstate.num_args, cslstate.num_stems) in
+    let acc = Alist.extend acc (cstoken, lstate.num_args, lstate.num_stems) in (* TEMPORARY *)
     let remaining = lstate.remaining in
 
     begin

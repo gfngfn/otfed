@@ -214,20 +214,32 @@ let e_os2 (ios2 : Intermediate.Os2.t) =
       return ()
   end >>= fun () ->
   let extension = form_extension_structure d v in
-  let table_version =
-    match extension with
-    | None                                -> 0x0000
-    | Some((_, None))                     -> 0x0001
-    | Some((_, Some((_, None))))          -> 0x0002
-    | Some((_, Some((_, Some((_, ())))))) -> 0x0005
-  in
   let fs_selection = v.fs_selection in
+  let must_be_version4_or_later = fs_selection_requires_table_version4_or_later fs_selection in
   begin
-    if fs_selection_requires_table_version4_or_later fs_selection && table_version < 0x0004 then
-      err @@ Version4FsSelection(fs_selection)
-    else
-      return ()
-  end >>= fun () ->
+    match extension with
+    | None ->
+        if must_be_version4_or_later then
+          err @@ Version4FsSelection(fs_selection)
+        else
+          return 0x0000
+
+    | Some((_, None)) ->
+        if must_be_version4_or_later then
+          err @@ Version4FsSelection(fs_selection)
+        else
+          return 0x0001
+
+    | Some((_, Some((_, None)))) ->
+        if must_be_version4_or_later then
+          return 0x0004
+        else
+          return 0x0002
+
+    | Some((_, Some((_, Some((_, ())))))) ->
+        return 0x0005
+
+  end >>= fun table_version ->
   e_uint16 table_version            >>= fun () ->
   e_int16  d.x_avg_char_width       >>= fun () ->
   e_weight_class v.us_weight_class  >>= fun () ->

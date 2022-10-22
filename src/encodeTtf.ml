@@ -168,7 +168,7 @@ let e_composite_glyph (composite_glyph : Ttf.composite_glyph_description) : unit
           | Ttf.Matching(i, j) -> (false, i, j)
         in
         let (arg_1_and_2_are_words, e_arg) =
-          if -256 <= arg1 && arg1 < 256 && -256 <= arg2 && arg2 < 256 then
+          if -128 <= arg1 && arg1 < 128 && -128 <= arg2 && arg2 < 128 then
             (false, e_int8)
           else
             (true, e_int16)

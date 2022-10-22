@@ -10,6 +10,10 @@ open Intermediate.Cff
 module Maxp = DecodeCffMaxp
 
 
+let max_depth_limit = 10
+  (* See "The Type 2 Charstring Format", Appendix B. *)
+
+
 let d_cff_header : cff_header decoder =
   let open DecodeOperation in
   d_uint8              >>= fun major ->
@@ -591,7 +595,7 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
         | 37 -> return_flushing_operator (2, OpFlex1)
 
         | _ ->
-            err @@ Error.InvalidCharstring
+            err @@ Error.UnknownCharstringLongOperator(b1)
       end
 
   | 14 -> return_flushing_operator (1, OpEndChar)
@@ -642,7 +646,7 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
 let pop_mandatory (stack : stack) : (stack * int) decoder =
   let open DecodeOperation in
   match ImmutStack.pop stack with
-  | None       -> err Error.InvalidCharstring
+  | None       -> err Error.CharstringStackUnderflow
   | Some(pair) -> return pair
 
 
@@ -714,13 +718,13 @@ let convert_subroutine_number (subr_index : subroutine_index) (i : int) =
 
 let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int * int) ok =
   let open ResultMonad in
+  let biased_number = convert_subroutine_number subr_index i in
   try
-    let biased_number = convert_subroutine_number subr_index i in
     let CharStringData(offset, length) = subr_index.(biased_number) in
     return (offset, length, biased_number)
   with
   | Invalid_argument(_) ->
-      err Error.InvalidCharstring
+      err @@ Error.SubroutineIndexOutOfBounds{ index = i; biased = biased_number }
 
 
 let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state) =
@@ -743,7 +747,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       begin
         match pairs with
         | [] ->
-            err Error.InvalidCharstring
+            err Error.CharstringStackUnderflow
 
         | (y, dy) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
@@ -755,7 +759,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       begin
         match pairs with
         | [] ->
-            err Error.InvalidCharstring
+            err Error.CharstringStackUnderflow
 
         | (x, dx) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
@@ -807,14 +811,14 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       if ImmutStack.is_empty stack then
         return ({ cstate with width; stack }, [])
       else
-        err Error.InvalidCharstring
+        err Error.CharstringStackRemaining
 
   | OpHStemHM ->
       let (stack, pairs) = pop_iter pop2_opt stack in
       begin
         match pairs with
         | [] ->
-            err Error.InvalidCharstring
+            err Error.CharstringStackUnderflow
 
         | (y, dy) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
@@ -857,7 +861,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
       begin
         match pairs with
         | [] ->
-            err Error.InvalidCharstring
+            err Error.CharstringStackUnderflow
 
         | (x, dx) :: rest ->
             let (stack, width) = pop_opt_for_width cstate.width stack in
@@ -910,7 +914,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         let main = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
         return ({ cstate with stack }, [ VHCurveTo{ main; df = df_opt } ])
       else
-        err Error.InvalidCharstring
+        err Error.CharstringStackRemaining
 
   | OpHVCurveTo ->
       begin
@@ -925,7 +929,7 @@ let rec parse_progress (cconst : charstring_constant) (cstate : charstring_state
         let main = tuples |> List.map (fun (d1, d2, d3, d4) -> (d1, (d2, d3), d4)) in
         return ({ cstate with stack }, [ HVCurveTo{ main; df = df_opt } ])
       else
-        err Error.InvalidCharstring
+        err Error.CharstringStackRemaining
 
   | OpHFlex ->
       pop_mandatory stack >>= fun (stack, dx6) ->
@@ -1033,7 +1037,7 @@ and d_charstring (cconst : charstring_constant) (cstate : charstring_state) : (c
     if remaining = 0 then
       return (cstate, acc)
     else if remaining < 0 then
-      err @@ InvalidCharstring
+      err @@ CharstringParsingOverrun(remaining)
     else
       aux cstate acc
 
@@ -1078,7 +1082,6 @@ module LexicalSubroutineIndex : sig
   type t
   val empty : t
   val add : int -> lexical_charstring -> t -> t
-  val add_flag : int -> t -> t
   val mem : int -> t -> bool
   val find : int -> t -> lexical_charstring option
   val fold : (int -> lexical_charstring -> 'a -> 'a) -> t -> 'a -> 'a
@@ -1087,28 +1090,19 @@ end = struct
 
   module Impl = Map.Make(Int)
 
-  type t = (lexical_charstring option) Impl.t
+  type t = lexical_charstring Impl.t
 
   let empty = Impl.empty
 
-  let add i lcs = Impl.add i (Some(lcs))
-
-  let add_flag i = Impl.add i None
+  let add i lcs = Impl.add i lcs
 
   let mem = Impl.mem
 
   let find i map =
-    match map |> Impl.find_opt i with
-    | None            -> None
-    | Some(None)      -> assert false
-    | Some(Some(lcs)) -> Some(lcs)
+    map |> Impl.find_opt i
 
   let fold f map acc =
-    Impl.fold (fun i opt acc ->
-      match opt with
-      | None      -> assert false
-      | Some(lcs) -> f i lcs acc
-    ) map acc
+    Impl.fold f map acc
 
   let cardinal = Impl.cardinal
 end
@@ -1137,26 +1131,20 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring
+                err Error.NoSubroutineIndexArgument
 
             | Some(i) ->
-                if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
-                  return { lcstate with last_number = None }
-                else
-                  d_lexical_subroutine ~depth ~local:true cconst lcstate i
+                d_lexical_subroutine ~depth ~local:true cconst lcstate i
           end
 
       | OpCallGSubr ->
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring
+                err Error.NoSubroutineIndexArgument
 
             | Some(i) ->
-                if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then
-                  return { lcstate with last_number = None }
-                else
-                  d_lexical_subroutine ~depth ~local:false cconst lcstate i
+                d_lexical_subroutine ~depth ~local:false cconst lcstate i
           end
 
       | ArgumentInteger(n) ->
@@ -1169,7 +1157,7 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
     if remaining = 0 then
       return (lcstate, acc)
     else if remaining < 0 then
-      err @@ Error.InvalidCharstring
+      err @@ Error.CharstringParsingOverrun(remaining)
     else
       aux lcstate acc
 
@@ -1180,41 +1168,33 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
 and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
   let open DecodeOperation in
 
-  let remaining = lcstate.lexical_lexing.remaining in
+  if depth > max_depth_limit then
+    err @@ Error.ExceedMaxSubroutineDepth(depth)
+  else
 
-  (* Adds a flag firstly for avoiding infinite loops. *)
-  let (subrs, lcstate) =
-    if local then
-      (cconst.lsubr_index,
+    let remaining = lcstate.lexical_lexing.remaining in
+
+    let subrs = if local then cconst.lsubr_index else cconst.gsubr_index in
+
+    transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+    let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
+    pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
+    let lcs = Alist.to_list acc in
+
+    (* Adds the tokenized CharString and resets the remaining byte length. *)
+    let lcstate =
+      if local then
         { lcstate with
-          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add_flag i
-        })
-    else
-      (cconst.gsubr_index,
+          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+        }
+      else
         { lcstate with
-          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add_flag i
-        })
-  in
-
-  transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
-  let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
-  pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
-  let lcs = Alist.to_list acc in
-
-  (* Adds the tokenized CharString and resets the remaining byte length. *)
-  let lcstate =
-    if local then
-      { lcstate with
-        lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
-        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
-      }
-    else
-      { lcstate with
-        lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
-        lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
-      }
-  in
-  return lcstate
+          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
+        }
+    in
+    return lcstate
 
 
 let fdindex (cff : cff_source) (gid : glyph_id) : (fdindex option) ok =
@@ -1351,14 +1331,14 @@ let start_new_path (state : path_reading_state) (curv : point) : path_reading_st
 let assert_middle =
   let open ResultMonad in
   function
-  | Initial        -> err Error.InvalidCharstring
+  | Initial        -> err Error.NotAMiddleOfPathInCharstring
   | Middle(middle) -> return middle
 
 
 let chop_last_of_list xs =
   let open ResultMonad in
   match List.rev xs with
-  | []               -> err Error.InvalidCharstring
+  | []               -> err Error.EmptyCurveInCharstring
   | last :: main_rev -> return (List.rev main_rev, last)
 
 
@@ -1423,7 +1403,7 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         return (curv, Middle{ middle with elems = peacc })
 
     | VVCurveTo{ dx1 = _; rest = [] } ->
-        err Error.InvalidCharstring
+        err @@ Error.EmptyCurveInCharstring
 
     | VVCurveTo{ dx1 = dx1_opt; rest = (dy1, dv2, dy3) :: vvs } ->
         assert_middle state >>= fun middle ->
@@ -1445,7 +1425,7 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         return (curv, Middle{ middle with elems = peacc })
 
     | HHCurveTo{ dy1 = _; rest = [] } ->
-        err Error.InvalidCharstring
+        err @@ Error.EmptyCurveInCharstring
 
     | HHCurveTo{ dy1 = dy1_opt; rest = (dx1, dv2, dx3) :: hhs } ->
         assert_middle state >>= fun middle ->

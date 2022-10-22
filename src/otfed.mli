@@ -835,6 +835,17 @@ module Decode : sig
       | CharstringArithmeticOperator of int
     [@@deriving show]
 
+    type charstring_error =
+      | UnknownLongOperator        of int
+      | StackUnderflow
+      | StackRemaining
+      | SubroutineIndexOutOfBounds of { index : int; biased : int }
+      | NoSubroutineIndex
+      | ParsingOverrun             of int
+      | NotAMiddleOfPath
+      | EmptyRestOfCurve
+    [@@deriving show]
+
     type t =
       | UnknownFormatVersion      of Value.Tag.t
       | UnknownTtcVersion         of wint
@@ -868,7 +879,7 @@ module Decode : sig
       | FdindexOutOfBounds        of int
       | FdselectOutOfBounds       of int
       | CharstringWithoutWidth
-      | InvalidCharstring
+      | InvalidCharstring         of charstring_error
       | InvalidTtfContour
       | UnknownCoverageFormat     of int
       | InvalidCoverageLength

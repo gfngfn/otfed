@@ -5,6 +5,17 @@ type unsupported_report =
   | CharstringArithmeticOperator of int
 [@@deriving show { with_path = false }]
 
+type charstring_error =
+  | UnknownLongOperator        of int
+  | StackUnderflow
+  | StackRemaining
+  | SubroutineIndexOutOfBounds of { index : int; biased : int }
+  | NoSubroutineIndex
+  | ParsingOverrun             of int
+  | NotAMiddleOfPath
+  | EmptyRestOfCurve
+[@@deriving show { with_path = false }]
+
 type t =
   | UnknownFormatVersion      of Value.Tag.t
   | UnknownTtcVersion         of wint
@@ -41,7 +52,7 @@ type t =
   | FdindexOutOfBounds        of int
   | FdselectOutOfBounds       of int
   | CharstringWithoutWidth
-  | InvalidCharstring
+  | InvalidCharstring         of charstring_error
   | InvalidTtfContour
   | UnknownCoverageFormat     of int
   | InvalidCoverageLength

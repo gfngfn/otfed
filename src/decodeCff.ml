@@ -1137,7 +1137,7 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring(NoSubroutineIndex("local" ^ msg))
+                err @@ Error.InvalidCharstring(NoSubroutineIndex("local: " ^ msg))
 
             | Some(i) ->
                 if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
@@ -1150,7 +1150,7 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring(NoSubroutineIndex("global, " ^ msg))
+                err @@ Error.InvalidCharstring(NoSubroutineIndex("global: " ^ msg))
 
             | Some(i) ->
                 if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then
@@ -1196,9 +1196,9 @@ and d_lexical_subroutine ~(msg : string) ~(depth : int) ~(local : bool) (cconst 
         })
   in
 
-  transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+  transform_result @@ access_subroutine subrs i >>= fun (offset, length, biased_number) ->
   let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
-  pick offset (d_lexical_charstring ~msg ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
+  pick offset (d_lexical_charstring ~msg:(Printf.sprintf "%s (biased: %d)" msg biased_number) ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
   let lcs = Alist.to_list acc in
 
   (* Adds the tokenized CharString and resets the remaining byte length. *)

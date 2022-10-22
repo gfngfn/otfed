@@ -114,7 +114,10 @@ let make ~(num_glyphs : int) (post : Value.Post.t) =
 
 
 let%test_unit "make_index_list_and_name_list" =
+  let pair_equal equal1 equal2 (x1, y1) (x2, y2) = equal1 x1 x2 && equal2 y1 y2 in
+
   let input = [".notdef"; "foo"; "bar"; "baz"] in
-  let got = make_index_list_and_name_list input in
   let expected = ([0; 258; 95; 259], ["foo"; "baz"]) in
-  Alcotest.(check (pair (list int) (list string))) "make_index_list_and_name_list" expected got
+
+  let got = make_index_list_and_name_list input in
+  assert (pair_equal (List.equal Int.equal) (List.equal String.equal) expected got)

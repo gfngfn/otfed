@@ -1,6 +1,8 @@
 (library
  (name otfed)
- (inline_tests)
+ (inline_tests
+   (libraries
+     alcotest))
  (public_name otfed)
  (libraries
    base)

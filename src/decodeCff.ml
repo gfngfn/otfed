@@ -1338,7 +1338,7 @@ let assert_middle =
 let chop_last_of_list xs =
   let open ResultMonad in
   match List.rev xs with
-  | []               -> err Error.CharstringStackUnderflow
+  | []               -> err Error.EmptyCurveInCharstring
   | last :: main_rev -> return (List.rev main_rev, last)
 
 

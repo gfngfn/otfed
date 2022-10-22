@@ -41,7 +41,15 @@ type t =
   | FdindexOutOfBounds        of int
   | FdselectOutOfBounds       of int
   | CharstringWithoutWidth
-  | InvalidCharstring
+  | UnknownCharstringLongOperator of int
+  | CharstringStackUnderflow
+  | CharstringStackRemaining
+  | SubroutineIndexOutOfBounds    of { index : int; biased : int }
+  | NoSubroutineIndexArgument
+  | CharstringParsingOverrun      of int
+  | NotAMiddleOfPathInCharstring
+  | EmptyCurveInCharstring
+  | ExceedMaxSubroutineDepth      of int
   | InvalidTtfContour
   | UnknownCoverageFormat     of int
   | InvalidCoverageLength

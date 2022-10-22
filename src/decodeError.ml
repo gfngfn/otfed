@@ -10,7 +10,7 @@ type charstring_error =
   | StackUnderflow
   | StackRemaining
   | SubroutineIndexOutOfBounds of { index : int; biased : int }
-  | NoSubroutineIndex
+  | NoSubroutineIndex          of string
   | ParsingOverrun             of int
   | NotAMiddleOfPath
   | EmptyRestOfCurve

@@ -844,7 +844,7 @@ module Decode : sig
       | ParsingOverrun             of int
       | NotAMiddleOfPath
       | EmptyRestOfCurve
-      | ExceedMathDepthLimit       of int
+      | ExceedMaxSubroutineDepth   of int
     [@@deriving show]
 
     type t =

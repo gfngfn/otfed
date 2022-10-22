@@ -1090,26 +1090,19 @@ end = struct
 
   module Impl = Map.Make(Int)
 
-  type t = (lexical_charstring option) Impl.t
+  type t = lexical_charstring Impl.t
 
   let empty = Impl.empty
 
-  let add i lcs = Impl.add i (Some(lcs))
+  let add i lcs = Impl.add i lcs
 
   let mem = Impl.mem
 
   let find i map =
-    match map |> Impl.find_opt i with
-    | None            -> None
-    | Some(None)      -> assert false
-    | Some(Some(lcs)) -> Some(lcs)
+    map |> Impl.find_opt i
 
   let fold f map acc =
-    Impl.fold (fun i opt acc ->
-      match opt with
-      | None      -> assert false
-      | Some(lcs) -> f i lcs acc
-    ) map acc
+    Impl.fold f map acc
 
   let cardinal = Impl.cardinal
 end
@@ -1182,7 +1175,7 @@ and d_lexical_subroutine ~(msg : string) ~(depth : int) ~(local : bool) (cconst 
   let open DecodeOperation in
 
   if depth > max_depth_limit then
-    err (Error.InvalidCharstring(ExceedMathDepthLimit(depth)))
+    err (Error.InvalidCharstring(ExceedMaxSubroutineDepth(depth)))
   else
 
     let remaining = lcstate.lexical_lexing.remaining in

@@ -9,6 +9,7 @@ license: "MIT"
 homepage: "https://github.com/gfngfn/otfed"
 bug-reports: "https://github.com/gfngfn/otfed/issues"
 depends: [
+  "ocaml" {>= "4.12"}
   "dune" {>= "2.7" & >= "2.0"}
   "base" {>= "v0.15.0"}
   "stdio" {>= "v0.15.0"}

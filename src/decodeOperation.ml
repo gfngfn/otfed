@@ -316,5 +316,5 @@ let%test_unit "chop_two_bytes" =
   in
   cases |> List.iter (fun (data, unit_size, repeat, expected) ->
     let got = chop_two_bytes ~data ~unit_size ~repeat in
-    Alcotest.(check (list int)) "chop_two_bytes" expected got
+    assert (List.equal Int.equal expected got)
   )

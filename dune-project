@@ -14,6 +14,7 @@
  (synopsis "An OpenType encoder/decoder for OCaml")
  (description "")
  (depends
+  (ocaml (>= 4.12))
   (dune (>= 2.0))
   (base (>= v0.15.0))
   (stdio (>= v0.15.0))

@@ -355,6 +355,7 @@ let make_common
 
   (* Make `post`. *)
   inj_dec @@ Decode.Post.get src >>= fun post ->
+  let post = Post.{ post with glyph_names = None } in (* TODO: add option for whether to encode `glyph_names` *)
   inj_enc @@ Encode.Post.make ~num_glyphs post >>= fun table_post ->
 
   (* Make `name`. *)

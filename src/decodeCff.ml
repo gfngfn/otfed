@@ -1122,13 +1122,18 @@ type lexical_charstring_state = {
 }
 
 
+type charstring_token_and_info = charstring_token * int * int (* TEMPORARY *)
+[@@deriving show {with_path = false }]
+
+
 let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring_constant) (lcstate : lexical_charstring_state) =
   let open DecodeOperation in
   let open Intermediate.Cff in
-  let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token Alist.t) =
-    d_charstring_token lcstate.lexical_lexing >>= fun (lstate, cstoken) ->
+  let rec aux (lcstate : lexical_charstring_state) (acc : charstring_token_and_info Alist.t) =
+    let cslstate = lcstate.lexical_lexing in
+    d_charstring_token cslstate >>= fun (lstate, cstoken) ->
     let lcstate = { lcstate with lexical_lexing = lstate } in
-    let acc = Alist.extend acc cstoken in
+    let acc = Alist.extend acc (cstoken, cslstate.num_args, cslstate.num_stems) in
     let remaining = lstate.remaining in
 
     begin
@@ -1137,7 +1142,7 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token) (acc |> Alist.to_list) in
+                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token_and_info) (acc |> Alist.to_list) in
                 err @@ Error.InvalidCharstring(NoSubroutineIndex(Printf.sprintf "%s -> local, tokens: %s" msg tokens))
 
             | Some(i) ->
@@ -1151,7 +1156,7 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token) (acc |> Alist.to_list) in
+                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token_and_info) (acc |> Alist.to_list) in
                 err @@ Error.InvalidCharstring(NoSubroutineIndex(Printf.sprintf "%s -> global, tokens: %s" msg tokens))
 
             | Some(i) ->
@@ -1207,12 +1212,12 @@ and d_lexical_subroutine ~(msg : string) ~(depth : int) ~(local : bool) (cconst 
   let lcstate =
     if local then
       { lcstate with
-        lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i (lcs |> List.map (fun (lc, _, _) -> lc));
         lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
       }
     else
       { lcstate with
-        lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+        lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i (lcs |> List.map (fun (lc, _, _) -> lc));
         lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
       }
   in
@@ -1257,7 +1262,7 @@ let lexical_charstring (cff : cff_source) ~(gsubrs : LexicalSubroutineIndex.t) ~
       in
       let dec = d_lexical_charstring ~msg:(Printf.sprintf "GID %d" gid) ~depth:0 cconst lcstate in
       dec |> DecodeOperation.run cff.cff_common.core offset >>= fun (lcstate, acc) ->
-      return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, Alist.to_list acc))
+      return @@ Some((lcstate.lexical_gsubrs, lcstate.lexical_lsubrs, (Alist.to_list acc) |> List.map (fun (lc, _, _) -> lc)))
 
 
 let ( +@ ) (x, y) (dx, dy) = (x + dx, y + dy)

@@ -3,6 +3,7 @@
 (version 0.0.1)
 (authors "Takashi Suwa")
 (maintainers "Takashi Suwa")
+(license MIT)
 (source (github gfngfn/otfed))
 (homepage "https://github.com/gfngfn/otfed")
 (bug_reports "https://github.com/gfngfn/otfed/issues")

@@ -1137,7 +1137,8 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring(NoSubroutineIndex("local: " ^ msg))
+                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token) (acc |> Alist.to_list) in
+                err @@ Error.InvalidCharstring(NoSubroutineIndex(Printf.sprintf "%s -> local, tokens: %s" msg tokens))
 
             | Some(i) ->
                 if lcstate.lexical_lsubrs |> LexicalSubroutineIndex.mem i then
@@ -1150,7 +1151,8 @@ let rec d_lexical_charstring ~(msg : string) ~(depth : int) (cconst : charstring
           begin
             match lcstate.last_number with
             | None ->
-                err @@ Error.InvalidCharstring(NoSubroutineIndex("global: " ^ msg))
+                let tokens = Format.asprintf "%a" (Format.pp_print_list pp_charstring_token) (acc |> Alist.to_list) in
+                err @@ Error.InvalidCharstring(NoSubroutineIndex(Printf.sprintf "%s -> global, tokens: %s" msg tokens))
 
             | Some(i) ->
                 if lcstate.lexical_gsubrs |> LexicalSubroutineIndex.mem i then

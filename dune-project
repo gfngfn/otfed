@@ -11,8 +11,8 @@
 
 (package
  (name otfed)
- (synopsis "Short description")
- (description "Long description")
+ (synopsis "An OpenType encoder/decoder for OCaml")
+ (description "")
  (depends
   (dune (>= 2.0))
   (base (>= v0.15.0))

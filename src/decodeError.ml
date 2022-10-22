@@ -14,6 +14,7 @@ type charstring_error =
   | ParsingOverrun             of int
   | NotAMiddleOfPath
   | EmptyRestOfCurve
+  | ExceedMathDepthLimit       of int
 [@@deriving show { with_path = false }]
 
 type t =

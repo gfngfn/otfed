@@ -10,8 +10,10 @@ module Value : sig
     val to_string : t -> string
   end
 
+  (** The type for glyph IDs (GIDs). *)
   type glyph_id = int
 
+  (** The type for design units for describing outlines, spacing, etc. *)
   type design_units = int
 
   (** Represents an absolute X-coordinate.
@@ -32,6 +34,7 @@ module Value : sig
   (** A signed integer representing a datetime in number of seconds since 1904-01-01T00:00:00. *)
   type timestamp = wint
 
+  (** The type for bounding boxes of glyphs. *)
   type bounding_box = {
     x_min : x_coordinate;
     y_min : y_coordinate;
@@ -40,6 +43,7 @@ module Value : sig
   }
   [@@deriving show]
 
+  (** The type for 2x2 matrices. *)
   type linear_transform = {
     a : float;
     b : float;
@@ -136,37 +140,52 @@ module Value : sig
   (** The type for Mark2Records (page 203). Arrays of this type are indexed by [mark_class]. *)
   type mark2_record = anchor array
 
+  (** Defines types and operations for handling master data in [cmap] tables. *)
   module Cmap : sig
+    (** Defines operations on [cmap] subtables. *)
     module Mapping : sig
+      (** The type for data representing a map corresponding to a single [cmap] subtable. *)
       type t
 
+      (** Creates an empty [cmap] subtable. *)
       val empty : t
 
       val find : Uchar.t -> t -> glyph_id option
 
       val add_single : Uchar.t -> glyph_id -> t -> t
 
+      (** [cmap |> add_incremental_range ~start ~last ~gid] appends
+          [{start ↦ gid, start + 1 ↦ gid + 1, …, last ↦ gid + last - start}] to [cmap]. *)
       val add_incremental_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
 
+      (** [cmap |> add_constant_range ~start ~last ~gid] appends
+          [{start ↦ gid, start + 1 ↦ gid, …, last ↦ gid}] to [cmap]. *)
       val add_constant_range : start:Uchar.t -> last:Uchar.t -> gid:glyph_id -> t -> t
 
+      (** [fold f {uch_1 ↦ gid_1, uch_2 ↦ gid_2, …, uch_n ↦ gid_n} init] is
+          [f uch_n gid_n (… (f uch_2 gid_2 (f uch_1 gid_1 init)) …)]. *)
       val fold : (Uchar.t -> glyph_id -> 'a -> 'a) -> t -> 'a -> 'a
 
+      (** Returns the cardinality of a subtable. *)
       val number_of_entries : t -> int
     end
 
+    (** The type for [cmap] subtable IDs. *)
     type subtable_ids = {
       platform_id : int;
       encoding_id : int;
     }
 
+    (** The type for representing master data in a [cmap] subtable including subtable IDs. *)
     type subtable = {
       subtable_ids : subtable_ids;
       mapping      : Mapping.t;
     }
 
+    (** The type for master data in a [cmap] table. *)
     type t
 
+    (** Gets all the subtables in a [cmap] table. *)
     val subtables : t -> subtable set
   end
 
@@ -351,6 +370,7 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types specific to TrueType-based tables. *)
   module Ttf : sig
     type contour_element = {
       on_curve : bool;
@@ -358,14 +378,17 @@ module Value : sig
     }
     [@@deriving show]
 
+    (** The type for TrueType outlines, i.e., closed quadratic Bézier curves. *)
     type contour = contour_element list
     [@@deriving show]
 
+    (** The type for data specifying how to compose glyphs in a composite glyph. *)
     type composition =
       | Vector   of x_coordinate * y_coordinate
       | Matching of int * int
     [@@deriving show]
 
+    (** The type for (encoded) TrueType instructions. *)
     type instruction = string
     [@@deriving show]
 
@@ -388,6 +411,7 @@ module Value : sig
     }
     [@@deriving show]
 
+    (** The type for glyph outlines. *)
     type glyph_description =
       | SimpleGlyph    of simple_glyph_description
       | CompositeGlyph of composite_glyph_description
@@ -594,6 +618,7 @@ module Intermediate : sig
     [@@deriving show]
   end
 
+  (** Defines types for representing TrueType-based tables. *)
   module Ttf : sig
     module Maxp : sig
       (** The type for representing [maxp] tables in fonts that have TrueType-based outlines. *)
@@ -616,9 +641,11 @@ module Intermediate : sig
       [@@deriving show]
     end
 
+    (** The type for entries in [loca] tables. See [Decode.Ttf.loca]. *)
     type glyph_location
   end
 
+  (** Defines types for representing CFF-based tables. *)
   module Cff : sig
     module Maxp : sig
       (** The type for representing [maxp] tables in fonts that have CFF-based outlines. *)
@@ -628,6 +655,7 @@ module Intermediate : sig
       [@@deriving show]
     end
 
+    (** Represents a key in DICTs. Used only for error reports in the interface. *)
     type key =
       | ShortKey of int
       | LongKey  of int
@@ -678,6 +706,7 @@ module Intermediate : sig
       | OpFlex1  (** [flex1 (12 37)] *)
     [@@deriving show]
 
+    (** Represents a tokenized CharString. *)
     type lexical_charstring = charstring_token list
     [@@deriving show]
 
@@ -685,6 +714,7 @@ module Intermediate : sig
     type vector = Value.design_units * Value.design_units
     [@@deriving show]
 
+    (** Represents an application of a CharString operator to operands. *)
     type charstring_operation =
       | HStem of {
           y    : Value.design_units;
@@ -782,7 +812,7 @@ module Intermediate : sig
     type charstring = charstring_operation list
     [@@deriving show]
 
-    (** The type for CIDFont-specific data in Top DICT (CFF p.16, Table 10) *)
+    (** The type for CIDFont-specific data in a Top DICT (CFF p.16, Table 10). *)
     type cid_info = {
       registry          : string;
       ordering          : string;
@@ -815,14 +845,15 @@ module Intermediate : sig
     }
     [@@deriving show]
 
+    (** Represents an FDIndex. *)
     type fdindex = int
     [@@deriving show]
 
-    (** Exported for tests. *)
+    (** (Exported for tests.) *)
     type charstring_data = CharStringData of int * int
     [@@deriving show]
 
-    (** Exported for tests. *)
+    (** (Exported for tests.) *)
     type subroutine_index = charstring_data array
   end
 end
@@ -1072,7 +1103,7 @@ module Decode : sig
       'a -> Value.glyph_id * Value.glyph_id -> 'a
 
     (** The type for functions that handle entries of
-        Alternate substitution (Lookup Type 3) subtables (OpenType p.253).
+        Alternate substitution (Lookup Type 2) subtables (OpenType p.253).
         See [fold_subtables]. *)
     type 'a folding_alt =
       'a -> Value.glyph_id * Value.glyph_id list -> 'a
@@ -1258,6 +1289,7 @@ module Decode : sig
         returns the bounding box and the outline of the glyph. *)
     val glyf : ttf_source -> Intermediate.Ttf.glyph_location -> Value.Ttf.glyph_info ok
 
+    (** Converts a single TrueType-based contour into a quadratic Bézier path. *)
     val path_of_contour : Value.Ttf.contour -> Value.quadratic_path ok
   end
 

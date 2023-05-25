@@ -1,6 +1,6 @@
 (lang dune 2.7)
 (name otfed)
-(version 0.0.1)
+(version 0.1.0)
 (authors "Takashi Suwa")
 (maintainers "Takashi Suwa")
 (license MIT)

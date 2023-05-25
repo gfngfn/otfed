@@ -31,7 +31,7 @@ let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : (Ttf.glyph_info o
   | Some(Intermediate.Ttf.EmptyGlyph) ->
       return None
 
-  | Some(Intermediate.Ttf.NonemptyGlyph(loc)) ->
+  | Some(Intermediate.Ttf.GlyphLocation(loc)) ->
       inj_dec @@ Decode.Ttf.glyf ttf loc >>= fun g ->
       return @@ Some(g)
 

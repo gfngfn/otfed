@@ -61,7 +61,8 @@ let loca (ttf : ttf_source) (gid : glyph_id) : (Intermediate.Ttf.loca_entry opti
       return @@ Some(Intermediate.Ttf.EmptyGlyph)
 
   | Some(Some(reloffset, length)) ->
-      return @@ Some(Intermediate.Ttf.(NonemptyGlyph(GlyphLocation{ reloffset; length })))
+      let loc = Intermediate.Ttf.GlyphLocationData{ reloffset; length } in
+      return @@ Some(Intermediate.Ttf.GlyphLocation(loc))
 
 
 let d_end_points (numberOfContours : int) : (int Alist.t) decoder =
@@ -329,7 +330,7 @@ let glyf (ttf : ttf_source) (gloc : Intermediate.Ttf.glyph_location) : Ttf.glyph
   let open ResultMonad in
   let common = ttf.ttf_common in
   DecodeOperation.seek_required_table common.table_directory Value.Tag.table_glyf >>= fun (offset, _length) ->
-  let (Intermediate.Ttf.GlyphLocation{ reloffset; length }) = gloc in
+  let Intermediate.Ttf.GlyphLocationData{ reloffset; length } = gloc in
   d_glyph ~length |> DecodeOperation.run common.core (offset + reloffset)
 
 

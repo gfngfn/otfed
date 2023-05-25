@@ -647,7 +647,7 @@ module Intermediate : sig
     (** The type for entries in [loca] tables. See [Decode.Ttf.loca]. *)
     type loca_entry =
       | EmptyGlyph
-      | NonemptyGlyph of glyph_location
+      | GlyphLocation of glyph_location
     [@@deriving show]
   end
 

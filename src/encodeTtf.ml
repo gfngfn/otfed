@@ -256,15 +256,21 @@ type glyph_relative_offset =
   | GlyphRelativeOffset of int
 
 
-let make_glyf (gs : Ttf.glyph_info list) : (table * glyph_relative_offset list) ok =
+let make_glyf (gs : (Ttf.glyph_info option) list) : (table * glyph_relative_offset list) ok =
   let enc =
     let open EncodeOperation in
-    gs |> mapM (fun g ->
-      e_glyph g           >>= fun () ->
-      pad_to_long_aligned >>= fun () ->
-        (* Every glyph location should begin and end at long-aligned local offsets. *)
-      current             >>= fun reloffset ->
-      return @@ GlyphRelativeOffset(reloffset)
+    gs |> mapM (function
+    | None ->
+      (* Encoding an empty glyph *)
+        current             >>= fun reloffset ->
+        return @@ GlyphRelativeOffset(reloffset)
+
+    | Some(g) ->
+        e_glyph g           >>= fun () ->
+        pad_to_long_aligned >>= fun () ->
+          (* Every glyph location should begin and end at long-aligned local offsets. *)
+        current             >>= fun reloffset ->
+        return @@ GlyphRelativeOffset(reloffset)
     )
   in
   let open ResultMonad in

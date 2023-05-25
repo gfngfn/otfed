@@ -89,6 +89,11 @@ module Ttf = struct
     | GlyphLocation of { reloffset : int; length : int }
   [@@deriving show { with_path = false }]
 
+  type loca_entry =
+    | EmptyGlyph
+    | NonemptyGlyph of glyph_location
+  [@@deriving show { with_path = false }]
+
   type flag = {
     on_curve       : bool;
     x_short_vector : bool;

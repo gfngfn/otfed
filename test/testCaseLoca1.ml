@@ -31,8 +31,8 @@ let loc_format = Intermediate.LongLocFormat
 let cases =
   [
     (-1, Ok(None));
-    (0, Ok(Some((0, 160))));
-    (1, Ok(None));
-    (4, Ok(Some((160, 124))));
+    (0, Ok(Some(Some((0, 160)))));
+    (1, Ok(Some(None)));
+    (4, Ok(Some(Some((160, 124)))));
     (50, Ok(None));
   ]

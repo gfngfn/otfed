@@ -22,39 +22,51 @@ let inj_dec d = Result.map_error (fun e -> Error.DecodeError(e)) d
 let inj_enc e = Result.map_error (fun e -> Error.EncodeError(e)) e
 
 
-let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : Ttf.glyph_info ok =
+let get_ttf_glyph (ttf : Decode.ttf_source) (gid : glyph_id) : (Ttf.glyph_info option) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Ttf.loca ttf gid >>= function
-  | None      -> err @@ Error.GlyphNotFound(gid)
-  | Some(loc) -> inj_dec @@ Decode.Ttf.glyf ttf loc
+  | None ->
+      err @@ Error.GlyphNotFound(gid)
+
+  | Some(Intermediate.Ttf.EmptyGlyph) ->
+      return None
+
+  | Some(Intermediate.Ttf.GlyphLocation(loc)) ->
+      inj_dec @@ Decode.Ttf.glyf ttf loc >>= fun g ->
+      return @@ Some(g)
 
 
-type glyph_accumulator = (glyph_id * Ttf.glyph_info) Alist.t * bounding_box
+type glyph_accumulator = (glyph_id * Ttf.glyph_info option) Alist.t * bounding_box option
 
 
-let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
+let folding_ttf_glyph (ttf : Decode.ttf_source) ((ggs, bbox_all_opt) : glyph_accumulator) (gid : glyph_id) : glyph_accumulator ok =
   let open ResultMonad in
-  get_ttf_glyph ttf gid >>= fun g ->
-  return (Alist.extend ggs (gid, g), unite_bounding_boxes bbox_all g.bounding_box)
+  get_ttf_glyph ttf gid >>= fun g_opt ->
+  let bbox_all_opt =
+    match (g_opt, bbox_all_opt) with
+    | (None, None)              -> None
+    | (None, _)                 -> bbox_all_opt
+    | (Some(g), None)           -> Some(g.bounding_box)
+    | (Some(g), Some(bbox_all)) -> Some(unite_bounding_boxes bbox_all g.bounding_box)
+  in
+  return (Alist.extend ggs (gid, g_opt), bbox_all_opt)
 
 
-let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * Ttf.glyph_info) list * bounding_box) ok =
+let get_ttf_glyphs (ttf : Decode.ttf_source) (gids : glyph_id list) : ((glyph_id * Ttf.glyph_info option) list * bounding_box) ok =
   let open ResultMonad in
-  match gids with
-  | [] ->
-      err Error.NoGlyphGiven
-
-  | gid_first :: gids_tail ->
-      get_ttf_glyph ttf gid_first >>= fun g_first ->
-      foldM (folding_ttf_glyph ttf) gids_tail (Alist.empty, g_first.bounding_box) >>= fun (gs_tail, bbox_all) ->
-      let gs = (gid_first, g_first) :: Alist.to_list gs_tail in
-      return (gs, bbox_all)
+  foldM (folding_ttf_glyph ttf) gids (Alist.empty, None) >>= fun (gs, bbox_all_opt) ->
+  let bbox_all =
+    match bbox_all_opt with
+    | None           -> { x_min = 0; y_min = 0; x_max = 0; y_max = 0 }
+    | Some(bbox_all) -> bbox_all
+  in
+  return (Alist.to_list gs, bbox_all)
 
 
 module OldToNew = Map.Make(Int)
 
 
-let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info) list) =
+let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info option) list) =
   let open ResultMonad in
   let (_, old_to_new) =
     ggs |> List.fold_left (fun (gid_new, old_to_new) (gid_old, _) ->
@@ -62,25 +74,31 @@ let edit_composite_glyphs (ggs : (glyph_id * Ttf.glyph_info) list) =
     ) (0, OldToNew.empty)
   in
   ggs |> mapM (fun gg_old ->
-    let (gid_old, g_old) = gg_old in
-    let Ttf.{ bounding_box = bbox; description = descr_old } = g_old in
-    match descr_old with
-    | Ttf.SimpleGlyph(_) ->
+    let (gid_old, g_opt_old) = gg_old in
+    match g_opt_old with
+    | None ->
         return gg_old
 
-    | Ttf.CompositeGlyph(composite_glyph) ->
-        let composite_elems_old = composite_glyph.Value.Ttf.composite_components in
-        composite_elems_old |> mapM (fun component ->
-          let gid_elem_old = component.Value.Ttf.component_glyph_id in
-          match old_to_new |> OldToNew.find_opt gid_elem_old with
-          | None ->
-              err @@ Error.DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
+    | Some(g_old) ->
+        let Ttf.{ bounding_box = bbox; description = descr_old } = g_old in
+        match descr_old with
+        | Ttf.SimpleGlyph(_) ->
+            return gg_old
 
-          | Some(gid_elem_new) ->
-              return Value.Ttf.{ component with component_glyph_id =  gid_elem_new }
-        ) >>= fun composite_components ->
-        let composite_glyph_new = { composite_glyph with composite_components } in
-        return (gid_old, Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(composite_glyph_new) })
+        | Ttf.CompositeGlyph(composite_glyph) ->
+            let composite_elems_old = composite_glyph.Value.Ttf.composite_components in
+            composite_elems_old |> mapM (fun component ->
+              let gid_elem_old = component.Value.Ttf.component_glyph_id in
+              match old_to_new |> OldToNew.find_opt gid_elem_old with
+              | None ->
+                  err @@ Error.DependentGlyphNotFound{ depending = gid_old; depended = gid_elem_old }
+
+              | Some(gid_elem_new) ->
+                  return Value.Ttf.{ component with component_glyph_id =  gid_elem_new }
+            ) >>= fun composite_components ->
+            let composite_glyph_new = { composite_glyph with composite_components } in
+            let g_new = Ttf.{ bounding_box = bbox; description = Ttf.CompositeGlyph(composite_glyph_new) } in
+            return (gid_old, Some(g_new))
   )
 
 
@@ -110,7 +128,7 @@ let update_derived ~current:derived ~new_one:derived_new =
   }
 
 
-let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * Ttf.glyph_info) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
+let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g_opt) : glyph_id * Ttf.glyph_info option) : (Intermediate.Hhea.derived * hmtx_entry * design_units) ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.access ihmtx gid >>= function
   | None ->
@@ -118,8 +136,11 @@ let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * Ttf.glyph_info) 
 
   | Some((aw, lsb) as entry) ->
       let derived =
-        let x_min = g.bounding_box.x_min in
-        let x_max = g.bounding_box.x_max in
+        let (x_min, x_max) =
+          match g_opt with
+          | None    -> (0, 0)
+          | Some(g) -> (g.bounding_box.x_min, g.bounding_box.x_max)
+        in
         let extent = x_max - x_min in
         let rsb = aw - lsb - extent in
         Intermediate.Hhea.{
@@ -132,7 +153,7 @@ let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g) : glyph_id * Ttf.glyph_info) 
       return (derived, entry, aw)
 
 
-let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * Ttf.glyph_info) : hmtx_accumulator ok =
+let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyph_id * Ttf.glyph_info option) : hmtx_accumulator ok =
   let open ResultMonad in
   let derived = acc.current_hhea_derived in
   get_ttf_hmtx ihmtx gg >>= fun (derived_new, entry, aw) ->
@@ -145,7 +166,7 @@ let folding_ttf_hmtx (ihmtx : Decode.Hmtx.t) (acc : hmtx_accumulator) (gg : glyp
       }
 
 
-let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * Ttf.glyph_info) list) : hmtx_result ok =
+let make_ttf_hmtx (src : Decode.source) (ggs : (glyph_id * Ttf.glyph_info option) list) : hmtx_result ok =
   let open ResultMonad in
   inj_dec @@ Decode.Hmtx.get src >>= fun ihmtx ->
   match ggs with

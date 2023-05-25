@@ -5,9 +5,9 @@ open DecodeOperation.Open
 
 module Maxp : (module type of DecodeTtfMaxp)
 
-val d_loca : num_glyphs:int -> Intermediate.loc_format -> glyph_id -> ((int * int) option) decoder
+val d_loca : num_glyphs:int -> Intermediate.loc_format -> glyph_id -> (((int * int) option) option) decoder
 
-val loca : ttf_source -> glyph_id -> (Intermediate.Ttf.glyph_location option) ok
+val loca : ttf_source -> glyph_id -> (Intermediate.Ttf.loca_entry option) ok
 
 val d_glyph : length:int -> Ttf.glyph_info decoder
 

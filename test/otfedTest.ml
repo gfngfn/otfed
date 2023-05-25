@@ -251,7 +251,7 @@ let d_loca_tests () =
   TestCaseLoca1.cases |> List.iter (fun (gid, expected) ->
     let num_glyphs = TestCaseLoca1.num_glyphs in
     let got = DecodeTtf.d_loca ~num_glyphs TestCaseLoca1.loc_format gid |> run_decoder TestCaseLoca1.marshaled in
-    Alcotest.(check (decoding (option (pair int int)))) "d_loca" expected got
+    Alcotest.(check (decoding (option (option (pair int int))))) "d_loca" expected got
   )
 
 

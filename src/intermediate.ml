@@ -86,7 +86,12 @@ module Ttf = struct
   end
 
   type glyph_location =
-    | GlyphLocation of { reloffset : int; length : int }
+    | GlyphLocationData of { reloffset : int; length : int }
+  [@@deriving show { with_path = false }]
+
+  type loca_entry =
+    | EmptyGlyph
+    | GlyphLocation of glyph_location
   [@@deriving show { with_path = false }]
 
   type flag = {

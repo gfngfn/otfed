@@ -641,8 +641,14 @@ module Intermediate : sig
       [@@deriving show]
     end
 
-    (** The type for entries in [loca] tables. See [Decode.Ttf.loca]. *)
+    (** The type for non-empty glyph entries in [loca] tables. See [Decode.Ttf.loca]. *)
     type glyph_location
+
+    (** The type for entries in [loca] tables. See [Decode.Ttf.loca]. *)
+    type loca_entry =
+      | EmptyGlyph
+      | GlyphLocation of glyph_location
+    [@@deriving show]
   end
 
   (** Defines types for representing CFF-based tables. *)
@@ -1283,7 +1289,7 @@ module Decode : sig
 
     (** [loca ttf gid] consults the [loca] table of the source [ttf] by glyph ID [gid],
         and returns the location of the glyph in the [glyf] table if exists.  *)
-    val loca : ttf_source -> Value.glyph_id -> (Intermediate.Ttf.glyph_location option) ok
+    val loca : ttf_source -> Value.glyph_id -> (Intermediate.Ttf.loca_entry option) ok
 
     (** [glyf ttf loc] accesses [loca] in the [glyf] table and
         returns the bounding box and the outline of the glyph. *)
@@ -1442,7 +1448,7 @@ module Encode : sig
     type glyph_relative_offset
 
     (** Encodes a [glyf] table and produces glyph locations that will constitute a [loca] table. *)
-    val make_glyf : Value.Ttf.glyph_info list -> (table * glyph_relative_offset list) ok
+    val make_glyf : (Value.Ttf.glyph_info option) list -> (table * glyph_relative_offset list) ok
 
     (** Encodes a [loca] table and produces a value for the [indexToLocFormat] entry of the [head] table. *)
     val make_loca : glyph_relative_offset list -> (table * Intermediate.loc_format) ok

@@ -215,7 +215,10 @@ let get_simple_glyph (ttf : D.ttf_source) (gid : V.glyph_id) =
   | None ->
       return None
 
-  | Some(loc) ->
+  | Some(I.Ttf.EmptyGlyph) ->
+      return None
+
+  | Some(I.Ttf.GlyphLocation(loc)) ->
       D.Ttf.glyf ttf loc |> inj >>= fun { description = descr; _ } ->
       match descr with
       | V.Ttf.CompositeGlyph(_)   -> return None
@@ -236,7 +239,11 @@ let print_glyf (source : D.source) (gid : V.glyph_id) (path : string) =
           Format.printf "  not defined@,";
           return ()
 
-      | Some(loc) ->
+      | Some(I.Ttf.EmptyGlyph) ->
+          Format.printf "  empty glyph@,";
+          return ()
+
+      | Some(I.Ttf.GlyphLocation(loc)) ->
           D.Head.get source |> inj >>= fun head ->
           let units_per_em = head.I.Head.value.V.Head.units_per_em in
           D.Hmtx.get source |> inj >>= fun ihmtx ->

@@ -24,6 +24,8 @@ module DecodeName = Otfed__DecodeName
 module EncodeName = Otfed__EncodeName
 module DecodePost = Otfed__DecodePost
 module EncodePost = Otfed__EncodePost
+module DecodeVhea = Otfed__DecodeVhea
+module EncodeVhea = Otfed__EncodeVhea
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -92,6 +94,21 @@ let e_os2_tests () =
   let got = EncodeOs2.e_os2 TestCaseOs21.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseOs21.marshaled) in
   Alcotest.(check encoding) "e_os2" expected got
+
+
+(** Tests for `DecodeVhea.d_vhea` *)
+let d_vhea_tests () =
+  let got = DecodeVhea.d_vhea |> run_decoder TestCaseVhea1.marshaled in
+  let expected = Ok(TestCaseVhea1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Vhea.pp))) "d_vhea" expected got
+
+
+(** Tests for `EncodeVhea.e_vhea` *)
+let e_vhea_tests () =
+  let number_of_long_ver_metrics = TestCaseVhea1.number_of_long_ver_metrics in
+  let got = EncodeVhea.e_vhea ~number_of_long_ver_metrics TestCaseVhea1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseVhea1.marshaled) in
+  Alcotest.(check encoding) "e_vhea" expected got
 
 
 (** Tests for `DecodeTtfMaxp.d_maxp` *)
@@ -435,6 +452,12 @@ let () =
     ]);
     ("EncodePost", [
       test_case "e_post" `Quick e_post_tests;
+    ]);
+    ("DecodeVhea", [
+       test_case "d_vhea" `Quick d_vhea_tests;
+    ]);
+    ("EncodeVhea", [
+       test_case "e_vhea" `Quick e_vhea_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

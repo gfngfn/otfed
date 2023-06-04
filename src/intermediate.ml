@@ -34,7 +34,7 @@ module Hhea = struct
     advance_width_max      : int;
     min_left_side_bearing  : int;
     min_right_side_bearing : int;
-    xmax_extent            : int;
+    x_max_extent           : int;
   }
   [@@deriving show { with_path = false }]
 
@@ -58,6 +58,23 @@ module Os2 = struct
 
   type t = {
     value   : Value.Os2.t;
+    derived : derived;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+
+module Vhea = struct
+  type derived = {
+    advance_height_max      : int;
+    min_top_side_bearing    : int;
+    min_bottom_side_bearing : int;
+    y_max_extent            : int;
+  }
+  [@@deriving show { with_path = false }]
+
+  type t = {
+    value   : Value.Vhea.t;
     derived : derived;
   }
   [@@deriving show { with_path = false }]

@@ -370,6 +370,29 @@ module Value : sig
     [@@deriving show]
   end
 
+  (** Defines types for master data in [vhea] tables. *)
+  module Vhea : sig
+    type metrics =
+      | Version1_0 of {
+          ascent  : int;
+          descent : int;
+        }
+      | Version1_1 of {
+          vert_typo_ascender  : int;
+          vert_typo_descender : int;
+          vert_typo_line_gap  : int;
+        }
+    [@@deriving show]
+
+    type t = {
+      metrics          : metrics;
+      caret_slope_rise : int;
+      caret_slope_run  : int;
+      caret_offset     : int;
+    }
+    [@@deriving show]
+  end
+
   (** Defines types specific to TrueType-based tables. *)
   module Ttf : sig
     type contour_element = {
@@ -586,7 +609,7 @@ module Intermediate : sig
       advance_width_max      : int;
       min_left_side_bearing  : int;
       min_right_side_bearing : int;
-      xmax_extent            : int;
+      x_max_extent           : int;
     }
     [@@deriving show]
 
@@ -613,6 +636,26 @@ module Intermediate : sig
     (** The type for representing [OS/2] tables. *)
     type t = {
       value   : Value.Os2.t;
+      derived : derived;
+    }
+    [@@deriving show]
+  end
+
+  (** Defines types for representing whole information in [vhea] tables. *)
+  module Vhea : sig
+    (** The type for data contained in a single [vhea] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [vhea] table belongs to. *)
+    type derived = {
+      advance_height_max      : int;
+      min_top_side_bearing    : int;
+      min_bottom_side_bearing : int;
+      y_max_extent            : int;
+    }
+    [@@deriving show]
+
+    (** The type for representing [vhea] tables. *)
+    type t = {
+      value   : Value.Vhea.t;
       derived : derived;
     }
     [@@deriving show]
@@ -1272,6 +1315,12 @@ module Decode : sig
     [@@deriving show]
 
     val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
+  end
+
+  (** Defines decoding operations for [vhea] tables. *)
+  module Vhea : sig
+    (** Gets the [vhea] table of a font if it exists. *)
+    val get : source -> (Intermediate.Vhea.t option) ok
   end
 
   (** Contains decoding operations for [MATH] tables. *)

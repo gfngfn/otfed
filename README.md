@@ -153,7 +153,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr><td rowspan="4">Optional</td>
       <td>DSIG</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr><td>kern</td><td>-</td><td>-</td><td>v (Format 0 only)</td><td>o</td></tr>
-  <tr><td>vhea</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr><td>vhea</td><td>v</td><td>v (Version 1.0 only)</td><td>v</td><td>v (Version 1.0 only)</td></tr>
   <tr><td>vmtx</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
 
   <tr><td rowspan="7">Advanced</td>

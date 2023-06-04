@@ -10,6 +10,7 @@ module Gsub = DecodeGsub
 module Gpos = DecodeGpos
 module Kern = DecodeKern
 module Vhea = DecodeVhea
+module Vmtx = DecodeVmtx
 module Math = DecodeMath
 module Ttf = DecodeTtf
 module Cff = DecodeCff

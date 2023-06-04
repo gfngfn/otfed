@@ -927,6 +927,7 @@ module Decode : sig
       | InvalidCodePoint          of int
       | InvalidCodePointRange     of Uchar.t * Uchar.t
       | InvalidLocFormat          of int
+      | NoVerticalHeader
       | InvalidCompositeFormat    of int
       | InvalidOffsize            of int
       | InvalidFirstOffsetInIndex of wint
@@ -1323,6 +1324,22 @@ module Decode : sig
     val get : source -> (Intermediate.Vhea.t option) ok
   end
 
+  (** Handles intermediate representation of [vmtx] tables for decoding.
+      Since the operations provided by this module use only sequential sources and
+      do NOT allocate so much additional memory for the representation,
+      they are likely to be efficient in time and space. *)
+  module Vmtx : sig
+    (** The type for representing [vmtx] tables. *)
+    type t
+
+    (** Gets the [vmtx] table of a font if it exists. *)
+    val get : source -> (t option) ok
+
+    (** [access vmtx gid] returns [Some((ah, tsb))] (if [gid] is present in the font)
+        where [ah] is the advance height of [gid], and [tsb] is the top side bearing of [gid]. *)
+    val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
+  end
+
   (** Contains decoding operations for [MATH] tables. *)
   module Math : sig
     (** Gets the [MATH] table of a font if it exists. *)
@@ -1485,6 +1502,11 @@ module Encode : sig
   (** Defines encoding operations for [cmap] tables. *)
   module Cmap : sig
     val make : Value.Cmap.t -> table ok
+  end
+
+  (** Defines encoding operations for [vhea] tables. *)
+  module Vhea : sig
+    val make : number_of_long_ver_metrics:int -> Intermediate.Vhea.t -> table ok
   end
 
   (** Defines encoding operations for tables specific to TrueType-based fonts. *)

@@ -30,6 +30,6 @@ let unmarshaled =
       advance_width_max      = 2138;
       min_left_side_bearing  = -539;
       min_right_side_bearing = -542;
-      xmax_extent            = 2048;
+      x_max_extent           = 2048;
     };
   }

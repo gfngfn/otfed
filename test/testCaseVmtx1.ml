@@ -72,6 +72,12 @@ let marshaled =
   ]
 
 
+let unmarshaled_long_ver_metrics = []
+
+
+let unmarshaled_top_side_bearings = []
+
+
 let test_cases = [
   (-1, None);
   (0, Some((2048, 41)));

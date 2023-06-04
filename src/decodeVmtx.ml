@@ -57,3 +57,19 @@ let access (vmtx : t) (gid : glyph_id) : ((design_units * design_units) option) 
     let reloffset2 = 4 * num_long_ver_metrics + 2 * (gid - num_long_ver_metrics) in
     d_top_side_bearing |> DecodeOperation.run vmtx.core (vmtx.offset + reloffset2) >>= fun tsb ->
     return (Some((ah_last, tsb)))
+
+
+let dump (vmtx : t) (gid_max : glyph_id) =
+  let open ResultMonad in
+  let rec iter acc gid =
+    if gid >= gid_max then
+      return @@ Alist.to_list acc
+    else
+      access vmtx gid >>= function
+      | None ->
+          assert false
+
+      | Some((_, tsb)) ->
+      iter (Alist.extend acc tsb) (gid + 1)
+  in
+  iter Alist.empty 0

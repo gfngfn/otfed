@@ -332,16 +332,16 @@ let d_non_default_uvs_table folding_non_default acc =
 
 type variation_selector_record = {
   var_selector           : Uchar.t;
-  default_uvs_offset     : offset;
-  non_default_uvs_offset : offset;
+  default_uvs_offset     : offset option;
+  non_default_uvs_offset : offset option;
 }
 
 
 let d_variation_selector_record (offset_varsubtable : offset) : variation_selector_record decoder =
   let open DecodeOperation in
   d_uint24 >>= fun varSelector ->
-  d_long_offset offset_varsubtable >>= fun default_uvs_offset ->
-  d_long_offset offset_varsubtable >>= fun non_default_uvs_offset ->
+  d_long_offset_opt offset_varsubtable >>= fun default_uvs_offset ->
+  d_long_offset_opt offset_varsubtable >>= fun non_default_uvs_offset ->
   return { var_selector = Uchar.of_int varSelector; default_uvs_offset; non_default_uvs_offset }
 
 
@@ -354,10 +354,19 @@ let d_cmap_14 (offset_varsubtable : offset) (f : Uchar.t -> 'a folding_variation
   foldM (fun acc record ->
     let { var_selector; default_uvs_offset; non_default_uvs_offset } = record in
     let { folding_default; folding_non_default } = f var_selector in
-    pick default_uvs_offset (d_default_uvs_table folding_default acc) >>= fun acc ->
-    pick non_default_uvs_offset (d_non_default_uvs_table folding_non_default acc) >>= fun acc ->
+    begin
+      match default_uvs_offset with
+      | None         -> return acc
+      | Some(offset) -> pick offset (d_default_uvs_table folding_default acc)
+    end >>= fun acc ->
+    begin
+      match non_default_uvs_offset with
+      | None         -> return acc
+      | Some(offset) -> pick offset (d_non_default_uvs_table folding_non_default acc)
+    end  >>= fun acc ->
     return acc
-  ) records acc
+  ) records acc >>= fun acc ->
+  return acc
 
 
 let d_cmap_variation_subtable f acc =

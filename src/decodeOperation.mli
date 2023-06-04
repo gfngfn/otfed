@@ -36,6 +36,9 @@ val d_long_offset : offset -> offset decoder
 (** Basically the same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
 val d_offset_opt : offset -> (offset option) decoder
 
+(** Basically the same as [d_long_offset] except that [d_long_offset_opt] returns [None] when it has read [0]. *)
+val d_long_offset_opt : offset -> (offset option) decoder
+
 (** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
     and then reads data at [origin + rel] by using [dec].
     Here, the position advances by 2 bytes. *)

@@ -44,7 +44,7 @@ let print_cmap (source : D.source) =
   let res =
     let open ResultMonad in
     D.Cmap.get source >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun (subtables, _) ->
+    D.Cmap.get_subtables icmap >>= fun (subtables, varsubtables) ->
     foldM (fun () subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
       let format = D.Cmap.get_format_number subtable in
@@ -63,7 +63,23 @@ let print_cmap (source : D.source) =
         | D.Cmap.Constant(uch1, uch2, gid) ->
               Format.printf "  - C %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
       ) ()
-    ) subtables ()
+    ) subtables () >>= fun () ->
+    foldM (fun () varsubtable ->
+      Format.printf "* variation subtable (format: 14)@,";
+      D.Cmap.fold_variation_subtable varsubtable (fun uch_varselect ->
+        Format.printf "  - V %a@," pp_uchar uch_varselect;
+        D.Cmap.{
+          folding_default =
+            (fun { start_unicode_value; additional_count } () ->
+              Format.printf "    * D %a, %d@," pp_uchar start_unicode_value additional_count
+            );
+          folding_non_default =
+            (fun uch gid () ->
+              Format.printf "    * N %a --> %d@," pp_uchar uch gid
+            );
+        }
+      ) ()
+    ) varsubtables ()
   in
   res |> inj
 
@@ -436,7 +452,7 @@ let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
   inj @@ D.Cmap.get source >>= fun icmap ->
-  inj @@ D.Cmap.get_subtables icmap >>= fun (isubtables, _) ->
+  inj @@ D.Cmap.get_subtables icmap >>= fun (isubtables, _varsubtables) ->
   isubtables |> mapM D.Cmap.unmarshal_subtable |> inj >>= fun subtables ->
   subtables |> mapM (fun V.Cmap.{ mapping; subtable_ids; } ->
     Format.printf "* subtable (platform: %d, encoding: %d)@,"

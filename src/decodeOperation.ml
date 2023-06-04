@@ -73,6 +73,14 @@ let d_offset_opt (offset_origin : int) : (offset option) decoder =
     return @@ Some(offset_origin + reloffset)
 
 
+let d_long_offset_opt (offset_origin : int) : (offset option) decoder =
+  d_uint32_int >>= fun reloffset ->
+  if reloffset = 0 then
+    return None
+  else
+    return @@ Some(offset_origin + reloffset)
+
+
 let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
   d_offset offset_origin >>= fun offset ->
   pick offset dec

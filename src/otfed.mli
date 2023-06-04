@@ -1317,6 +1317,12 @@ module Decode : sig
     val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
   end
 
+  (** Defines decoding operations for [vhea] tables. *)
+  module Vhea : sig
+    (** Gets the [vhea] table of a font if it exists. *)
+    val get : source -> (Intermediate.Vhea.t option) ok
+  end
+
   (** Contains decoding operations for [MATH] tables. *)
   module Math : sig
     (** Gets the [MATH] table of a font if it exists. *)

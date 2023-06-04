@@ -6,9 +6,17 @@ open DecodeBasic
 
 let fetch_num_of_long_ver_metrics (core : common_source_core) (table_directory : table_directory) =
   let open ResultMonad in
-  DecodeOperation.seek_required_table table_directory Value.Tag.table_vhea >>= fun (offset, _length) ->
-  let open DecodeOperation in
-  d_uint16 |> run core (offset + 34)
+  match DecodeOperation.seek_table table_directory Value.Tag.table_vhea with
+  | None ->
+      return None
+
+  | Some((offset, _length)) ->
+      let res =
+        let open DecodeOperation in
+        d_uint16 |> run core (offset + 34)
+      in
+      res >>= fun num_of_long_ver_metrics ->
+      return @@ Some(num_of_long_ver_metrics)
 
 
 let d_vhea_metrics_1_0 : Value.Vhea.metrics decoder =
@@ -65,8 +73,13 @@ let d_vhea : Intermediate.Vhea.t decoder =
   }
 
 
-let get (src : source) : Intermediate.Vhea.t ok =
+let get (src : source) : (Intermediate.Vhea.t option) ok =
   let open ResultMonad in
   let common = get_common_source src in
-  DecodeOperation.seek_required_table common.table_directory Value.Tag.table_vhea >>= fun (offset, _length) ->
-  DecodeOperation.run common.core offset d_vhea
+  match DecodeOperation.seek_table common.table_directory Value.Tag.table_vhea with
+  | None ->
+      return None
+
+  | Some((offset, _length)) ->
+      DecodeOperation.run common.core offset d_vhea >>= fun ivhea ->
+      return @@ Some(ivhea)

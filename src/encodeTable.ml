@@ -6,5 +6,6 @@ module Post = EncodePost
 module Name = EncodeName
 module Hmtx = EncodeHmtx
 module Cmap = EncodeCmap
+module Vhea = EncodeVhea
 module Ttf = EncodeTtf
 module Cff = EncodeCff

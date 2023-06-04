@@ -15,7 +15,7 @@ include GeneralTable(struct type t = info end)
 let get (src : source) : (t option) ok =
   let open ResultMonad in
   let common = get_common_source src in
-  match DecodeOperation.seek_table common.table_directory Tag.table_hmtx with
+  match DecodeOperation.seek_table common.table_directory Tag.table_vmtx with
   | None ->
       return None
 
@@ -49,6 +49,7 @@ let access (vmtx : t) (gid : glyph_id) : ((design_units * design_units) option) 
     return None
   else if gid < num_long_ver_metrics then
     let reloffset = 4 * gid in
+    let () = Printf.printf "*** GID: %d, OFFSET: %d\n" gid vmtx.offset in (* TODO: remove this *)
     d_long_ver_metric |> DecodeOperation.run vmtx.core (vmtx.offset + reloffset) >>= fun (ah, tsb) ->
     return (Some((ah, tsb)))
   else

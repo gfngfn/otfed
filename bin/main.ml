@@ -17,7 +17,9 @@ type config = {
   post    : bool;
   name    : bool;
   cff_top : bool;
+  vhea    : bool;
   hmtx    : V.glyph_id Alist.t;
+  vmtx    : V.glyph_id Alist.t;
   glyf    : (V.glyph_id * string) Alist.t;
   cff     : (V.glyph_id * string) Alist.t;
   cff_lex : V.glyph_id Alist.t;
@@ -80,6 +82,29 @@ let print_hmtx (source : D.source) (gid : V.glyph_id) =
         Format.printf "- aw: %d, lsb: %d@,"
           aw lsb;
         return ()
+  in
+  res |> inj
+
+
+let print_vmtx (source : D.source) (gid : V.glyph_id) =
+  Format.printf "vmtx (gid: %d):@," gid;
+  let res =
+    let open ResultMonad in
+    D.Vmtx.get source >>= function
+    | None ->
+        Format.printf "vmtx table not found@,";
+        return ()
+
+    | Some(ivmtx) ->
+        D.Vmtx.access ivmtx gid >>= function
+        | None ->
+            Format.printf "- none@,";
+            return ()
+
+        | Some((ah, tsb)) ->
+            Format.printf "- ah: %d, tsb: %d@,"
+              ah tsb;
+            return ()
   in
   res |> inj
 
@@ -197,6 +222,23 @@ let print_name (source : D.source) =
     return ()
   in
   res |> inj
+
+
+let print_vhea (source : D.source) =
+  let res =
+    let open ResultMonad in
+    D.Vhea.get source >>= function
+    | None ->
+        Format.printf "vhea table not found@,";
+        return ()
+
+    | Some(vhea) ->
+        Format.printf "vhea:@,";
+        Format.printf "%a@," I.Vhea.pp vhea;
+        return ()
+  in
+  res |> inj
+
 
 
 let write_file path ~data =
@@ -622,9 +664,15 @@ let parse_args () =
 
       | "cff_top" -> aux n { acc with cff_top = true } (i + 1)
 
+      | "vhea"   -> aux n { acc with vhea = true } (i + 1)
+
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
           aux n { acc with hmtx = Alist.extend acc.hmtx gid } (i + 2)
+
+      | "vmtx" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with vmtx = Alist.extend acc.vmtx gid } (i + 2)
 
       | "glyf" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -684,8 +732,10 @@ let parse_args () =
         post    = false;
         name    = false;
         cff_top = false;
+        vhea    = false;
         charset = Alist.empty;
         hmtx    = Alist.empty;
+        vmtx    = Alist.empty;
         glyf    = Alist.empty;
         cff     = Alist.empty;
         cff_lex = Alist.empty;
@@ -731,7 +781,9 @@ let _ =
           post;
           name;
           cff_top;
+          vhea;
           hmtx;
+          vmtx;
           cmap;
           glyf;
           cff;
@@ -770,8 +822,14 @@ let _ =
         begin
           if cff_top then print_cff_top source else return ()
         end >>= fun () ->
+        begin
+          if vhea then print_vhea source else return ()
+        end >>= fun () ->
         hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid
+        ) >>= fun _ ->
+        vmtx |> Alist.to_list |> mapM (fun gid ->
+          print_vmtx source gid
         ) >>= fun _ ->
         begin
           if cmap then print_cmap source else return ()

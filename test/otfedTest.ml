@@ -26,6 +26,7 @@ module DecodePost = Otfed__DecodePost
 module EncodePost = Otfed__EncodePost
 module DecodeVhea = Otfed__DecodeVhea
 module EncodeVhea = Otfed__EncodeVhea
+module DecodeVmtx = Otfed__DecodeVmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -110,6 +111,24 @@ let e_vhea_tests () =
   let expected = Ok(TestCaseVhea1.marshaled) in
   Alcotest.(check encoding) "e_vhea" expected got
 
+(** Tests for `DecodeVmtx.access` *)
+let access_vmtx_tests () =
+  let vmtx =
+    let data = TestCaseVmtx1.marshaled in
+    let length = String.length data in
+    let core = DecodeBasic.{ data = data; max = length; } in
+    DecodeVmtx.make_scheme core 0 length
+      {
+        num_glyphs           = TestCaseVmtx1.number_of_glyphs;
+        num_long_ver_metrics = TestCaseVmtx1.number_of_long_ver_metrics;
+      }
+  in
+  TestCaseVmtx1.test_cases |> List.iteri (fun index (gid, pair_opt) ->
+    let title = Printf.sprintf "access_vmtx (%d)" index in
+    let got = DecodeVmtx.access vmtx gid in
+    let expected = Ok(pair_opt) in
+    Alcotest.(check (decoding (option (pair int int)))) title expected got
+  )
 
 (** Tests for `DecodeTtfMaxp.d_maxp` *)
 let d_ttf_maxp_tests () =
@@ -458,6 +477,9 @@ let () =
     ]);
     ("EncodeVhea", [
        test_case "e_vhea" `Quick e_vhea_tests;
+    ]);
+    ("DecodeVmtx", [
+       test_case "access_vmtx" `Quick access_vmtx_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

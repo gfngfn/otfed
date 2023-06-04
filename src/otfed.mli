@@ -1509,6 +1509,12 @@ module Encode : sig
     val make : number_of_long_ver_metrics:int -> Intermediate.Vhea.t -> table ok
   end
 
+  (** Defines encoding operations for [vmtx] tables. *)
+  module Vmtx : sig
+    val make_exact : (Value.design_units * Value.design_units) list -> Value.design_units list -> table ok
+    val make : (Value.design_units * Value.design_units) list -> table ok
+  end
+
   (** Defines encoding operations for tables specific to TrueType-based fonts. *)
   module Ttf : sig
     (** Defines encoding operations for [maxp] tables of TrueType-based fonts. *)

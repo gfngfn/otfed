@@ -513,20 +513,4 @@ let () =
     ("DecodeMath", [
       test_case "math_decoder" `Quick math_decoder_tests;
     ]);
-    ("temp", [
-      test_case "temp" `Quick (fun () ->
-        let vmtx =
-          let data = TestCaseVmtx1.marshaled in
-          let length = String.length data in
-          let core = DecodeBasic.{ data = data; max = length; } in
-          DecodeVmtx.make_scheme core 0 length
-            {
-              num_glyphs           = TestCaseVmtx1.number_of_glyphs;
-              num_long_ver_metrics = TestCaseVmtx1.number_of_long_ver_metrics;
-            }
-        in
-        let got = DecodeVmtx.dump vmtx 500 in
-        Alcotest.(check (decoding (list int))) "temp" (Ok []) got
-      )
-    ]);
   ]

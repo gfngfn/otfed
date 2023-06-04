@@ -1054,8 +1054,11 @@ module Decode : sig
     (** The type for representing Unicode-aware [cmap] subtables. *)
     type subtable
 
+    (** The type for representing Unicode Variation Sequence subtables in [cmap]. *)
+    type variation_subtable
+
     (** Gets all the Unicode-aware subtables in the given [cmap] table. *)
-    val get_subtables : t -> (subtable set) ok
+    val get_subtables : t -> (subtable set * variation_subtable set) ok
 
     val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
 
@@ -1072,6 +1075,13 @@ module Decode : sig
 
     (** Folds a [cmap] subtable in ascending order. *)
     val fold_subtable : subtable -> ('a -> segment -> 'a) -> 'a -> 'a ok
+
+    type 'a folding_variation_entry = {
+      folding_default     : Uchar.t -> 'a -> 'a;
+      folding_non_default : Uchar.t -> Value.glyph_id -> 'a -> 'a;
+    }
+
+    val fold_variation_subtable : variation_subtable -> (Uchar.t -> 'a folding_variation_entry) -> 'a -> 'a ok
 
     (** Converts a [cmap] subtable to an in-memory mapping. *)
     val unmarshal_subtable : subtable -> Value.Cmap.subtable ok

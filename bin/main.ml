@@ -44,7 +44,7 @@ let print_cmap (source : D.source) =
   let res =
     let open ResultMonad in
     D.Cmap.get source >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun subtables ->
+    D.Cmap.get_subtables icmap >>= fun (subtables, _) ->
     foldM (fun () subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
       let format = D.Cmap.get_format_number subtable in
@@ -436,7 +436,7 @@ let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
   inj @@ D.Cmap.get source >>= fun icmap ->
-  inj @@ D.Cmap.get_subtables icmap >>= fun isubtables ->
+  inj @@ D.Cmap.get_subtables icmap >>= fun (isubtables, _) ->
   isubtables |> mapM D.Cmap.unmarshal_subtable |> inj >>= fun subtables ->
   subtables |> mapM (fun V.Cmap.{ mapping; subtable_ids; } ->
     Format.printf "* subtable (platform: %d, encoding: %d)@,"

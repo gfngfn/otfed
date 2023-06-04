@@ -109,6 +109,18 @@ fun count dec ->
   aux Alist.empty count
 
 
+let d_fold : 'a 'b. int -> 'a decoder -> ('a -> 'b -> 'b) -> 'b -> 'b decoder =
+fun count dec f acc ->
+  let rec aux acc i =
+    if i <= 0 then
+      return acc
+    else
+      dec >>= fun v ->
+      aux (f v acc) (i - 1)
+  in
+  aux acc count
+
+
 let d_list dec =
   d_uint16 >>= fun count ->
   d_repeat count dec

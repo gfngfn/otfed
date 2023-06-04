@@ -52,6 +52,9 @@ val d_fetch_long : offset -> 'a decoder -> (offset * 'a) decoder
 (** [d_repeat count dec] decodes a sequence of values of length [count] by using [dec]. *)
 val d_repeat : int -> 'a decoder -> ('a list) decoder
 
+(** Same as [d_repeat count dec >>= fun vs -> return (List.fold_left (flip f) acc vs)], but more efficient. *)
+val d_fold : int -> 'a decoder -> ('a -> 'b -> 'b) -> 'b -> 'b decoder
+
 (** [d_list dec] reads a 2-byte unsigned integer [count] and then behaves the same way as [d_repeat count dec]. *)
 val d_list : 'a decoder -> ('a list) decoder
 

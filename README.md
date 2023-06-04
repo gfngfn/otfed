@@ -1,26 +1,14 @@
 
 # `otfed`: OpenType Font Format Encoder & Decoder
 
-This library is intended to be a reformulation and extension of [`otfm`](https://github.com/dbuenzli/otfm).
+## Table of Contents
 
-See also:
-
-* [an extended version of `otfm` for SATySFi](https://github.com/gfngfn/otfm)
-* [SATySFi](https://github.com/gfngfn/SATySFi)
-
-
-## Note
-
-Some unit tests use data extracted from the following fonts:
-
-* [IPAex明朝 (IPAex Mincho)](https://moji.or.jp/ipafont/): `ipaexm.ttf`
-  - See the license [here](https://moji.or.jp/ipafont/license/)
-* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
-  - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
-* [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math)
-  - See the license [here](https://www.latex-project.org/lppl/)
-* [Junicode](https://junicode.sourceforge.io/)
-  - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)
+- [Supported features](#supported-features)
+- [How to install](#how-to-install)
+- [Usage of an example CLI `otfedcli`](#usage-of-an-example-cli-otfedcli)
+- [Development status](#development-status)
+- [How to develop this library](#how-to-develop-this-library)
+- [Remarks](#remarks)
 
 
 ## How to install
@@ -121,10 +109,10 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 ```
 
 
-## Status
+## Development status
 
 * v: done
-* o: no automated test has been given, but seems working correctly for many inputs
+* o: no automated test has been given, but seems to be working fine for many inputs
 * \-: not supported yet
 
 <table>
@@ -178,7 +166,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
 </table>
 
 
-## How to develop
+## How to develop this library
 
 Assumes that [Dune](https://dune.build/) (≥2.7) is installed.
 
@@ -193,3 +181,29 @@ $ dune build
 ```console
 $ dune test
 ```
+
+
+## Remarks
+
+### Origin
+
+This library has been developed with the intension of reformulating [`otfm`](https://github.com/dbuenzli/otfm).
+
+See also:
+
+* [an extended version of `otfm` for SATySFi](https://github.com/gfngfn/otfm)
+* [SATySFi](https://github.com/gfngfn/SATySFi)
+
+
+### Data used in unit tests
+
+Some unit tests use data extracted from the following fonts:
+
+* [IPAex明朝 (IPAex Mincho)](https://moji.or.jp/ipafont/): `ipaexm.ttf`
+  - See the license [here](https://moji.or.jp/ipafont/license/)
+* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern): `lmroman10-regular.otf` and `lmmono10-regular.otf`
+  - See the license [here](http://www.gust.org.pl/projects/e-foundry/latin-modern#section-2)
+* [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math)
+  - See the license [here](https://www.latex-project.org/lppl/)
+* [Junicode](https://junicode.sourceforge.io/)
+  - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)

@@ -1076,8 +1076,13 @@ module Decode : sig
     (** Folds a [cmap] subtable in ascending order. *)
     val fold_subtable : subtable -> ('a -> segment -> 'a) -> 'a -> 'a ok
 
+    type unicode_value_range = {
+      start_unicode_value : Uchar.t;
+      additional_count    : int;
+    }
+
     type 'a folding_variation_entry = {
-      folding_default     : Uchar.t -> 'a -> 'a;
+      folding_default     : unicode_value_range -> 'a -> 'a;
       folding_non_default : Uchar.t -> Value.glyph_id -> 'a -> 'a;
     }
 

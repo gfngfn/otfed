@@ -293,18 +293,41 @@ let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =
   }
 
 
+type unicode_value_range = {
+  start_unicode_value : Uchar.t;
+  additional_count    : int;
+}
+
 type 'a folding_variation_entry = {
-  folding_default     : Uchar.t -> 'a -> 'a;
+  folding_default     : unicode_value_range -> 'a -> 'a;
   folding_non_default : Uchar.t -> Value.glyph_id -> 'a -> 'a;
 }
 
 
-let d_default_uvs_table _folding_default _acc =
-  failwith "TODO: d_default_uvs_table"
+let d_unicode_value_range : unicode_value_range decoder =
+  let open DecodeOperation in
+  d_uint24 >>= fun startUnicodeValue ->
+  d_uint8 >>= fun additional_count ->
+  return { start_unicode_value = Uchar.of_int startUnicodeValue; additional_count }
 
 
-let d_non_default_uvs_table _folding_non_default _acc =
-  failwith "TODO: d_non_default_uvs_table"
+let d_default_uvs_table folding_default acc =
+  let open DecodeOperation in
+  d_uint32_int >>= fun numUnicodeValueRanges ->
+  d_fold numUnicodeValueRanges d_unicode_value_range folding_default acc
+
+
+let d_uvs_mapping : (Uchar.t * Value.glyph_id) decoder =
+  let open DecodeOperation in
+  d_uint24 >>= fun unicodeValue ->
+  d_uint16 >>= fun gid ->
+  return (Uchar.of_int unicodeValue, gid)
+
+
+let d_non_default_uvs_table folding_non_default acc =
+  let open DecodeOperation in
+  d_uint32_int >>= fun numUVSMappings ->
+  d_fold numUVSMappings d_uvs_mapping (fun (uch, gid) -> folding_non_default uch gid) acc
 
 
 type variation_selector_record = {

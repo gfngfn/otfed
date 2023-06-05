@@ -126,8 +126,8 @@ module Value : sig
 
   (** The type for EntryExitRecord tables (page 198). *)
   type entry_exit_record = {
-    entry_anchor : anchor;
-    exit_anchor  : anchor;
+    entry_anchor : anchor option;
+    exit_anchor  : anchor option;
   }
 
   (** The type for MarkRecord (page 217). *)

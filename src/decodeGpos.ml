@@ -229,8 +229,8 @@ let d_anchor : anchor decoder =
 
 let d_entry_exit_record (offset_CursivePos : offset) : entry_exit_record decoder =
   let open DecodeOperation in
-  d_fetch offset_CursivePos d_anchor >>= fun entry_anchor ->
-  d_fetch offset_CursivePos d_anchor >>= fun exit_anchor ->
+  d_fetch_opt offset_CursivePos d_anchor >>= fun entry_anchor ->
+  d_fetch_opt offset_CursivePos d_anchor >>= fun exit_anchor ->
   return { entry_anchor; exit_anchor }
 
 

@@ -577,6 +577,9 @@ let print_gpos_feature (feature : D.Gpos.feature) =
           (pp_list Format.pp_print_int) (tos |> List.map (fun (cv2, _, _) -> cv2))
       )
     )
+    ~cursive1:(fun () (gid, _entry_exit_record) ->
+      Format.printf "  - cursive1: gid = %d@," gid
+    )
     ~markbase1:(fun _class_count () mark_assoc base_assoc ->
       Format.printf "  - markbase1: mark = {%a}, base = {%a}@,"
         (pp_list Format.pp_print_int) (mark_assoc |> List.map (fun (gid, _) -> gid))

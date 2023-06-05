@@ -167,7 +167,7 @@ $ dune exec otfedcli input/Junicode.ttf subset 0,113,302 output/Junicode-subset.
   <tr>                              <td colspan="2">GDEF</td>                       <td>-</td><td>-</td><td>-</td><td>-</td></tr>
   <tr>                              <td rowspan="9">GPOS</td><td>LookupType 1</td>  <td>-</td><td>-</td><td>V</td><td>o</td></tr>
   <tr>                                                       <td>LookupType 2</td>  <td>-</td><td>-</td><td>V</td><td>o</td></tr>
-  <tr>                                                       <td>LookupType 3</td>  <td>-</td><td>-</td><td>-</td><td>-</td></tr>
+  <tr>                                                       <td>LookupType 3</td>  <td>-</td><td>-</td><td>V</td><td>x</td></tr>
   <tr>                                                       <td>LookupType 4</td>  <td>-</td><td>-</td><td>V</td><td>o</td></tr>
   <tr>                                                       <td>LookupType 5</td>  <td>-</td><td>-</td><td>V</td><td>o</td></tr>
   <tr>                                                       <td>LookupType 6</td>  <td>-</td><td>-</td><td>V</td><td>o</td></tr>

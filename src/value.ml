@@ -303,6 +303,11 @@ type anchor = design_units * design_units * anchor_adjustment
 
 type mark_class = int
 
+type entry_exit_record = {
+  entry_anchor : anchor option;
+  exit_anchor  : anchor option;
+}
+
 type mark_record = mark_class * anchor
 
 type base_record = (anchor option) array

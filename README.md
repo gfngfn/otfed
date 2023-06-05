@@ -3,7 +3,6 @@
 
 ## Table of Contents
 
-- [Supported features](#supported-features)
 - [How to install](#how-to-install)
 - [Usage of an example CLI `otfedcli`](#usage-of-an-example-cli-otfedcli)
 - [Development status](#development-status)
@@ -44,8 +43,10 @@ $ dune exec otfedcli <path/to/font-file> <commands>
   | cmap_word "<arbitrary-utf8-text>"  # Consults `cmap` subtables for each character in the given text.
   | head                               # Prints the contents of `head` table.
   | hhea                               # Prints the contents of `hhea` table.
+  | vhea                               # Prints the contents of `vhea` table.
   | maxp                               # Prints the contents of `maxp` table.
   | hmtx <glyph-id>                    # Consults the `hmtx` table by the glyph of ID <glyph-id>.
+  | vmtx <glyph-id>                    # Consults the `vmtx` table by the glyph of ID <glyph-id>.
   | glyf <glyph-id> <output-svg-file>  # Outputs the glyph of ID <glyph-id> that has TrueType outlines.
   | cff <glyph-id> <output-svg-file>   # Outputs the glyph of ID <glyph-id> that has CFF outlines.
   | cff_lex <glyph-id>                 # Prints the tokenized CharString of the glyph of ID <glyph-id>.

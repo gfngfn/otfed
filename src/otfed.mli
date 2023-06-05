@@ -124,6 +124,12 @@ module Value : sig
 
   type mark_class = int
 
+  (** The type for EntryExitRecord tables (page 198). *)
+  type entry_exit_record = {
+    entry_anchor : anchor;
+    exit_anchor  : anchor;
+  }
+
   (** The type for MarkRecord (page 217). *)
   type mark_record = mark_class * anchor
 
@@ -1280,6 +1286,12 @@ module Decode : sig
         (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
     (** The type for functions that handle
+        Cursive attachment positioning (Lookup Type 3) subtables of Format 1 (OpenType p.197).
+        See [fold_subtables]. *)
+    type 'a folding_cursive1 =
+      'a -> Value.glyph_id * Value.entry_exit_record -> 'a
+
+    (** The type for functions that handle
         MarkToBase attachment positioning (Lookup Type 4) subtables of Format 1 (OpenType p.198).
         See [fold_subtables]. *)
     type 'a folding_markbase1 =
@@ -1304,6 +1316,7 @@ module Decode : sig
         {ul
           {- Lookup Type 1: Single adjustment positioning (OpenType p.192),}
           {- Lookup Type 2: Pair adjustment positioning (OpenType p.194),}
+          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
           {- Lookup Type 4: MarkToBase attachment positioning (OpenType p.198),}
           {- Lookup Type 5: MarkToLigature attachment positioning (OpenType p.199),}
           {- Lookup Type 6: MarkToMark attachment positioning (OpenType p.201), and}
@@ -1312,7 +1325,6 @@ module Decode : sig
         Subtables of the following types are ignored:
 
         {ul
-          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
           {- Lookup Type 7: Contextual positioning (OpenType p.203), and}
           {- Lookup Type 8: Chaining contextual positioning (OpenType p.209).}} *)
     val fold_subtables :
@@ -1320,6 +1332,7 @@ module Decode : sig
       ?single2:('a folding_single2) ->
       ?pair1:('a folding_pair1) ->
       ?pair2:('a folding_pair2) ->
+      ?cursive1:('a folding_cursive1) ->
       ?markbase1:('a folding_markbase1) ->
       ?marklig1:('a folding_marklig1) ->
       ?markmark1:('a folding_markmark1) ->

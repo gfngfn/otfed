@@ -66,6 +66,14 @@ let encoding =
   Alcotest.(result (of_pp pp_xxd) (of_pp EncodeError.pp))
 
 
+let uchar =
+  Alcotest.(of_pp pp_uchar)
+
+
+let glyph_id =
+  Alcotest.int
+
+
 let utf8_to_utf16be s_utf8 =
   let buffer = Buffer.create (String.length s_utf8 * 4) in
   let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(s_utf8)) in

@@ -1080,13 +1080,24 @@ module Decode : sig
       start_unicode_value : Uchar.t;
       additional_count    : int;
     }
+    [@@deriving show]
 
-    type 'a folding_variation_entry = {
-      folding_default     : unicode_value_range -> 'a -> 'a;
-      folding_non_default : Uchar.t -> Value.glyph_id -> 'a -> 'a;
+    type 'a1 folding_default = unicode_value_range -> 'a1 -> 'a1
+    [@@deriving show]
+
+    type 'a2 folding_non_default = Uchar.t -> Value.glyph_id -> 'a2 -> 'a2
+    [@@deriving show]
+
+    type ('a, 'a1, 'a2) folding_variation_entry = {
+      init_default        : 'a1;
+      folding_default     : 'a1 folding_default;
+      init_non_default    : 'a1 -> 'a2;
+      folding_non_default : 'a2 folding_non_default;
+      unifier             : 'a -> 'a1 -> 'a2 -> 'a;
     }
+    [@@deriving show]
 
-    val fold_variation_subtable : variation_subtable -> (Uchar.t -> 'a folding_variation_entry) -> 'a -> 'a ok
+    val fold_variation_subtable : variation_subtable -> (Uchar.t -> ('a, 'a1, 'a2) folding_variation_entry) -> 'a -> 'a ok
 
     (** Converts a [cmap] subtable to an in-memory mapping. *)
     val unmarshal_subtable : subtable -> Value.Cmap.subtable ok

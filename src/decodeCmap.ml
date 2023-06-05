@@ -294,14 +294,25 @@ let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =
 
 
 type unicode_value_range = {
-  start_unicode_value : Uchar.t;
+  start_unicode_value : Uchar.t; [@printer pp_uchar]
   additional_count    : int;
 }
+[@@deriving show { with_path = false }]
 
-type 'a folding_variation_entry = {
-  folding_default     : unicode_value_range -> 'a -> 'a;
-  folding_non_default : Uchar.t -> Value.glyph_id -> 'a -> 'a;
+type 'a1 folding_default = unicode_value_range -> 'a1 -> 'a1
+[@@deriving show { with_path = false }]
+
+type 'a2 folding_non_default = Uchar.t -> Value.glyph_id -> 'a2 -> 'a2
+[@@deriving show { with_path = false }]
+
+type ('a, 'a1, 'a2) folding_variation_entry = {
+  init_default        : 'a1;
+  folding_default     : 'a1 folding_default;
+  init_non_default    : 'a1 -> 'a2;
+  folding_non_default : 'a2 folding_non_default;
+  unifier             : 'a -> 'a1 -> 'a2 -> 'a;
 }
+[@@deriving show { with_path = false }]
 
 
 let d_unicode_value_range : unicode_value_range decoder =
@@ -311,7 +322,7 @@ let d_unicode_value_range : unicode_value_range decoder =
   return { start_unicode_value = Uchar.of_int startUnicodeValue; additional_count }
 
 
-let d_default_uvs_table folding_default acc =
+let d_default_uvs_table (folding_default : 'a1 folding_default) (acc : 'a1) : 'a1 decoder =
   let open DecodeOperation in
   d_uint32_int >>= fun numUnicodeValueRanges ->
   d_fold numUnicodeValueRanges d_unicode_value_range folding_default acc
@@ -324,7 +335,7 @@ let d_uvs_mapping : (Uchar.t * Value.glyph_id) decoder =
   return (Uchar.of_int unicodeValue, gid)
 
 
-let d_non_default_uvs_table folding_non_default acc =
+let d_non_default_uvs_table (folding_non_default : 'a2 folding_non_default) (acc : 'a2) : 'a2 decoder =
   let open DecodeOperation in
   d_uint32_int >>= fun numUVSMappings ->
   d_fold numUVSMappings d_uvs_mapping (fun (uch, gid) -> folding_non_default uch gid) acc
@@ -345,7 +356,7 @@ let d_variation_selector_record (offset_varsubtable : offset) : variation_select
   return { var_selector = Uchar.of_int varSelector; default_uvs_offset; non_default_uvs_offset }
 
 
-let d_cmap_14 (offset_varsubtable : offset) (f : Uchar.t -> 'a folding_variation_entry) (acc : 'a) : 'a decoder =
+let d_cmap_14 (offset_varsubtable : offset) (f : Uchar.t -> ('a, 'a1, 'a2) folding_variation_entry) (acc : 'a) : 'a decoder =
   let open DecodeOperation in
   (* Position: immediately AFTER the format number entry of a cmap subtable *)
   d_uint32 >>= fun _length ->
@@ -353,18 +364,27 @@ let d_cmap_14 (offset_varsubtable : offset) (f : Uchar.t -> 'a folding_variation
   d_repeat numVarSelectorRecords (d_variation_selector_record offset_varsubtable) >>= fun records ->
   foldM (fun acc record ->
     let { var_selector; default_uvs_offset; non_default_uvs_offset } = record in
-    let { folding_default; folding_non_default } = f var_selector in
+    let
+      {
+        init_default = acc1;
+        folding_default;
+        init_non_default;
+        folding_non_default;
+        unifier;
+      } = f var_selector
+    in
     begin
       match default_uvs_offset with
-      | None         -> return acc
-      | Some(offset) -> pick offset (d_default_uvs_table folding_default acc)
-    end >>= fun acc ->
+      | None         -> return acc1
+      | Some(offset) -> pick offset (d_default_uvs_table folding_default acc1)
+    end >>= fun acc1 ->
+    let acc2 = init_non_default acc1 in
     begin
       match non_default_uvs_offset with
-      | None         -> return acc
-      | Some(offset) -> pick offset (d_non_default_uvs_table folding_non_default acc)
-    end  >>= fun acc ->
-    return acc
+      | None         -> return acc2
+      | Some(offset) -> pick offset (d_non_default_uvs_table folding_non_default acc2)
+    end  >>= fun acc2 ->
+    return (unifier acc acc1 acc2)
   ) records acc >>= fun acc ->
   return acc
 

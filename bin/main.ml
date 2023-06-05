@@ -69,14 +69,17 @@ let print_cmap (source : D.source) =
       D.Cmap.fold_variation_subtable varsubtable (fun uch_varselect ->
         Format.printf "  - V %a@," pp_uchar uch_varselect;
         D.Cmap.{
+          init_default = ();
           folding_default =
             (fun { start_unicode_value; additional_count } () ->
               Format.printf "    * D %a, %d@," pp_uchar start_unicode_value additional_count
             );
+          init_non_default = (fun () -> ());
           folding_non_default =
             (fun uch gid () ->
               Format.printf "    * N %a --> %d@," pp_uchar uch gid
             );
+          unifier = (fun () () () -> ());
         }
       ) ()
     ) varsubtables ()

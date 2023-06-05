@@ -36,6 +36,9 @@ val d_long_offset : offset -> offset decoder
 (** Basically the same as [d_offset] except that [d_offset_opt] returns [None] when it has read [0]. *)
 val d_offset_opt : offset -> (offset option) decoder
 
+(** Basically the same as [d_long_offset] except that [d_long_offset_opt] returns [None] when it has read [0]. *)
+val d_long_offset_opt : offset -> (offset option) decoder
+
 (** [d_fetch origin dec] reads 2 bytes as a relative offset [rel]
     and then reads data at [origin + rel] by using [dec].
     Here, the position advances by 2 bytes. *)
@@ -51,6 +54,9 @@ val d_fetch_long : offset -> 'a decoder -> (offset * 'a) decoder
 
 (** [d_repeat count dec] decodes a sequence of values of length [count] by using [dec]. *)
 val d_repeat : int -> 'a decoder -> ('a list) decoder
+
+(** Same as [d_repeat count dec >>= fun vs -> return (List.fold_left (flip f) acc vs)], but more efficient. *)
+val d_fold : int -> 'a decoder -> ('a -> 'b -> 'b) -> 'b -> 'b decoder
 
 (** [d_list dec] reads a 2-byte unsigned integer [count] and then behaves the same way as [d_repeat count dec]. *)
 val d_list : 'a decoder -> ('a list) decoder

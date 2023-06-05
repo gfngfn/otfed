@@ -336,7 +336,7 @@ let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uch
   let open ResultMonad in
   let res_dec =
     Decode.Cmap.get src >>= fun icmap ->
-    Decode.Cmap.get_subtables icmap >>= fun isubtables ->
+    Decode.Cmap.get_subtables icmap >>= fun (isubtables, _) ->
     isubtables |> mapM Decode.Cmap.unmarshal_subtable
   in
   let (old_to_new_map, _) =

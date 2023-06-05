@@ -225,6 +225,43 @@ let d_cmap_subtable_tests () =
   end
 
 
+let d_cmap_variation_subtable_to_list =
+  let open DecodeOperation in
+  DecodeCmap.d_cmap_variation_subtable (fun uch_varselect -> {
+    init_default = Alist.empty;
+    folding_default =
+      (fun uvrange acc1 ->
+        Alist.extend acc1 uvrange
+      );
+    init_non_default = (fun _acc1 -> Alist.empty);
+    folding_non_default =
+      (fun uch gid acc2 ->
+        Alist.extend acc2 (uch, gid)
+      );
+    unifier =
+      (fun acc acc1 acc2 ->
+        Alist.extend acc (uch_varselect, (Alist.to_list acc1, Alist.to_list acc2))
+      );
+  }) Alist.empty >>= fun acc ->
+  return (Alist.to_list acc)
+
+
+let default_list =
+  Alcotest.(list (of_pp DecodeCmap.pp_unicode_value_range))
+
+
+let non_default_list =
+  Alcotest.(list (pair uchar glyph_id))
+
+
+(** Tests for `DecodeCmap.d_cmap_variation_subtable` *)
+let d_cmap_variation_subtable_tests () =
+  let got = d_cmap_variation_subtable_to_list |> run_decoder TestCaseCmap3.marshaled in
+  let expected = Ok(TestCaseCmap3.unmarshaled) in
+  Alcotest.(check (decoding (list (pair uchar (pair default_list non_default_list)))))
+    "d_cmap_variation_subtable (Format 14)" expected got
+
+
 (** Tests for `EncodeCmap.e_cmap_mapping` *)
 let e_cmap_mapping_tests () =
   let input = TestCaseCmap2.unmarshaled in
@@ -471,6 +508,7 @@ let () =
     ]);
     ("DecodeCmap", [
       test_case "d_cmap_subtable" `Quick d_cmap_subtable_tests;
+      test_case "d_cmap_variation_subtable" `Quick d_cmap_variation_subtable_tests;
     ]);
     ("EncodeCmap", [
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;

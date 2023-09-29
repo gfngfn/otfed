@@ -442,18 +442,6 @@ module Hhea = struct
 end
 
 module Os2 = struct
-  type weight_class =
-    | WeightThin
-    | WeightExtraLight
-    | WeightLight
-    | WeightNormal
-    | WeightMedium
-    | WeightSemiBold
-    | WeightBold
-    | WeightExtraBold
-    | WeightBlack
-  [@@deriving show { with_path = false }]
-
   type width_class =
     | WidthUltraCondensed
     | WidthExtraCondensed
@@ -490,7 +478,7 @@ module Os2 = struct
   [@@deriving show { with_path = false }]
 
   type t = {
-    us_weight_class             : weight_class;
+    us_weight_class             : int;  (* values from 1 to 1000. *)
     us_width_class              : width_class;
     fs_type                     : fs_type;
     y_subscript_x_size          : design_units;

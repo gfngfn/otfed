@@ -32,6 +32,7 @@ module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
 module DecodeMath = Otfed__DecodeMath
+module DecodeKern = Otfed__DecodeKern
 module DecodeError = Otfed__DecodeError
 module EncodeError = Otfed__EncodeError
 module Value = Otfed__Value
@@ -464,6 +465,30 @@ let math_decoder_tests () =
   end
 
 
+(** Tests for `DecodeKern` *)
+let d_kern_tests () =
+  let dec =
+    DecodeKern.d_kern
+      (fun subtable_acc kern_info -> (true, (kern_info, Alist.empty) :: subtable_acc))
+      (fun subtable_acc gid1 gid2 value ->
+        match subtable_acc with
+        | []                       -> assert false
+        | (kern_info, acc) :: tail -> (kern_info, Alist.extend acc (gid1, gid2, value)) :: tail
+      )
+      []
+  in
+  let got =
+    dec |> run_decoder TestCaseKern1.marshaled |> Result.map (fun subtable_acc ->
+      subtable_acc |> List.rev_map (fun (kern_info, acc) ->
+        (kern_info, Alist.to_list acc)
+      )
+    )
+  in
+  let expected = Ok(TestCaseKern1.unmarshaled) in
+  Alcotest.(check (decoding (list (pair (of_pp DecodeKern.pp_kern_info) (list (triple int int int))))))
+    "d_kern" expected got
+
+
 let () =
   let open Alcotest in
   run "Otfed" [
@@ -550,5 +575,8 @@ let () =
     ]);
     ("DecodeMath", [
       test_case "math_decoder" `Quick math_decoder_tests;
+    ]);
+    ("DecodeKern", [
+      test_case "d_kern" `Quick d_kern_tests;
     ]);
   ]

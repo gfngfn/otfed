@@ -88,18 +88,19 @@ let rec d_kerning_tables i t p acc =
         err @@ UnknownTableVersion(!% version)
 
 
-let fold t p acc ikern =
-  let dec =
-    let open DecodeOperation in
-    (* Only the Windows version of `kern` Table is supported;
-       the Apple version, which has a 32-bit version number, is not. *)
-    d_uint16 >>= fun version ->
-    match version with
-    | 0 ->
-        d_uint16 >>= fun nTables ->
-        d_kerning_tables nTables t p acc
+let d_kern t p acc =
+  let open DecodeOperation in
+  (* Only the Windows version of `kern` Table is supported;
+     the Apple version, which has a 32-bit version number, is not. *)
+  d_uint16 >>= fun version ->
+  match version with
+  | 0 ->
+      d_uint16 >>= fun nTables ->
+      d_kerning_tables nTables t p acc
 
-    | _ ->
-        err @@ UnknownTableVersion(!% version)
-  in
-  dec |> DecodeOperation.run ikern.core ikern.offset
+  | _ ->
+      err @@ UnknownTableVersion(!% version)
+
+
+let fold t p acc ikern =
+  d_kern t p acc |> DecodeOperation.run ikern.core ikern.offset

@@ -72,6 +72,8 @@ let rec d_kerning_tables i t p acc =
               let (do_fold, acc) = t acc kern_info in
               if do_fold then
                 d_uint16 >>= fun nPairs ->
+                d_skip 6 >>= fun () ->
+                  (* Skips `searchRange`, `entrySelector`, and `rangeShift` *)
                 d_kerning_pairs nPairs p acc >>= fun acc ->
                 d_kerning_tables (i - 1) t p acc
               else
@@ -90,7 +92,7 @@ let fold t p acc ikern =
   let dec =
     let open DecodeOperation in
     (* Only the Windows version of `kern` Table is supported;
-       the Apple version, which has a 32-bit version number, *)
+       the Apple version, which has a 32-bit version number, is not. *)
     d_uint16 >>= fun version ->
     match version with
     | 0 ->

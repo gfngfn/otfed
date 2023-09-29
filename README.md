@@ -228,3 +228,5 @@ Some unit tests use data extracted from the following fonts:
   - See the license [here](https://www.latex-project.org/lppl/)
 * [Junicode](https://junicode.sourceforge.io/)
   - See the license [here](https://github.com/psb1558/Junicode-font/blob/master/OFL.txt)
+* [DejaVu Sans](https://dejavu-fonts.github.io/): `DejaVuSans-ExtraLight.ttf`
+  - See the license [here](https://dejavu-fonts.github.io/License.html)

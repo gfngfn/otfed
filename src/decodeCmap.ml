@@ -31,6 +31,8 @@ type format = int
 
 type subtable = t * offset * Value.Cmap.subtable_ids * format
 
+type variation_subtable = subtable
+
 
 open DecodeOperation
 
@@ -48,7 +50,7 @@ let d_encoding_record (cmap : t) : subtable decoder =
   return @@ (cmap, offset, ids, format)
 
 
-let get_subtables (cmap : t) : (subtable set) ok =
+let get_subtables (cmap : t) : (subtable set * variation_subtable set) ok =
   let open DecodeOperation in
   let dec =
     d_uint16 >>= fun version ->
@@ -56,27 +58,33 @@ let get_subtables (cmap : t) : (subtable set) ok =
       err @@ UnknownTableVersion(!% version)
     else
       d_list (d_encoding_record cmap) >>= fun raw_subtables ->
-      let subtables =
-        raw_subtables |> List.filter (fun (_, _, ids, format) ->
+      let (ordinary_acc, variation_acc) =
+        raw_subtables |> List.fold_left (fun (ordinary_acc, variation_acc) raw_subtable ->
           let open Value.Cmap in
+          let (_, _, ids, format) = raw_subtable in
           match format with
           | 4 | 12 | 13 ->
               begin
                 match (ids.platform_id, ids.encoding_id) with
-                | (0, _)  (* Unicode *)
-                | (3, 1)  (* Windows, UCS-2 *)
-                | (3, 10) (* Windows, UCS-4 *)
-                | (1, _)  (* Macintosh *)
-                    -> true
+                | (0, _)    (* Unicode *)
+                | (3, 1)    (* Windows, UCS-2 *)
+                | (3, 10)   (* Windows, UCS-4 *)
+                | (1, _) -> (* Macintosh *)
+                    (Alist.extend ordinary_acc raw_subtable, variation_acc)
 
-                | _ -> false
+                | _ ->
+                    (ordinary_acc, variation_acc)
               end
 
+          | 14 ->
+              (ordinary_acc, Alist.extend variation_acc raw_subtable)
+
           | _ ->
-              false
-        )
+              (ordinary_acc, variation_acc)
+
+        ) (Alist.empty, Alist.empty)
       in
-      return subtables
+      return (Alist.to_list ordinary_acc, Alist.to_list variation_acc)
   in
   run cmap.core cmap.offset dec
 
@@ -283,3 +291,113 @@ let unmarshal_subtable (subtable : subtable) : Value.Cmap.subtable ok =
     subtable_ids = get_subtable_ids subtable;
     mapping;
   }
+
+
+type unicode_value_range = {
+  start_unicode_value : Uchar.t; [@printer pp_uchar]
+  additional_count    : int;
+}
+[@@deriving show { with_path = false }]
+
+type 'a1 folding_default = unicode_value_range -> 'a1 -> 'a1
+[@@deriving show { with_path = false }]
+
+type 'a2 folding_non_default = Uchar.t -> Value.glyph_id -> 'a2 -> 'a2
+[@@deriving show { with_path = false }]
+
+type ('a, 'a1, 'a2) folding_variation_entry = {
+  init_default        : 'a1;
+  folding_default     : 'a1 folding_default;
+  init_non_default    : 'a1 -> 'a2;
+  folding_non_default : 'a2 folding_non_default;
+  unifier             : 'a -> 'a1 -> 'a2 -> 'a;
+}
+[@@deriving show { with_path = false }]
+
+
+let d_unicode_value_range : unicode_value_range decoder =
+  let open DecodeOperation in
+  d_uint24 >>= fun startUnicodeValue ->
+  d_uint8 >>= fun additional_count ->
+  return { start_unicode_value = Uchar.of_int startUnicodeValue; additional_count }
+
+
+let d_default_uvs_table (folding_default : 'a1 folding_default) (acc : 'a1) : 'a1 decoder =
+  let open DecodeOperation in
+  d_uint32_int >>= fun numUnicodeValueRanges ->
+  d_fold numUnicodeValueRanges d_unicode_value_range folding_default acc
+
+
+let d_uvs_mapping : (Uchar.t * Value.glyph_id) decoder =
+  let open DecodeOperation in
+  d_uint24 >>= fun unicodeValue ->
+  d_uint16 >>= fun gid ->
+  return (Uchar.of_int unicodeValue, gid)
+
+
+let d_non_default_uvs_table (folding_non_default : 'a2 folding_non_default) (acc : 'a2) : 'a2 decoder =
+  let open DecodeOperation in
+  d_uint32_int >>= fun numUVSMappings ->
+  d_fold numUVSMappings d_uvs_mapping (fun (uch, gid) -> folding_non_default uch gid) acc
+
+
+type variation_selector_record = {
+  var_selector           : Uchar.t;
+  default_uvs_offset     : offset option;
+  non_default_uvs_offset : offset option;
+}
+
+
+let d_variation_selector_record (offset_varsubtable : offset) : variation_selector_record decoder =
+  let open DecodeOperation in
+  d_uint24 >>= fun varSelector ->
+  d_long_offset_opt offset_varsubtable >>= fun default_uvs_offset ->
+  d_long_offset_opt offset_varsubtable >>= fun non_default_uvs_offset ->
+  return { var_selector = Uchar.of_int varSelector; default_uvs_offset; non_default_uvs_offset }
+
+
+let d_cmap_14 (offset_varsubtable : offset) (f : Uchar.t -> ('a, 'a1, 'a2) folding_variation_entry) (acc : 'a) : 'a decoder =
+  let open DecodeOperation in
+  (* Position: immediately AFTER the format number entry of a cmap subtable *)
+  d_uint32 >>= fun _length ->
+  d_uint32_int >>= fun numVarSelectorRecords ->
+  d_repeat numVarSelectorRecords (d_variation_selector_record offset_varsubtable) >>= fun records ->
+  foldM (fun acc record ->
+    let { var_selector; default_uvs_offset; non_default_uvs_offset } = record in
+    let
+      {
+        init_default = acc1;
+        folding_default;
+        init_non_default;
+        folding_non_default;
+        unifier;
+      } = f var_selector
+    in
+    begin
+      match default_uvs_offset with
+      | None         -> return acc1
+      | Some(offset) -> pick offset (d_default_uvs_table folding_default acc1)
+    end >>= fun acc1 ->
+    let acc2 = init_non_default acc1 in
+    begin
+      match non_default_uvs_offset with
+      | None         -> return acc2
+      | Some(offset) -> pick offset (d_non_default_uvs_table folding_non_default acc2)
+    end  >>= fun acc2 ->
+    return (unifier acc acc1 acc2)
+  ) records acc >>= fun acc ->
+  return acc
+
+
+let d_cmap_variation_subtable f acc =
+  let open DecodeOperation in
+  current >>= fun offset_varsubtable ->
+  d_uint16 >>= fun format ->
+  match format with
+  | 14 -> d_cmap_14 offset_varsubtable f acc
+  | _  -> err @@ UnsupportedCmapFormat(format)
+
+
+let fold_variation_subtable (varsubtable : variation_subtable) f acc =
+  let (cmap, offset, _, _) = varsubtable in
+  run cmap.core offset (d_cmap_variation_subtable f acc)

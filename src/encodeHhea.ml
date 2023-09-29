@@ -17,7 +17,7 @@ let e_hhea ~(number_of_h_metrics : int) (ihhea : Intermediate.Hhea.t) : unit enc
   e_uint16 d.advance_width_max      >>= fun () ->
   e_int16  d.min_left_side_bearing  >>= fun () ->
   e_int16  d.min_right_side_bearing >>= fun () ->
-  e_int16  d.xmax_extent            >>= fun () ->
+  e_int16  d.x_max_extent           >>= fun () ->
   e_int16  v.caret_slope_rise       >>= fun () ->
   e_int16  v.caret_slope_run        >>= fun () ->
   e_int16  v.caret_offset           >>= fun () ->

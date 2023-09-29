@@ -23,7 +23,7 @@ let d_hhea : Intermediate.Hhea.t decoder =
     d_uint16 >>= fun advance_width_max ->
     d_int16  >>= fun min_left_side_bearing ->
     d_int16  >>= fun min_right_side_bearing ->
-    d_int16  >>= fun xmax_extent ->
+    d_int16  >>= fun x_max_extent ->
     d_int16  >>= fun caret_slope_rise ->
     d_int16  >>= fun caret_slope_run ->
     d_int16  >>= fun caret_offset ->
@@ -40,7 +40,7 @@ let d_hhea : Intermediate.Hhea.t decoder =
         advance_width_max;
         min_left_side_bearing;
         min_right_side_bearing;
-        xmax_extent;
+        x_max_extent;
       };
     }
 

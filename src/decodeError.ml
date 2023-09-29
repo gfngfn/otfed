@@ -20,6 +20,7 @@ type t =
         Format.fprintf ppf "InvalidCodePointRange(%a, %a)" pp_uchar uch1 pp_uchar uch2
       )]
   | InvalidLocFormat          of int
+  | NoVerticalHeader
   | InvalidCompositeFormat    of int
   | InvalidOffsize            of int
   | InvalidFirstOffsetInIndex of wint

@@ -17,7 +17,9 @@ type config = {
   post    : bool;
   name    : bool;
   cff_top : bool;
+  vhea    : bool;
   hmtx    : V.glyph_id Alist.t;
+  vmtx    : V.glyph_id Alist.t;
   glyf    : (V.glyph_id * string) Alist.t;
   cff     : (V.glyph_id * string) Alist.t;
   cff_lex : V.glyph_id Alist.t;
@@ -42,7 +44,7 @@ let print_cmap (source : D.source) =
   let res =
     let open ResultMonad in
     D.Cmap.get source >>= fun icmap ->
-    D.Cmap.get_subtables icmap >>= fun subtables ->
+    D.Cmap.get_subtables icmap >>= fun (subtables, varsubtables) ->
     foldM (fun () subtable ->
       let ids = D.Cmap.get_subtable_ids subtable in
       let format = D.Cmap.get_format_number subtable in
@@ -61,7 +63,26 @@ let print_cmap (source : D.source) =
         | D.Cmap.Constant(uch1, uch2, gid) ->
               Format.printf "  - C %a, %a --> %d@," pp_uchar uch1 pp_uchar uch2 gid
       ) ()
-    ) subtables ()
+    ) subtables () >>= fun () ->
+    foldM (fun () varsubtable ->
+      Format.printf "* variation subtable (format: 14)@,";
+      D.Cmap.fold_variation_subtable varsubtable (fun uch_varselect ->
+        Format.printf "  - V %a@," pp_uchar uch_varselect;
+        D.Cmap.{
+          init_default = ();
+          folding_default =
+            (fun { start_unicode_value; additional_count } () ->
+              Format.printf "    * D %a, %d@," pp_uchar start_unicode_value additional_count
+            );
+          init_non_default = (fun () -> ());
+          folding_non_default =
+            (fun uch gid () ->
+              Format.printf "    * N %a --> %d@," pp_uchar uch gid
+            );
+          unifier = (fun () () () -> ());
+        }
+      ) ()
+    ) varsubtables ()
   in
   res |> inj
 
@@ -80,6 +101,29 @@ let print_hmtx (source : D.source) (gid : V.glyph_id) =
         Format.printf "- aw: %d, lsb: %d@,"
           aw lsb;
         return ()
+  in
+  res |> inj
+
+
+let print_vmtx (source : D.source) (gid : V.glyph_id) =
+  Format.printf "vmtx (gid: %d):@," gid;
+  let res =
+    let open ResultMonad in
+    D.Vmtx.get source >>= function
+    | None ->
+        Format.printf "vmtx table not found@,";
+        return ()
+
+    | Some(ivmtx) ->
+        D.Vmtx.access ivmtx gid >>= function
+        | None ->
+            Format.printf "- none@,";
+            return ()
+
+        | Some((ah, tsb)) ->
+            Format.printf "- ah: %d, tsb: %d@,"
+              ah tsb;
+            return ()
   in
   res |> inj
 
@@ -197,6 +241,23 @@ let print_name (source : D.source) =
     return ()
   in
   res |> inj
+
+
+let print_vhea (source : D.source) =
+  let res =
+    let open ResultMonad in
+    D.Vhea.get source >>= function
+    | None ->
+        Format.printf "vhea table not found@,";
+        return ()
+
+    | Some(vhea) ->
+        Format.printf "vhea:@,";
+        Format.printf "%a@," I.Vhea.pp vhea;
+        return ()
+  in
+  res |> inj
+
 
 
 let write_file path ~data =
@@ -394,7 +455,7 @@ let print_glyph_ids_for_string (source : D.source) (s : string) =
   let open ResultMonad in
   Utf8Handler.to_uchar_list s >>= fun uchs ->
   inj @@ D.Cmap.get source >>= fun icmap ->
-  inj @@ D.Cmap.get_subtables icmap >>= fun isubtables ->
+  inj @@ D.Cmap.get_subtables icmap >>= fun (isubtables, _varsubtables) ->
   isubtables |> mapM D.Cmap.unmarshal_subtable |> inj >>= fun subtables ->
   subtables |> mapM (fun V.Cmap.{ mapping; subtable_ids; } ->
     Format.printf "* subtable (platform: %d, encoding: %d)@,"
@@ -516,6 +577,9 @@ let print_gpos_feature (feature : D.Gpos.feature) =
           (pp_list Format.pp_print_int) (tos |> List.map (fun (cv2, _, _) -> cv2))
       )
     )
+    ~cursive1:(fun () (gid, _entry_exit_record) ->
+      Format.printf "  - cursive1: gid = %d@," gid
+    )
     ~markbase1:(fun _class_count () mark_assoc base_assoc ->
       Format.printf "  - markbase1: mark = {%a}, base = {%a}@,"
         (pp_list Format.pp_print_int) (mark_assoc |> List.map (fun (gid, _) -> gid))
@@ -622,9 +686,15 @@ let parse_args () =
 
       | "cff_top" -> aux n { acc with cff_top = true } (i + 1)
 
+      | "vhea"   -> aux n { acc with vhea = true } (i + 1)
+
       | "hmtx" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
           aux n { acc with hmtx = Alist.extend acc.hmtx gid } (i + 2)
+
+      | "vmtx" ->
+          let gid = int_of_string (Sys.argv.(i + 1)) in
+          aux n { acc with vmtx = Alist.extend acc.vmtx gid } (i + 2)
 
       | "glyf" ->
           let gid = int_of_string (Sys.argv.(i + 1)) in
@@ -684,8 +754,10 @@ let parse_args () =
         post    = false;
         name    = false;
         cff_top = false;
+        vhea    = false;
         charset = Alist.empty;
         hmtx    = Alist.empty;
+        vmtx    = Alist.empty;
         glyf    = Alist.empty;
         cff     = Alist.empty;
         cff_lex = Alist.empty;
@@ -731,7 +803,9 @@ let _ =
           post;
           name;
           cff_top;
+          vhea;
           hmtx;
+          vmtx;
           cmap;
           glyf;
           cff;
@@ -770,8 +844,14 @@ let _ =
         begin
           if cff_top then print_cff_top source else return ()
         end >>= fun () ->
+        begin
+          if vhea then print_vhea source else return ()
+        end >>= fun () ->
         hmtx |> Alist.to_list |> mapM (fun gid ->
           print_hmtx source gid
+        ) >>= fun _ ->
+        vmtx |> Alist.to_list |> mapM (fun gid ->
+          print_vmtx source gid
         ) >>= fun _ ->
         begin
           if cmap then print_cmap source else return ()

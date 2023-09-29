@@ -73,6 +73,14 @@ let d_offset_opt (offset_origin : int) : (offset option) decoder =
     return @@ Some(offset_origin + reloffset)
 
 
+let d_long_offset_opt (offset_origin : int) : (offset option) decoder =
+  d_uint32_int >>= fun reloffset ->
+  if reloffset = 0 then
+    return None
+  else
+    return @@ Some(offset_origin + reloffset)
+
+
 let d_fetch (offset_origin : offset) (dec : 'a decoder) : 'a decoder =
   d_offset offset_origin >>= fun offset ->
   pick offset dec
@@ -107,6 +115,18 @@ fun count dec ->
       aux (Alist.extend acc v) (i - 1)
   in
   aux Alist.empty count
+
+
+let d_fold : 'a 'b. int -> 'a decoder -> ('a -> 'b -> 'b) -> 'b -> 'b decoder =
+fun count dec f acc ->
+  let rec aux acc i =
+    if i <= 0 then
+      return acc
+    else
+      dec >>= fun v ->
+      aux (f v acc) (i - 1)
+  in
+  aux acc count
 
 
 let d_list dec =

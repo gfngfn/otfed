@@ -24,6 +24,10 @@ module DecodeName = Otfed__DecodeName
 module EncodeName = Otfed__EncodeName
 module DecodePost = Otfed__DecodePost
 module EncodePost = Otfed__EncodePost
+module DecodeVhea = Otfed__DecodeVhea
+module EncodeVhea = Otfed__EncodeVhea
+module DecodeVmtx = Otfed__DecodeVmtx
+module EncodeVmtx = Otfed__EncodeVmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
@@ -92,6 +96,53 @@ let e_os2_tests () =
   let got = EncodeOs2.e_os2 TestCaseOs21.unmarshaled |> run_encoder in
   let expected = Ok(TestCaseOs21.marshaled) in
   Alcotest.(check encoding) "e_os2" expected got
+
+
+(** Tests for `DecodeVhea.d_vhea` *)
+let d_vhea_tests () =
+  let got = DecodeVhea.d_vhea |> run_decoder TestCaseVhea1.marshaled in
+  let expected = Ok(TestCaseVhea1.unmarshaled) in
+  Alcotest.(check (decoding (of_pp Intermediate.Vhea.pp))) "d_vhea" expected got
+
+
+(** Tests for `EncodeVhea.e_vhea` *)
+let e_vhea_tests () =
+  let number_of_long_ver_metrics = TestCaseVhea1.number_of_long_ver_metrics in
+  let got = EncodeVhea.e_vhea ~number_of_long_ver_metrics TestCaseVhea1.unmarshaled |> run_encoder in
+  let expected = Ok(TestCaseVhea1.marshaled) in
+  Alcotest.(check encoding) "e_vhea" expected got
+
+
+(** Tests for `DecodeVmtx.access` *)
+let access_vmtx_tests () =
+  let vmtx =
+    let data = TestCaseVmtx1.marshaled in
+    let length = String.length data in
+    let core = DecodeBasic.{ data = data; max = length; } in
+    DecodeVmtx.make_scheme core 0 length
+      {
+        num_glyphs           = TestCaseVmtx1.number_of_glyphs;
+        num_long_ver_metrics = TestCaseVmtx1.number_of_long_ver_metrics;
+      }
+  in
+  TestCaseVmtx1.test_cases |> List.iteri (fun index (gid, pair_opt) ->
+    let title = Printf.sprintf "access_vmtx (%d)" index in
+    let got = DecodeVmtx.access vmtx gid in
+    let expected = Ok(pair_opt) in
+    Alcotest.(check (decoding (option (pair int int)))) title expected got
+  )
+
+
+(** Tests for `Encodevmtx.make_exact` *)
+let make_vmtx_tests () =
+  let got =
+    EncodeVmtx.make_exact
+      TestCaseVmtx1.unmarshaled_long_ver_metrics
+      TestCaseVmtx1.unmarshaled_top_side_bearings
+    |> Result.map Encode.get_contents
+  in
+  let expected = Ok(TestCaseVmtx1.marshaled) in
+  Alcotest.(check encoding) "make_vmtx" expected got
 
 
 (** Tests for `DecodeTtfMaxp.d_maxp` *)
@@ -172,6 +223,43 @@ let d_cmap_subtable_tests () =
     let expected = Ok(TestCaseCmap2.unmarshaled) in
     Alcotest.(check (decoding (list (of_pp DecodeCmap.pp_segment)))) "d_cmap_subtable (2: Format 12)" expected got
   end
+
+
+let d_cmap_variation_subtable_to_list =
+  let open DecodeOperation in
+  DecodeCmap.d_cmap_variation_subtable (fun uch_varselect -> {
+    init_default = Alist.empty;
+    folding_default =
+      (fun uvrange acc1 ->
+        Alist.extend acc1 uvrange
+      );
+    init_non_default = (fun _acc1 -> Alist.empty);
+    folding_non_default =
+      (fun uch gid acc2 ->
+        Alist.extend acc2 (uch, gid)
+      );
+    unifier =
+      (fun acc acc1 acc2 ->
+        Alist.extend acc (uch_varselect, (Alist.to_list acc1, Alist.to_list acc2))
+      );
+  }) Alist.empty >>= fun acc ->
+  return (Alist.to_list acc)
+
+
+let default_list =
+  Alcotest.(list (of_pp DecodeCmap.pp_unicode_value_range))
+
+
+let non_default_list =
+  Alcotest.(list (pair uchar glyph_id))
+
+
+(** Tests for `DecodeCmap.d_cmap_variation_subtable` *)
+let d_cmap_variation_subtable_tests () =
+  let got = d_cmap_variation_subtable_to_list |> run_decoder TestCaseCmap3.marshaled in
+  let expected = Ok(TestCaseCmap3.unmarshaled) in
+  Alcotest.(check (decoding (list (pair uchar (pair default_list non_default_list)))))
+    "d_cmap_variation_subtable (Format 14)" expected got
 
 
 (** Tests for `EncodeCmap.e_cmap_mapping` *)
@@ -420,6 +508,7 @@ let () =
     ]);
     ("DecodeCmap", [
       test_case "d_cmap_subtable" `Quick d_cmap_subtable_tests;
+      test_case "d_cmap_variation_subtable" `Quick d_cmap_variation_subtable_tests;
     ]);
     ("EncodeCmap", [
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;
@@ -435,6 +524,18 @@ let () =
     ]);
     ("EncodePost", [
       test_case "e_post" `Quick e_post_tests;
+    ]);
+    ("DecodeVhea", [
+       test_case "d_vhea" `Quick d_vhea_tests;
+    ]);
+    ("EncodeVhea", [
+       test_case "e_vhea" `Quick e_vhea_tests;
+    ]);
+    ("DecodeVmtx", [
+       test_case "access_vmtx" `Quick access_vmtx_tests;
+    ]);
+    ("EncodeVmtx", [
+       test_case "make_vmtx" `Quick make_vmtx_tests;
     ]);
     ("DecodeTtf", [
       test_case "d_glyph" `Quick d_glyph_tests;

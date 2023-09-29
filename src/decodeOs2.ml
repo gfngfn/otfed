@@ -4,19 +4,13 @@ open DecodeBasic
 open DecodeOperation.Open
 
 
-let d_weight_class : Value.Os2.weight_class decoder =
+let d_weight_class : int decoder =
   let open DecodeOperation in
-  d_uint16 >>= function
-  | 100 -> return Value.Os2.WeightThin
-  | 200 -> return Value.Os2.WeightExtraLight
-  | 300 -> return Value.Os2.WeightLight
-  | 400 -> return Value.Os2.WeightNormal
-  | 500 -> return Value.Os2.WeightMedium
-  | 600 -> return Value.Os2.WeightSemiBold
-  | 700 -> return Value.Os2.WeightBold
-  | 800 -> return Value.Os2.WeightExtraBold
-  | 900 -> return Value.Os2.WeightBlack
-  | n   -> err @@ UnknownWeightClass(n)
+  d_uint16 >>= fun n ->
+  if (1 <= n && n <= 1000) then
+    return n
+  else
+    err @@ InvalidWeightClass(n)
 
 
 let d_width_class : Value.Os2.width_class decoder =

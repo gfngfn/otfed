@@ -235,18 +235,6 @@ module Value : sig
 
   (** Defines types for master data in [OS/2] tables. *)
   module Os2 : sig
-    type weight_class =
-      | WeightThin
-      | WeightExtraLight
-      | WeightLight
-      | WeightNormal
-      | WeightMedium
-      | WeightSemiBold
-      | WeightBold
-      | WeightExtraBold
-      | WeightBlack
-    [@@deriving show]
-
     type width_class =
       | WidthUltraCondensed
       | WidthExtraCondensed
@@ -283,7 +271,7 @@ module Value : sig
     [@@deriving show]
 
     type t = {
-      us_weight_class             : weight_class;
+      us_weight_class             : int;  (* values from 1 to 1000. *)
       us_width_class              : width_class;
       fs_type                     : fs_type;
       y_subscript_x_size          : design_units;
@@ -979,7 +967,7 @@ module Decode : sig
       | UnexpectedMacStyle        of int
       | UnknownCharstringToken    of int
       | NegativeLengthForBytes    of int
-      | UnknownWeightClass        of int
+      | InvalidWeightClass        of int
       | UnknownWidthClass         of int
       | InvalidFsType             of int
       | InvalidFsSelection        of int
@@ -1475,6 +1463,7 @@ module Encode : sig
       | NotEncodableAsUint32       of wint
       | NotEncodableAsInt32        of wint
       | NotEncodableAsTimestamp    of wint
+      | InvalidWeightClass         of int
       | NotA10BytePanose           of string
       | NotA4ByteAchVendId         of string
       | Version4FsSelection        of Value.Os2.fs_selection

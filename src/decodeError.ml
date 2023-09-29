@@ -66,7 +66,7 @@ type t =
   | UnexpectedMacStyle        of int
   | UnknownCharstringToken    of int
   | NegativeLengthForBytes    of int
-  | UnknownWeightClass        of int
+  | InvalidWeightClass        of int
   | UnknownWidthClass         of int
   | InvalidFsType             of int
   | InvalidFsSelection        of int

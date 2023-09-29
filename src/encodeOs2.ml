@@ -131,21 +131,12 @@ let e_extension1 ((ext1, ext2_option) : extension1) =
   return ()
 
 
-let e_weight_class (weight_class : Value.Os2.weight_class) =
+let e_weight_class (weight_class : int) =
   let open EncodeOperation in
-  let u =
-    match weight_class with
-    | Value.Os2.WeightThin       -> 100
-    | Value.Os2.WeightExtraLight -> 200
-    | Value.Os2.WeightLight      -> 300
-    | Value.Os2.WeightNormal     -> 400
-    | Value.Os2.WeightMedium     -> 500
-    | Value.Os2.WeightSemiBold   -> 600
-    | Value.Os2.WeightBold       -> 700
-    | Value.Os2.WeightExtraBold  -> 800
-    | Value.Os2.WeightBlack      -> 900
-  in
-  e_uint16 u
+  if (1 <= weight_class && weight_class <= 1000) then
+    e_uint16 weight_class
+  else
+    err @@ InvalidWeightClass(weight_class)
 
 
 let e_width_class (width_class : Value.Os2.width_class) =

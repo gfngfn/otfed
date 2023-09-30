@@ -690,25 +690,29 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
   (* Constructs the new Global Subrs: *)
   subrs_old |> List.mapi (fun i_new x -> (i_new, x)) |> mapM (fun (i_new, (old, subrs)) ->
-    let (cat, i_old_biased) = old in
+    let (category_old, i_old_biased) = old in
     (* TODO: remove `bias_old` and `msg`; temporary *)
     let bias_old =
-      match cat with
+      match category_old with
       | Old.Global             -> Decode.Cff.get_global_bias cff
       | Old.Local(fdindex_opt) -> Decode.Cff.get_local_bias cff fdindex_opt
     in
     let msg =
-      Format.asprintf "A(i_new: %d, bias_old: %d, old_category: %a, i_old_biased: %d)"
-        i_new bias_old Old.pp_category cat i_old_biased
+      Format.asprintf "A(i_new: %d, bias_old: %d, category_old: %a, i_old_biased: %d)"
+        i_new bias_old Old.pp_category category_old i_old_biased
     in
-    renumber_subroutine ~msg ~category_old:cat ~bias_new renumber_map subrs
+    renumber_subroutine ~msg ~category_old ~bias_new renumber_map subrs
   ) >>= fun gsubrs ->
 
+  (* Modifies indices in CharStrings of the subset glyphs: *)
   charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
+    let category_old = Old.Local(fdindex_opt) in
     (* TODO: remove `msg`; temporary *)
-    renumber_subroutine ~msg:"B" ~category_old:(Old.Local(fdindex_opt)) ~bias_new renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~msg:"B" ~category_old ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
+
+  (* Produces the `CFF` table: *)
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings
 
 

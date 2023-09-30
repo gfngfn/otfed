@@ -1350,6 +1350,12 @@ module Decode : sig
 
     (** Converts a CharString into a cubic Bézier path. *)
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
+
+    (* TODO: remove this; temporary *)
+    val get_global_bias : cff_source -> int
+
+    (* TODO: remove this; temporary *)
+    val get_local_bias : cff_source -> Intermediate.Cff.fdindex option -> int
   end
 end
 

@@ -493,7 +493,7 @@ module Old = struct
 
   (* TODO: remove this; temporary *)
   let pp_pair ppf (old, gid_new) =
-    Format.fprintf ppf "%a ---> %d@ " pp old gid_new
+    Format.fprintf ppf "%a ---> %d" pp old gid_new
 
 
   let compare ((cat1, i1) : t) ((cat2, i2) : t) =
@@ -520,7 +520,7 @@ end
 module RenumberMap = Map.Make(Old)
 
 
-let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
+let renumber_subroutine ~(bias_new : int) ~(category_old : Old.category) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
   let open ResultMonad in
   let open Intermediate.Cff in
   let rec aux token_new_acc = function
@@ -530,8 +530,15 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (r
     | ArgumentInteger(i_old_biased) :: OpCallGSubr :: tokens ->
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Global, i_old_biased) with
-          | None        -> assert false
-          | Some(i_new) -> i_new - bias_new
+          | None ->
+              assert false
+
+          | Some(i_new) ->
+              let i_new_biased = i_new - bias_new in
+              (* TODO: remove this *)
+              Format.printf "** = RENUM GLOBAL (i_old_biased: %d, i_new: %d, i_new_biased: %d)@,"
+                i_old_biased i_new i_new_biased;
+              i_new_biased
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
@@ -547,15 +554,15 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (r
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt), i_old_biased) with
           | None ->
-              (* TODO: remove this; temporary *)
-              failwith @@
-                Format.asprintf "msg: %s, i_old_biased: %d, knowns: %a"
-                  msg
-                  i_old_biased
-                  (Format.pp_print_list Old.pp_pair) (renumber_map |> RenumberMap.bindings)
+              assert false
 
           | Some(i_new) ->
-              i_new - bias_new
+              let i_new_biased = i_new - bias_new in
+              (* TODO: remove this *)
+              Format.printf "** = RENUM LOCAL %a (i_old_biased: %d, i_new: %d, i_new_biased: %d)@,"
+                (Format.pp_print_option Format.pp_print_int) fdindex_opt
+                i_old_biased i_new i_new_biased;
+              i_new_biased
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
@@ -582,6 +589,8 @@ let get_glyph_name (cff : Decode.cff_source) (gid : glyph_id) : string ok =
 let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list) =
   let open ResultMonad in
 
+  Format.printf "@[<v>"; (* TODO: remove this *)
+
   (* Initializes `lsubrs_info` by judging whether the font has FDIndex: *)
   inj_dec @@ Decode.Cff.top_dict cff >>= fun top_dict ->
   begin
@@ -602,6 +611,9 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
   foldM (fun (lcsacc, gsubrs, lsubrs_info) (gid : glyph_id) ->
     get_glyph_name cff gid >>= fun name ->
     inj_dec @@ Decode.Cff.fdindex cff gid >>= fun fdindex_opt ->
+    (* TODO: remove this *)
+    Format.printf "** TRAVERSE CS (gid: %d, fdindex_opt: %a)@,"
+      gid (Format.pp_print_option Format.pp_print_int) fdindex_opt;
     match (lsubrs_info, fdindex_opt) with
     | (SingleLsubrs(lsubrs), None) ->
         begin
@@ -672,6 +684,10 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     (i_new, renumber_map, subr_old_acc |> Alist.to_list)
   in
 
+  (* TODO: remove this *)
+  Format.printf "** RENUMBER MAP: %a@,"
+    (Format.pp_print_list Old.pp_pair) (renumber_map |> RenumberMap.bindings);
+
   (* Calculates the bias for new Subrs indices: *)
   let bias_new =
     if num_subrs < 1240 then
@@ -691,20 +707,19 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
       | Old.Global             -> Decode.Cff.get_global_bias cff
       | Old.Local(fdindex_opt) -> Decode.Cff.get_local_bias cff fdindex_opt
     in
-    let msg =
-      Format.asprintf "A(i_new: %d, bias_old: %d, category_old: %a, i_old_biased: %d)"
-        i_new bias_old Old.pp_category category_old i_old_biased
-    in
-    renumber_subroutine ~msg ~category_old ~bias_new renumber_map subrs
+    Format.printf "** TRAVERSE SUBRS (i_new: %d, bias_old: %d, category_old: %a, i_old_biased: %d)@,"
+      i_new bias_old Old.pp_category category_old i_old_biased;
+    renumber_subroutine ~category_old ~bias_new renumber_map subrs
   ) >>= fun gsubrs ->
 
   (* Modifies indices in CharStrings of the subset glyphs: *)
   charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
     let category_old = Old.Local(fdindex_opt) in
-    (* TODO: remove `msg`; temporary *)
-    renumber_subroutine ~msg:"B" ~category_old ~bias_new renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~category_old ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
+
+  Format.printf "@]"; (* TODO: remove this *)
 
   (* Produces the `CFF` table: *)
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

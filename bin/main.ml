@@ -333,6 +333,8 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
   | D.Cff(cff) ->
       let empty = D.Cff.LexicalSubroutineIndex.empty in
       D.Cff.fdindex cff gid |> inj >>= fun fdindex_opt ->
+      let global_bias = D.Cff.get_global_bias cff in
+      let local_bias = D.Cff.get_local_bias cff fdindex_opt in
       D.Cff.lexical_charstring cff ~gsubrs:empty ~lsubrs:empty gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";
@@ -341,8 +343,8 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
       | Some((gsubrs, lsubrs, lcharstring)) ->
           Format.printf "  %a@," I.Cff.pp_lexical_charstring lcharstring;
           Format.printf "  dependent gsubrs:@,";
-          D.Cff.LexicalSubroutineIndex.fold (fun i lcs () ->
-            Format.printf "  - non-biased number: %d:@," i;
+          D.Cff.LexicalSubroutineIndex.fold (fun i_biased lcs () ->
+            Format.printf "  - biased: %d / non-biased: %d:@," i_biased (i_biased + global_bias);
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs
           ) gsubrs ();
           begin
@@ -350,8 +352,8 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
             | None          -> Format.printf "  dependent lsubrs (non-CID):@,"
             | Some(fdindex) -> Format.printf "  dependent lsubrs (CID, fdindex: %d):@," fdindex
           end;
-          D.Cff.LexicalSubroutineIndex.fold (fun i lcs () ->
-            Format.printf "  - non-biased number: %d:@," i;
+          D.Cff.LexicalSubroutineIndex.fold (fun i_biased lcs () ->
+            Format.printf "  - biased: %d / non-biased: %d:@," i_biased (i_biased + local_bias);
             Format.printf "    %a@," I.Cff.pp_lexical_charstring lcs
           ) lsubrs ();
           return ()

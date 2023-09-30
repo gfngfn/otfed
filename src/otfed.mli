@@ -124,6 +124,12 @@ module Value : sig
 
   type mark_class = int
 
+  (** The type for EntryExitRecord tables (page 198). *)
+  type entry_exit_record = {
+    entry_anchor : anchor option;
+    exit_anchor  : anchor option;
+  }
+
   (** The type for MarkRecord (page 217). *)
   type mark_record = mark_class * anchor
 
@@ -229,18 +235,6 @@ module Value : sig
 
   (** Defines types for master data in [OS/2] tables. *)
   module Os2 : sig
-    type weight_class =
-      | WeightThin
-      | WeightExtraLight
-      | WeightLight
-      | WeightNormal
-      | WeightMedium
-      | WeightSemiBold
-      | WeightBold
-      | WeightExtraBold
-      | WeightBlack
-    [@@deriving show]
-
     type width_class =
       | WidthUltraCondensed
       | WidthExtraCondensed
@@ -277,7 +271,7 @@ module Value : sig
     [@@deriving show]
 
     type t = {
-      us_weight_class             : weight_class;
+      us_weight_class             : int;  (* values from 1 to 1000. *)
       us_width_class              : width_class;
       fs_type                     : fs_type;
       y_subscript_x_size          : design_units;
@@ -366,6 +360,29 @@ module Value : sig
     type t = {
       name_records : name_record list;
       lang_tags    : (lang_tag list) option;
+    }
+    [@@deriving show]
+  end
+
+  (** Defines types for master data in [vhea] tables. *)
+  module Vhea : sig
+    type metrics =
+      | Version1_0 of {
+          ascent  : int;
+          descent : int;
+        }
+      | Version1_1 of {
+          vert_typo_ascender  : int;
+          vert_typo_descender : int;
+          vert_typo_line_gap  : int;
+        }
+    [@@deriving show]
+
+    type t = {
+      metrics          : metrics;
+      caret_slope_rise : int;
+      caret_slope_run  : int;
+      caret_offset     : int;
     }
     [@@deriving show]
   end
@@ -586,7 +603,7 @@ module Intermediate : sig
       advance_width_max      : int;
       min_left_side_bearing  : int;
       min_right_side_bearing : int;
-      xmax_extent            : int;
+      x_max_extent           : int;
     }
     [@@deriving show]
 
@@ -613,6 +630,26 @@ module Intermediate : sig
     (** The type for representing [OS/2] tables. *)
     type t = {
       value   : Value.Os2.t;
+      derived : derived;
+    }
+    [@@deriving show]
+  end
+
+  (** Defines types for representing whole information in [vhea] tables. *)
+  module Vhea : sig
+    (** The type for data contained in a single [vhea] table that are derivable
+        from glyph descriptions or master data in other tables in the font the [vhea] table belongs to. *)
+    type derived = {
+      advance_height_max      : int;
+      min_top_side_bearing    : int;
+      min_bottom_side_bearing : int;
+      y_max_extent            : int;
+    }
+    [@@deriving show]
+
+    (** The type for representing [vhea] tables. *)
+    type t = {
+      value   : Value.Vhea.t;
       derived : derived;
     }
     [@@deriving show]
@@ -884,6 +921,7 @@ module Decode : sig
       | InvalidCodePoint          of int
       | InvalidCodePointRange     of Uchar.t * Uchar.t
       | InvalidLocFormat          of int
+      | NoVerticalHeader
       | InvalidCompositeFormat    of int
       | InvalidOffsize            of int
       | InvalidFirstOffsetInIndex of wint
@@ -929,7 +967,7 @@ module Decode : sig
       | UnexpectedMacStyle        of int
       | UnknownCharstringToken    of int
       | NegativeLengthForBytes    of int
-      | UnknownWeightClass        of int
+      | InvalidWeightClass        of int
       | UnknownWidthClass         of int
       | InvalidFsType             of int
       | InvalidFsSelection        of int
@@ -1010,8 +1048,11 @@ module Decode : sig
     (** The type for representing Unicode-aware [cmap] subtables. *)
     type subtable
 
+    (** The type for representing Unicode Variation Sequence subtables in [cmap]. *)
+    type variation_subtable
+
     (** Gets all the Unicode-aware subtables in the given [cmap] table. *)
-    val get_subtables : t -> (subtable set) ok
+    val get_subtables : t -> (subtable set * variation_subtable set) ok
 
     val get_subtable_ids : subtable -> Value.Cmap.subtable_ids
 
@@ -1028,6 +1069,29 @@ module Decode : sig
 
     (** Folds a [cmap] subtable in ascending order. *)
     val fold_subtable : subtable -> ('a -> segment -> 'a) -> 'a -> 'a ok
+
+    type unicode_value_range = {
+      start_unicode_value : Uchar.t;
+      additional_count    : int;
+    }
+    [@@deriving show]
+
+    type 'a1 folding_default = unicode_value_range -> 'a1 -> 'a1
+    [@@deriving show]
+
+    type 'a2 folding_non_default = Uchar.t -> Value.glyph_id -> 'a2 -> 'a2
+    [@@deriving show]
+
+    type ('a, 'a1, 'a2) folding_variation_entry = {
+      init_default        : 'a1;
+      folding_default     : 'a1 folding_default;
+      init_non_default    : 'a1 -> 'a2;
+      folding_non_default : 'a2 folding_non_default;
+      unifier             : 'a -> 'a1 -> 'a2 -> 'a;
+    }
+    [@@deriving show]
+
+    val fold_variation_subtable : variation_subtable -> (Uchar.t -> ('a, 'a1, 'a2) folding_variation_entry) -> 'a -> 'a ok
 
     (** Converts a [cmap] subtable to an in-memory mapping. *)
     val unmarshal_subtable : subtable -> Value.Cmap.subtable ok
@@ -1210,6 +1274,12 @@ module Decode : sig
         (Value.class_value * (Value.class_value * Value.value_record * Value.value_record) list) list -> 'a
 
     (** The type for functions that handle
+        Cursive attachment positioning (Lookup Type 3) subtables of Format 1 (OpenType p.197).
+        See [fold_subtables]. *)
+    type 'a folding_cursive1 =
+      'a -> Value.glyph_id * Value.entry_exit_record -> 'a
+
+    (** The type for functions that handle
         MarkToBase attachment positioning (Lookup Type 4) subtables of Format 1 (OpenType p.198).
         See [fold_subtables]. *)
     type 'a folding_markbase1 =
@@ -1234,6 +1304,7 @@ module Decode : sig
         {ul
           {- Lookup Type 1: Single adjustment positioning (OpenType p.192),}
           {- Lookup Type 2: Pair adjustment positioning (OpenType p.194),}
+          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
           {- Lookup Type 4: MarkToBase attachment positioning (OpenType p.198),}
           {- Lookup Type 5: MarkToLigature attachment positioning (OpenType p.199),}
           {- Lookup Type 6: MarkToMark attachment positioning (OpenType p.201), and}
@@ -1242,7 +1313,6 @@ module Decode : sig
         Subtables of the following types are ignored:
 
         {ul
-          {- Lookup Type 3: Cursive attachment positioning (OpenType p.197),}
           {- Lookup Type 7: Contextual positioning (OpenType p.203), and}
           {- Lookup Type 8: Chaining contextual positioning (OpenType p.209).}} *)
     val fold_subtables :
@@ -1250,6 +1320,7 @@ module Decode : sig
       ?single2:('a folding_single2) ->
       ?pair1:('a folding_pair1) ->
       ?pair2:('a folding_pair2) ->
+      ?cursive1:('a folding_cursive1) ->
       ?markbase1:('a folding_markbase1) ->
       ?marklig1:('a folding_marklig1) ->
       ?markmark1:('a folding_markmark1) ->
@@ -1272,6 +1343,28 @@ module Decode : sig
     [@@deriving show]
 
     val fold : ('a -> kern_info -> bool * 'a) -> ('a -> int -> int -> int -> 'a) -> 'a -> t -> 'a ok
+  end
+
+  (** Defines decoding operations for [vhea] tables. *)
+  module Vhea : sig
+    (** Gets the [vhea] table of a font if it exists. *)
+    val get : source -> (Intermediate.Vhea.t option) ok
+  end
+
+  (** Handles intermediate representation of [vmtx] tables for decoding.
+      Since the operations provided by this module use only sequential sources and
+      do NOT allocate so much additional memory for the representation,
+      they are likely to be efficient in time and space. *)
+  module Vmtx : sig
+    (** The type for representing [vmtx] tables. *)
+    type t
+
+    (** Gets the [vmtx] table of a font if it exists. *)
+    val get : source -> (t option) ok
+
+    (** [access vmtx gid] returns [Some((ah, tsb))] (if [gid] is present in the font)
+        where [ah] is the advance height of [gid], and [tsb] is the top side bearing of [gid]. *)
+    val access : t -> Value.glyph_id -> ((Value.design_units * Value.design_units) option) ok
   end
 
   (** Contains decoding operations for [MATH] tables. *)
@@ -1376,6 +1469,7 @@ module Encode : sig
       | NotEncodableAsUint32       of wint
       | NotEncodableAsInt32        of wint
       | NotEncodableAsTimestamp    of wint
+      | InvalidWeightClass         of int
       | NotA10BytePanose           of string
       | NotA4ByteAchVendId         of string
       | Version4FsSelection        of Value.Os2.fs_selection
@@ -1442,6 +1536,17 @@ module Encode : sig
   (** Defines encoding operations for [cmap] tables. *)
   module Cmap : sig
     val make : Value.Cmap.t -> table ok
+  end
+
+  (** Defines encoding operations for [vhea] tables. *)
+  module Vhea : sig
+    val make : number_of_long_ver_metrics:int -> Intermediate.Vhea.t -> table ok
+  end
+
+  (** Defines encoding operations for [vmtx] tables. *)
+  module Vmtx : sig
+    val make_exact : (Value.design_units * Value.design_units) list -> Value.design_units list -> table ok
+    val make : (Value.design_units * Value.design_units) list -> table ok
   end
 
   (** Defines encoding operations for tables specific to TrueType-based fonts. *)

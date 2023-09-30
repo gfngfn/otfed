@@ -19,7 +19,7 @@ let marshaled =
 let unmarshaled =
   Intermediate.Os2.{
     value = Value.Os2.{
-      us_weight_class = WeightNormal;
+      us_weight_class = 400;
       us_width_class  = WidthMedium;
 
       fs_type = Value.Os2.{

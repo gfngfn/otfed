@@ -14,6 +14,7 @@ type t =
   | NotEncodableAsUint32       of wint
   | NotEncodableAsInt32        of wint
   | NotEncodableAsTimestamp    of wint
+  | InvalidWeightClass         of int
   | NotA10BytePanose           of string
   | NotA4ByteAchVendId         of string
   | Version4FsSelection        of Value.Os2.fs_selection

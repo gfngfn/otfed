@@ -125,7 +125,7 @@ let update_derived ~current:derived ~new_one:derived_new =
     advance_width_max      = Stdlib.max derived.advance_width_max      derived_new.advance_width_max;
     min_left_side_bearing  = Stdlib.min derived.min_left_side_bearing  derived_new.min_left_side_bearing;
     min_right_side_bearing = Stdlib.min derived.min_right_side_bearing derived_new.min_right_side_bearing;
-    xmax_extent            = Stdlib.max derived.xmax_extent            derived_new.xmax_extent;
+    x_max_extent           = Stdlib.max derived.x_max_extent           derived_new.x_max_extent;
   }
 
 
@@ -148,7 +148,7 @@ let get_ttf_hmtx (ihmtx : Decode.Hmtx.t) ((gid, g_opt) : glyph_id * Ttf.glyph_in
           advance_width_max      = aw;
           min_left_side_bearing  = lsb;
           min_right_side_bearing = rsb;
-          xmax_extent            = extent;
+          x_max_extent           = extent;
         }
       in
       return (derived, entry, aw)
@@ -228,7 +228,7 @@ let get_cff_hmtx (cff : Decode.cff_source) (ihmtx : Decode.Hmtx.t) (gid : glyph_
               advance_width_max      = aw;
               min_left_side_bearing  = lsb;
               min_right_side_bearing = rsb;
-              xmax_extent            = extent;
+              x_max_extent           = extent;
             }
           in
           return (derived, entry, aw, bbox)
@@ -337,7 +337,7 @@ let make_cmap (src : Decode.source) (gids : glyph_id list) : (Encode.table * Uch
   let open ResultMonad in
   let res_dec =
     Decode.Cmap.get src >>= fun icmap ->
-    Decode.Cmap.get_subtables icmap >>= fun isubtables ->
+    Decode.Cmap.get_subtables icmap >>= fun (isubtables, _) ->
     isubtables |> mapM Decode.Cmap.unmarshal_subtable
   in
   let (old_to_new_map, _) =

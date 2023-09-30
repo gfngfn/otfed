@@ -30,7 +30,13 @@ module Tag : sig
   val table_prep : t
 
   val table_cff  : t
+  val table_cff2 : t
   val table_vorg : t
+
+  val table_dsig : t
+  val table_kern : t
+  val table_vhea : t
+  val table_vmtx : t
 
   val table_base : t
   val table_gdef : t
@@ -38,8 +44,6 @@ module Tag : sig
   val table_gsub : t
   val table_jstf : t
   val table_math : t
-
-  val table_kern : t
 
 end = struct
   type t = wint
@@ -89,7 +93,13 @@ end = struct
   let table_prep = !%% 0x70726570L
 
   let table_cff  = !%% 0x43464620L
+  let table_cff2 = !%% 0x43464632L
   let table_vorg = !%% 0x564F5247L
+
+  let table_dsig = !%% 0x44534947L
+  let table_kern = !%% 0x6B65726EL
+  let table_vhea = !%% 0x76686561L
+  let table_vmtx = !%% 0x766D7478L
 
   let table_base = !%% 0x42415345L
   let table_gdef = !%% 0x47444546L
@@ -97,8 +107,6 @@ end = struct
   let table_gsub = !%% 0x47535542L
   let table_jstf = !%% 0x4A535446L
   let table_math = !%% 0x4d415448L
-
-  let table_kern = !%% 0x6B65726EL
 
 end
 
@@ -295,6 +303,11 @@ type anchor = design_units * design_units * anchor_adjustment
 
 type mark_class = int
 
+type entry_exit_record = {
+  entry_anchor : anchor option;
+  exit_anchor  : anchor option;
+}
+
 type mark_record = mark_class * anchor
 
 type base_record = (anchor option) array
@@ -347,24 +360,43 @@ module Cmap = struct
       MapImpl.add
 
 
-    let add_incremental_range ~start ~last ~gid map =
-      let rec aux map uch gid =
-        if uch > last then
+    let uchar_opt_of_int (scalar : int) : Uchar.t option =
+      if Uchar.is_valid scalar then
+        Some(Uchar.of_int scalar)
+      else
+        None
+
+
+    let add_incremental_range ~start:uch_start ~last:uch_last ~gid map =
+      let start = Uchar.to_int uch_start in
+      let last = Uchar.to_int uch_last in
+      let rec aux map scalar gid =
+        if scalar > last then
           map
         else
-          let map = map |> add_single uch gid in
-          aux map (Uchar.succ uch) (gid + 1)
+          let map =
+            match uchar_opt_of_int scalar with
+            | Some(uch) -> map |> add_single uch gid
+            | None      -> map
+          in
+          aux map (scalar + 1) (gid + 1)
       in
       aux map start gid
 
 
-    let add_constant_range ~start ~last ~gid map =
-      let rec aux map uch =
-        if uch > last then
+    let add_constant_range ~start:uch_start ~last:uch_last ~gid map =
+      let start = Uchar.to_int uch_start in
+      let last = Uchar.to_int uch_last in
+      let rec aux map scalar =
+        if scalar > last then
           map
         else
-          let map = map |> add_single uch gid in
-          aux map (Uchar.succ uch)
+          let map =
+            match uchar_opt_of_int scalar with
+            | Some(uch) -> map |> add_single uch gid
+            | None      -> map
+          in
+          aux map (scalar + 1)
       in
       aux map start
 
@@ -442,18 +474,6 @@ module Hhea = struct
 end
 
 module Os2 = struct
-  type weight_class =
-    | WeightThin
-    | WeightExtraLight
-    | WeightLight
-    | WeightNormal
-    | WeightMedium
-    | WeightSemiBold
-    | WeightBold
-    | WeightExtraBold
-    | WeightBlack
-  [@@deriving show { with_path = false }]
-
   type width_class =
     | WidthUltraCondensed
     | WidthExtraCondensed
@@ -490,7 +510,7 @@ module Os2 = struct
   [@@deriving show { with_path = false }]
 
   type t = {
-    us_weight_class             : weight_class;
+    us_weight_class             : int;  (* values from 1 to 1000. *)
     us_width_class              : width_class;
     fs_type                     : fs_type;
     y_subscript_x_size          : design_units;
@@ -606,6 +626,28 @@ module Name = struct
   type t = {
     name_records : name_record list;
     lang_tags    : (lang_tag list) option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+module Vhea = struct
+  type metrics =
+    | Version1_0 of {
+        ascent  : int;
+        descent : int;
+      }
+    | Version1_1 of {
+        vert_typo_ascender  : int;
+        vert_typo_descender : int;
+        vert_typo_line_gap  : int;
+      }
+  [@@deriving show { with_path = false }]
+
+  type t = {
+    metrics          : metrics;
+    caret_slope_rise : int;
+    caret_slope_run  : int;
+    caret_offset     : int;
   }
   [@@deriving show { with_path = false }]
 end

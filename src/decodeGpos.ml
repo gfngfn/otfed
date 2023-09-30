@@ -79,6 +79,7 @@ type subtable =
   | SinglePosAdjustment2 of (glyph_id * value_record) list
   | PairPosAdjustment1   of (glyph_id * (glyph_id * value_record * value_record) list) list
   | PairPosAdjustment2   of class_definition list * class_definition list * (class_value * (class_value * value_record * value_record) list) list
+  | CursivePos1          of (glyph_id * entry_exit_record) list
   | MarkBasePos1         of int * (glyph_id * mark_record) list * (glyph_id * base_record) list
   | MarkLigPos1          of int * (glyph_id * mark_record) list * (glyph_id * ligature_attach) list
   | MarkMarkPos1         of int * (glyph_id * mark_record) list * (glyph_id * mark2_record) list
@@ -226,6 +227,29 @@ let d_anchor : anchor decoder =
       err @@ Error.UnknownFormatNumber(anchorFormat)
 
 
+let d_entry_exit_record (offset_CursivePos : offset) : entry_exit_record decoder =
+  let open DecodeOperation in
+  d_fetch_opt offset_CursivePos d_anchor >>= fun entry_anchor ->
+  d_fetch_opt offset_CursivePos d_anchor >>= fun exit_anchor ->
+  return { entry_anchor; exit_anchor }
+
+
+let d_cursive_attachment_subtable =
+  let open DecodeOperation in
+  (* The position is supposed to be set to the beginning of a CursivePos subtable [page 197]. *)
+  current >>= fun offset_CursivePos ->
+  d_uint16 >>= fun posFormat ->
+  match posFormat with
+  | 1 ->
+      d_fetch offset_CursivePos d_coverage >>= fun coverage ->
+      d_list (d_entry_exit_record offset_CursivePos) >>= fun entryExitRecords ->
+      combine_coverage coverage entryExitRecords >>= fun cursive_assoc ->
+      return (CursivePos1(cursive_assoc))
+
+  | _ ->
+      err @@ Error.UnknownFormatNumber(posFormat)
+
+
 let d_mark_record offset_MarkArray classCount : mark_record decoder =
   let open DecodeOperation in
   d_uint16 >>= fun classId ->
@@ -354,7 +378,7 @@ let lookup_exact offsets lookupType : (subtable list) decoder =
 
   | 3 ->
     (* Cursive attachment positioning [page 197] *)
-      return []  (* TODO *)
+      pick_each offsets d_cursive_attachment_subtable
 
   | 4 ->
     (* MarkToBase attachment positioning [page 198] *)
@@ -424,6 +448,8 @@ type 'a folding_pair1 = 'a -> glyph_id * (glyph_id * value_record * value_record
 
 type 'a folding_pair2 = class_definition list -> class_definition list -> 'a -> (class_value * (class_value * value_record * value_record) list) list -> 'a
 
+type 'a folding_cursive1 = 'a -> glyph_id * entry_exit_record -> 'a
+
 type 'a folding_markbase1 = int -> 'a -> (glyph_id * mark_record) list -> (glyph_id * base_record) list -> 'a
 
 type 'a folding_marklig1 = int -> 'a -> (glyph_id * mark_record) list -> (glyph_id * ligature_attach) list -> 'a
@@ -436,6 +462,7 @@ let fold_subtables
     ?single2:(f_single2 = (fun acc _ -> acc))
     ?pair1:(f_pair1 = (fun acc _ -> acc))
     ?pair2:(f_pair2 = (fun _ _ acc _ -> acc))
+    ?cursive1:(f_cursive1 = (fun acc _ -> acc))
     ?markbase1:(f_markbase1 = (fun _ acc _ _ -> acc))
     ?marklig1:(f_marklig1 = (fun _ acc _ _ -> acc))
     ?markmark1:(f_markmark1 = (fun _ acc _ _ -> acc))
@@ -457,6 +484,9 @@ let fold_subtables
 
       | PairPosAdjustment2(clsdefs1, clsdefs2, assoc) ->
           f_pair2 clsdefs1 clsdefs2 acc assoc
+
+      | CursivePos1(assoc) ->
+          List.fold_left f_cursive1 acc assoc
 
       | MarkBasePos1(classCount, mark_assoc, base_assoc) ->
           f_markbase1 classCount acc mark_assoc base_assoc

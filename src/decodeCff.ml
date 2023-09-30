@@ -1174,11 +1174,6 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
     let remaining = lcstate.lexical_lexing.remaining in
 
     let subrs = if local then cconst.lsubr_index else cconst.gsubr_index in
-
-    (* TODO: remove this *)
-    Format.printf "** |%s ACCESS %s (i_old_biased: %d)@,"
-      (String.make depth '@') (if local then "LOCAL" else "GLOBAL") i_biased;
-
     transform_result @@ access_subroutine subrs i_biased >>= fun (offset, length, _biased_number) ->
     let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
     pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
@@ -1187,15 +1182,11 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
     (* Adds the tokenized CharString and resets the remaining byte length. *)
     let lcstate =
       if local then
-        (* TODO: remove this *)
-        let () = Format.printf "** |%s ADD LOCAL (i_old_biased: %d)@," (String.make depth '@') i_biased in
         { lcstate with
           lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
         }
       else
-        (* TODO: remove this *)
-        let () = Format.printf "** |%s ADD GLOBAL (i_old_biased: %d)@," (String.make depth '@') i_biased in
         { lcstate with
           lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
@@ -1518,24 +1509,21 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
         return @@ Alist.to_list (Alist.extend middle.paths path)
 
 
-(* TODO: remove this; temporary *)
+(* For experimental use. *)
 let get_global_bias (cff : cff_source) : int =
   convert_subroutine_number cff.cff_specific.charstring_info.gsubr_index 0
 
 
-(* TODO: remove this; temporary *)
-let get_local_bias (cff : cff_source) (fdindex_opt : fdindex option) : int =
+(* For experimental use. *)
+let get_local_bias (cff : cff_source) (fdindex_opt : fdindex option) : int option =
   let private_info = cff.cff_specific.charstring_info.private_info in
   match (private_info, fdindex_opt) with
   | (SinglePrivate{ local_subr_index; _ }, None) ->
-      convert_subroutine_number local_subr_index 0
+      Some(convert_subroutine_number local_subr_index 0)
 
   | (FontDicts(fdarray, _fdselect), Some(fdindex)) ->
       let single_private = fdarray.(fdindex) in
-      convert_subroutine_number single_private.local_subr_index 0
+      Some(convert_subroutine_number single_private.local_subr_index 0)
 
-  | (SinglePrivate(_), Some(_)) ->
-      -100000
-
-  | (FontDicts(_, _), None) ->
-      -200000
+  | (SinglePrivate(_), Some(_)) | (FontDicts(_, _), None) ->
+      None

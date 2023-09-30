@@ -395,7 +395,11 @@ let print_cff_lex (source : D.source) (gid : V.glyph_id) =
       let empty = D.Cff.LexicalSubroutineIndex.empty in
       D.Cff.fdindex cff gid |> inj >>= fun fdindex_opt ->
       let global_bias = D.Cff.get_global_bias cff in
-      let local_bias = D.Cff.get_local_bias cff fdindex_opt in
+      let local_bias =
+        match D.Cff.get_local_bias cff fdindex_opt with
+        | Some(local_bias) -> local_bias
+        | None             -> assert false
+      in
       D.Cff.lexical_charstring cff ~gsubrs:empty ~lsubrs:empty gid |> inj >>= function
       | None ->
           Format.printf "  not defined@,";

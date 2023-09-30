@@ -598,7 +598,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
   (* Traverses the CharStrings of the glyphs of the given GIDs and
      constructs the subsets of Global/Local Subrs on which the glyphs depend: *)
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Old.category * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun (lcsacc, gsubrs, lsubrs_info) (gid : glyph_id) ->
       get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->
@@ -614,7 +614,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
                       err @@ Error.GlyphNotFound(gid)
 
                   | Some(gsubrs, lsubrs, lcs) ->
-                      return (Alist.extend lcsacc (lcs, Old.Local(None), name), gsubrs, SingleLsubrs(lsubrs))
+                      return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
                 end
           end
 
@@ -636,7 +636,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
                 | Some(gsubrs, lsubrs, lcs) ->
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
-                    return (Alist.extend lcsacc (lcs, Old.Local(Some(fdindex)), name), gsubrs, FDLsubrs(lsubrs_map))
+                    return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
           end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
   let charstrings_old = Alist.to_list charstring_acc_old in
@@ -704,9 +704,9 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     renumber_subroutine ~msg ~category_old:cat ~bias_new renumber_map subrs
   ) >>= fun gsubrs ->
 
-  charstrings_old |> mapM (fun (lcs, category_old, name) ->
+  charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
     (* TODO: remove `msg`; temporary *)
-    renumber_subroutine ~msg:"B" ~category_old ~bias_new renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~msg:"B" ~category_old:(Old.Local(fdindex_opt)) ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

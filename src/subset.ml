@@ -484,6 +484,7 @@ module Old = struct
   type t =
     | Global of int
     | Local  of Intermediate.Cff.fdindex option * int
+  [@@deriving show { with_path = false } ]
 
 
   let compare old1 old2 =
@@ -535,7 +536,7 @@ let renumber_subroutine ~msg ~bias_old ~(fdindex_opt : int option) ~(bias_new : 
     | ArgumentInteger(i_old_biased) :: OpCallSubr :: tokens ->
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old_biased)) with
-          | None        -> failwith (Format.asprintf "msg: %s, bias_old: %d, fdindex_opt: %a, i_old_biased: %d" msg bias_old (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old_biased)
+          | None        -> failwith (Format.asprintf "msg: %s, bias_old: %d, fdindex_opt: %a, i_old_biased: %d, knowns: %a" msg bias_old (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old_biased (Format.pp_print_list Old.pp) (renumber_map |> RenumberMap.bindings |> List.map fst))
           | Some(i_new) -> i_new - bias_new
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens

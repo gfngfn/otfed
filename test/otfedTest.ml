@@ -37,6 +37,7 @@ module DecodeError = Otfed__DecodeError
 module EncodeError = Otfed__EncodeError
 module Value = Otfed__Value
 module Intermediate = Otfed__Intermediate
+module CmapMapping = Value.Cmap.Mapping
 
 
 (** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
@@ -247,6 +248,57 @@ let d_cmap_variation_subtable_to_list =
   return (Alist.to_list acc)
 
 
+let cmap_entry_list =
+  Alcotest.(list (pair uchar int))
+
+
+(** Tests for `Value.Cmap.Mapping` *)
+let cmap_mapping_tests () =
+  let list_of_mapping mapping =
+    CmapMapping.fold (fun uch gid acc ->
+      Alist.extend acc (uch, gid)
+    ) mapping Alist.empty |> Alist.to_list
+  in
+  begin
+    let mapping =
+      CmapMapping.empty |> CmapMapping.add_incremental_range
+        ~start:(Uchar.of_int 0x10FFF0)
+        ~last:(Uchar.of_int 0x10FFFF) (* The maximum unicode codepoint *)
+        ~gid:42
+    in
+    let got = list_of_mapping mapping in
+    let expected =
+      let f = Uchar.of_int in
+      [
+        (f 0x10FFF0, 42); (f 0x10FFF1, 43); (f 0x10FFF2, 44); (f 0x10FFF3, 45); (f 0x10FFF4, 46);
+        (f 0x10FFF5, 47); (f 0x10FFF6, 48); (f 0x10FFF7, 49); (f 0x10FFF8, 50); (f 0x10FFF9, 51);
+        (f 0x10FFFA, 52); (f 0x10FFFB, 53); (f 0x10FFFC, 54); (f 0x10FFFD, 55); (f 0x10FFFE, 56);
+        (f 0x10FFFF, 57);
+      ]
+    in
+    Alcotest.(check cmap_entry_list) "add_incremental_range can handle the maximum codepoint" expected got
+  end;
+  begin
+    let mapping =
+      CmapMapping.empty |> CmapMapping.add_constant_range
+        ~start:(Uchar.of_int 0x10FFF0)
+        ~last:(Uchar.of_int 0x10FFFF) (* The maximum unicode codepoint *)
+        ~gid:42
+    in
+    let got = list_of_mapping mapping in
+    let expected =
+      let f = Uchar.of_int in
+      [
+        (f 0x10FFF0, 42); (f 0x10FFF1, 42); (f 0x10FFF2, 42); (f 0x10FFF3, 42); (f 0x10FFF4, 42);
+        (f 0x10FFF5, 42); (f 0x10FFF6, 42); (f 0x10FFF7, 42); (f 0x10FFF8, 42); (f 0x10FFF9, 42);
+        (f 0x10FFFA, 42); (f 0x10FFFB, 42); (f 0x10FFFC, 42); (f 0x10FFFD, 42); (f 0x10FFFE, 42);
+        (f 0x10FFFF, 42);
+      ]
+    in
+    Alcotest.(check cmap_entry_list) "add_constant_range can handle the maximum codepoint" expected got
+  end
+
+
 let default_list =
   Alcotest.(list (of_pp DecodeCmap.pp_unicode_value_range))
 
@@ -270,11 +322,11 @@ let e_cmap_mapping_tests () =
     input |> List.fold_left (fun cmap_mapping segment ->
       match segment with
       | DecodeCmap.Incremental(start, last, gid) ->
-          cmap_mapping |> Value.Cmap.Mapping.add_incremental_range ~start ~last ~gid
+          cmap_mapping |> CmapMapping.add_incremental_range ~start ~last ~gid
 
       | DecodeCmap.Constant(start, last, gid) ->
-          cmap_mapping |> Value.Cmap.Mapping.add_constant_range ~start ~last ~gid
-    ) Value.Cmap.Mapping.empty
+          cmap_mapping |> CmapMapping.add_constant_range ~start ~last ~gid
+    ) CmapMapping.empty
   in
   let got = EncodeCmap.e_cmap_mapping cmap_mapping |> run_encoder in
   let expected = Ok(TestCaseCmap2.marshaled) in
@@ -534,6 +586,7 @@ let () =
     ("DecodeCmap", [
       test_case "d_cmap_subtable" `Quick d_cmap_subtable_tests;
       test_case "d_cmap_variation_subtable" `Quick d_cmap_variation_subtable_tests;
+      test_case "cmap_mapping" `Quick cmap_mapping_tests;
     ]);
     ("EncodeCmap", [
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;

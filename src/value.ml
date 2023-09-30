@@ -360,24 +360,43 @@ module Cmap = struct
       MapImpl.add
 
 
-    let add_incremental_range ~start ~last ~gid map =
-      let rec aux map uch gid =
-        if uch > last then
+    let uchar_opt_of_int (scalar : int) : Uchar.t option =
+      if Uchar.is_valid scalar then
+        Some(Uchar.of_int scalar)
+      else
+        None
+
+
+    let add_incremental_range ~start:uch_start ~last:uch_last ~gid map =
+      let start = Uchar.to_int uch_start in
+      let last = Uchar.to_int uch_last in
+      let rec aux map scalar gid =
+        if scalar > last then
           map
         else
-          let map = map |> add_single uch gid in
-          aux map (Uchar.succ uch) (gid + 1)
+          let map =
+            match uchar_opt_of_int scalar with
+            | Some(uch) -> map |> add_single uch gid
+            | None      -> map
+          in
+          aux map (scalar + 1) (gid + 1)
       in
       aux map start gid
 
 
-    let add_constant_range ~start ~last ~gid map =
-      let rec aux map uch =
-        if uch > last then
+    let add_constant_range ~start:uch_start ~last:uch_last ~gid map =
+      let start = Uchar.to_int uch_start in
+      let last = Uchar.to_int uch_last in
+      let rec aux map scalar =
+        if scalar > last then
           map
         else
-          let map = map |> add_single uch gid in
-          aux map (Uchar.succ uch)
+          let map =
+            match uchar_opt_of_int scalar with
+            | Some(uch) -> map |> add_single uch gid
+            | None      -> map
+          in
+          aux map (scalar + 1)
       in
       aux map start
 

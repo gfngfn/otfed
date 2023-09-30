@@ -489,7 +489,7 @@ module Old = struct
 
   (* TODO: remove this; temporary *)
   let pp_pair ppf (old, gid_new) =
-    Format.fprintf ppf "%a ---> %d@," pp old gid_new
+    Format.fprintf ppf "%a ---> %d@ " pp old gid_new
 
 
   let compare old1 old2 =
@@ -685,10 +685,14 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     else
       32768
   in
-  subrs_old |> mapM (renumber_subroutine ~msg:"1" ~bias_old ~fdindex_opt:None ~bias_new renumber_map) >>= fun gsubrs ->
+  subrs_old |> List.mapi (fun i_new subrs -> (i_new, subrs)) |> mapM (fun (i_new, subrs) ->
+    (* TODO: remove this; temporary *)
+    let msg = Printf.sprintf "A/%d" i_new in
+    renumber_subroutine ~msg ~bias_old ~fdindex_opt:None ~bias_new renumber_map subrs
+  ) >>= fun gsubrs ->
     (* Assume here that no global subroutines are dependent on local subroutines. *)
   charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
-    renumber_subroutine ~msg:"2" ~bias_old ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~msg:"B" ~bias_old ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

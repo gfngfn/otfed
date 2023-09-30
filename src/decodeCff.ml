@@ -1512,7 +1512,12 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
 
 
 (* TODO: remove this; temporary *)
-let get_bias (cff : cff_source) (fdindex_opt : fdindex option) : int =
+let get_global_bias (cff : cff_source) : int =
+  convert_subroutine_number cff.cff_specific.charstring_info.gsubr_index 0
+
+
+(* TODO: remove this; temporary *)
+let get_local_bias (cff : cff_source) (fdindex_opt : fdindex option) : int =
   let private_info = cff.cff_specific.charstring_info.private_info in
   match (private_info, fdindex_opt) with
   | (SinglePrivate{ local_subr_index; _ }, None) ->

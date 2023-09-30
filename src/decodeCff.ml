@@ -716,11 +716,6 @@ let convert_subroutine_number (subr_index : subroutine_index) (i : int) =
   bias + i
 
 
-(* TODO: remove this; temporary *)
-let get_bias (cff : cff_source) : int =
-  convert_subroutine_number cff.cff_specific.charstring_info.gsubr_index 0
-
-
 let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int * int) ok =
   let open ResultMonad in
   let biased_number = convert_subroutine_number subr_index i in
@@ -1514,3 +1509,13 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
     | (_, Middle(middle)) ->
         let path = (middle.start, Alist.to_list middle.elems) in
         return @@ Alist.to_list (Alist.extend middle.paths path)
+
+
+(* TODO: remove this; temporary *)
+let get_bias (cff : cff_source) : int =
+  match cff.cff_specific.charstring_info.private_info with
+  | Intermediate.Cff.SinglePrivate{ local_subr_index; _ } ->
+      convert_subroutine_number local_subr_index 0
+
+  | _ ->
+      -100000

@@ -521,9 +521,9 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
     | [] ->
         return @@ Alist.to_list token_new_acc
 
-    | ArgumentInteger(i_old) :: OpCallGSubr :: tokens ->
+    | ArgumentInteger(i_old_biased) :: OpCallGSubr :: tokens ->
         let i_new_biased =
-          match renumber_map |> RenumberMap.find_opt (Old.Global(i_old)) with
+          match renumber_map |> RenumberMap.find_opt (Old.Global(i_old_biased)) with
           | None        -> assert false
           | Some(i_new) -> i_new - bias
         in
@@ -532,10 +532,10 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
     | _ :: OpCallGSubr :: _ ->
         err @@ Error.NonexplicitSubroutineNumber
 
-    | ArgumentInteger(i_old) :: OpCallSubr :: tokens ->
+    | ArgumentInteger(i_old_biased) :: OpCallSubr :: tokens ->
         let i_new_biased =
-          match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old)) with
-          | None        -> failwith (Format.asprintf "fdindex_opt: %a, i_old: %d" (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old)
+          match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old_biased)) with
+          | None        -> failwith (Format.asprintf "fdindex_opt: %a, i_old_biased: %d" (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old_biased)
           | Some(i_new) -> i_new - bias
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
@@ -618,26 +618,26 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
   let (num_subrs, renumber_map, subrs_old) =
     let acc =
-      Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+      Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
         let subr_old_acc = Alist.extend subr_old_acc lcs_old in
-        let renumber_map = renumber_map |> RenumberMap.add (Old.Global(i_old)) i_new in
+        let renumber_map = renumber_map |> RenumberMap.add (Old.Global(i_biased_old)) i_new in
         (i_new + 1, renumber_map, subr_old_acc)
       ) gsubrs_old (0, RenumberMap.empty, Alist.empty)
     in
     let (i_new, renumber_map, subr_old_acc) =
       match lsubrs_info_old with
       | SingleLsubrs(lsubrs) ->
-          Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+          Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
             let subr_old_acc = Alist.extend subr_old_acc lcs_old in
-            let renumber_map = renumber_map |> RenumberMap.add (Old.Local(None, i_old)) i_new in
+            let renumber_map = renumber_map |> RenumberMap.add (Old.Local(None, i_biased_old)) i_new in
             (i_new + 1, renumber_map, subr_old_acc)
           ) lsubrs acc
 
       | FDLsubrs(lsubrs_map) ->
           LsiMap.fold (fun fdindex lsubrs acc ->
-            Lsi.fold (fun i_old lcs_old (i_new, renumber_map, subr_old_acc) ->
+            Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
               let subr_old_acc = Alist.extend subr_old_acc lcs_old in
-              let renumber_map = renumber_map |> RenumberMap.add (Old.Local(Some(fdindex), i_old)) i_new in
+              let renumber_map = renumber_map |> RenumberMap.add (Old.Local(Some(fdindex), i_biased_old)) i_new in
               (i_new + 1, renumber_map, subr_old_acc)
             ) lsubrs acc
           ) lsubrs_map acc

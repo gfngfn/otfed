@@ -1133,8 +1133,8 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
             | None ->
                 err Error.NoSubroutineIndexArgument
 
-            | Some(i) ->
-                d_lexical_subroutine ~depth ~local:true cconst lcstate i
+            | Some(i_biased) ->
+                d_lexical_subroutine ~depth ~local:true cconst lcstate i_biased
           end
 
       | OpCallGSubr ->
@@ -1143,8 +1143,8 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
             | None ->
                 err Error.NoSubroutineIndexArgument
 
-            | Some(i) ->
-                d_lexical_subroutine ~depth ~local:false cconst lcstate i
+            | Some(i_biased) ->
+                d_lexical_subroutine ~depth ~local:false cconst lcstate i_biased
           end
 
       | ArgumentInteger(n) ->
@@ -1165,7 +1165,7 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
   aux lcstate Alist.empty
 
 
-and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
+and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i_biased : int) =
   let open DecodeOperation in
 
   if depth > max_depth_limit then
@@ -1176,7 +1176,7 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
 
     let subrs = if local then cconst.lsubr_index else cconst.gsubr_index in
 
-    transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+    transform_result @@ access_subroutine subrs i_biased >>= fun (offset, length, _biased_number) ->
     let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
     pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
     let lcs = Alist.to_list acc in
@@ -1185,12 +1185,12 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
     let lcstate =
       if local then
         { lcstate with
-          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
         }
       else
         { lcstate with
-          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
         }
     in

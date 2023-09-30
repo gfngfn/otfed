@@ -1481,6 +1481,7 @@ module Subset : sig
       | DecodeError                 of Decode.Error.t
       | EncodeError                 of Encode.Error.t
       | NonexplicitSubroutineNumber
+      | CallSubrInGlobalSubr        of { old_biased : int }
     [@@deriving show]
   end
 

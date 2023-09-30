@@ -11,6 +11,7 @@ module Error = struct
     | DecodeError   of DecodeError.t
     | EncodeError   of EncodeError.t
     | NonexplicitSubroutineNumber
+    | CallSubrInGlobalSubr of { old_biased : int }
   [@@deriving show { with_path = false }]
 end
 
@@ -481,9 +482,12 @@ type local_subrs_info =
 
 module Old = struct
 
-  type t =
-    | Global of int
-    | Local  of Intermediate.Cff.fdindex option * int
+  type category =
+    | Global
+    | Local  of Intermediate.Cff.fdindex option
+  [@@deriving show { with_path = false } ]
+
+  type t = category * int
   [@@deriving show { with_path = false } ]
 
 
@@ -492,27 +496,22 @@ module Old = struct
     Format.fprintf ppf "%a ---> %d@ " pp old gid_new
 
 
-  let compare old1 old2 =
-    match (old1, old2) with
-    | (Global(i1), Global(i2)) ->
-        Int.compare i1 i2
+  let compare (cat1, i1) (cat2, i2) =
+    match (cat1, cat2) with
+    | (Global, Global)   -> Int.compare i1 i2
+    | (Global, Local(_)) -> -1
+    | (Local(_), Global) -> 1
 
-    | (Global(_), Local(_)) ->
-        -1
-
-    | (Local(_), Global(_)) ->
-        1
-
-    | (Local(fo1, i1), Local(fo2, i2)) ->
+    | (Local(fdindex_opt1), Local(fdindex_opt2)) ->
         begin
-          match (fo1, fo2) with
-          | (Some(f1), Some(f2)) ->
-              let c = Int.compare f1 f2 in
-              if c = 0 then Int.compare i1 i2 else c
-
-          | (Some(_), None) -> -1
-          | (None, Some(_)) -> 1
+          match (fdindex_opt1, fdindex_opt2) with
           | (None, None)    -> Int.compare i1 i2
+          | (None, Some(_)) -> -1
+          | (Some(_), None) -> 1
+
+          | (Some(fdindex1), Some(fdindex2)) ->
+              let c = Int.compare fdindex1 fdindex2 in
+              if c = 0 then Int.compare i1 i2 else c
         end
 end
 
@@ -520,7 +519,7 @@ end
 module RenumberMap = Map.Make(Old)
 
 
-let renumber_subroutine ~msg ~(bias_new : int) ~(fdindex_opt : Intermediate.Cff.fdindex option) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
+let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
   let open ResultMonad in
   let open Intermediate.Cff in
   let rec aux token_new_acc = function
@@ -529,7 +528,7 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(fdindex_opt : Intermediate.Cff.
 
     | ArgumentInteger(i_old_biased) :: OpCallGSubr :: tokens ->
         let i_new_biased =
-          match renumber_map |> RenumberMap.find_opt (Old.Global(i_old_biased)) with
+          match renumber_map |> RenumberMap.find_opt (Old.Global, i_old_biased) with
           | None        -> assert false
           | Some(i_new) -> i_new - bias_new
         in
@@ -539,8 +538,13 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(fdindex_opt : Intermediate.Cff.
         err @@ Error.NonexplicitSubroutineNumber
 
     | ArgumentInteger(i_old_biased) :: OpCallSubr :: tokens ->
+        begin
+          match category_old with
+          | Old.Global             -> err @@ Error.CallSubrInGlobalSubr{ old_biased = i_old_biased }
+          | Old.Local(fdindex_opt) -> return fdindex_opt
+        end >>= fun fdindex_opt ->
         let i_new_biased =
-          match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old_biased)) with
+          match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt), i_old_biased) with
           | None ->
               (* TODO: remove this; temporary *)
               failwith @@
@@ -594,7 +598,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
   (* Traverses the CharStrings of the glyphs of the given GIDs and
      constructs the subsets of Global/Local Subrs on which the glyphs depend: *)
-  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Intermediate.Cff.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
+  foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Old.category * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
       get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
       | SingleLsubrs(lsubrs) ->
@@ -610,7 +614,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
                       err @@ Error.GlyphNotFound(gid)
 
                   | Some(gsubrs, lsubrs, lcs) ->
-                      return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
+                      return (Alist.extend lcsacc (lcs, Old.Local(None), name), gsubrs, SingleLsubrs(lsubrs))
                 end
           end
 
@@ -632,7 +636,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
                 | Some(gsubrs, lsubrs, lcs) ->
                     let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
-                    return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
+                    return (Alist.extend lcsacc (lcs, Old.Local(Some(fdindex)), name), gsubrs, FDLsubrs(lsubrs_map))
           end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
   let charstrings_old = Alist.to_list charstring_acc_old in
@@ -645,7 +649,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
   let (num_subrs, renumber_map, subrs_old) =
     let acc =
       Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-        let old = Old.Global(i_biased_old) in
+        let old = (Old.Global, i_biased_old) in
         let subr_old_acc = Alist.extend subr_old_acc (old, lcs_old) in
         let renumber_map = renumber_map |> RenumberMap.add old i_new in
         (i_new + 1, renumber_map, subr_old_acc)
@@ -655,7 +659,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
       match lsubrs_info_old with
       | SingleLsubrs(lsubrs) ->
           Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-            let old = Old.Local(None, i_biased_old) in
+            let old = (Old.Local(None), i_biased_old) in
             let subr_old_acc = Alist.extend subr_old_acc (old, lcs_old) in
             let renumber_map = renumber_map |> RenumberMap.add old i_new in
             (i_new + 1, renumber_map, subr_old_acc)
@@ -664,7 +668,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
       | FDLsubrs(lsubrs_map) ->
           LsiMap.fold (fun fdindex lsubrs acc ->
             Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-              let old = Old.Local(Some(fdindex), i_biased_old) in
+              let old = (Old.Local(Some(fdindex)), i_biased_old) in
               let subr_old_acc = Alist.extend subr_old_acc (old, lcs_old) in
               let renumber_map = renumber_map |> RenumberMap.add old i_new in
               (i_new + 1, renumber_map, subr_old_acc)
@@ -686,19 +690,23 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
 
   (* Constructs the new Global Subrs: *)
   subrs_old |> List.mapi (fun i_new x -> (i_new, x)) |> mapM (fun (i_new, (old, subrs)) ->
-    (* TODO: remove `bias_old`; temporary *)
-    let (fdindex_opt, bias_old) =
-      match old with
-      | Old.Global(_)             -> (None, Decode.Cff.get_global_bias cff)
-      | Old.Local(fdindex_opt, _) -> (fdindex_opt, Decode.Cff.get_local_bias cff fdindex_opt)
+    let (cat, i_old_biased) = old in
+    (* TODO: remove `bias_old` and `msg`; temporary *)
+    let bias_old =
+      match cat with
+      | Old.Global             -> Decode.Cff.get_global_bias cff
+      | Old.Local(fdindex_opt) -> Decode.Cff.get_local_bias cff fdindex_opt
     in
-    let msg = Format.asprintf "A(i_new: %d, bias_old: %d, old: %a)" i_new bias_old Old.pp old in
-    renumber_subroutine ~msg ~fdindex_opt ~bias_new renumber_map subrs
+    let msg =
+      Format.asprintf "A(i_new: %d, bias_old: %d, old_category: %a, i_old_biased: %d)"
+        i_new bias_old Old.pp_category cat i_old_biased
+    in
+    renumber_subroutine ~msg ~category_old:cat ~bias_new renumber_map subrs
   ) >>= fun gsubrs ->
 
-  charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
+  charstrings_old |> mapM (fun (lcs, category_old, name) ->
     (* TODO: remove `msg`; temporary *)
-    renumber_subroutine ~msg:"B" ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~msg:"B" ~category_old ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

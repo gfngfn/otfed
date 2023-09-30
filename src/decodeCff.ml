@@ -716,6 +716,11 @@ let convert_subroutine_number (subr_index : subroutine_index) (i : int) =
   bias + i
 
 
+(* TODO: remove this; temporary *)
+let get_bias (cff : cff_source) : int =
+  convert_subroutine_number cff.cff_specific.charstring_info.gsubr_index 0
+
+
 let access_subroutine (subr_index : subroutine_index) (i : int) : (offset * int * int) ok =
   let open ResultMonad in
   let biased_number = convert_subroutine_number subr_index i in

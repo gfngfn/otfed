@@ -52,3 +52,6 @@ val fdindex : cff_source -> Value.glyph_id -> (Intermediate.Cff.fdindex option) 
 val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs:LexicalSubroutineIndex.t -> Value.glyph_id -> ((LexicalSubroutineIndex.t * LexicalSubroutineIndex.t * Intermediate.Cff.lexical_charstring) option) ok
 
 val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
+
+(* TODO: remove this; temporary *)
+val get_bias : cff_source -> int

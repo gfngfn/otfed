@@ -514,7 +514,7 @@ end
 module RenumberMap = Map.Make(Old)
 
 
-let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
+let renumber_subroutine ~msg ~bias_old ~(fdindex_opt : int option) ~(bias_new : int) (renumber_map : int RenumberMap.t) (tokens_old : Intermediate.Cff.lexical_charstring) =
   let open ResultMonad in
   let open Intermediate.Cff in
   let rec aux token_new_acc = function
@@ -525,7 +525,7 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Global(i_old_biased)) with
           | None        -> assert false
-          | Some(i_new) -> i_new - bias
+          | Some(i_new) -> i_new - bias_new
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
@@ -535,8 +535,8 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
     | ArgumentInteger(i_old_biased) :: OpCallSubr :: tokens ->
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old_biased)) with
-          | None        -> failwith (Format.asprintf "fdindex_opt: %a, i_old_biased: %d" (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old_biased)
-          | Some(i_new) -> i_new - bias
+          | None        -> failwith (Format.asprintf "msg: %s, bias_old: %d, fdindex_opt: %a, i_old_biased: %d" msg bias_old (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old_biased)
+          | Some(i_new) -> i_new - bias_new
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
@@ -562,6 +562,8 @@ let get_glyph_name (cff : Decode.cff_source) (gid : glyph_id) : string ok =
 
 let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list) =
   let open ResultMonad in
+
+  (* Initializes `lsubrs_info` by judging whether the font has FDIndex: *)
   inj_dec @@ Decode.Cff.top_dict cff >>= fun top_dict ->
   begin
     match gids with
@@ -575,6 +577,9 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
           | Some(_) -> return @@ FDLsubrs(LsiMap.empty)
         end
   end >>= fun lsubrs_info ->
+
+  (* Traverses the CharStrings of the glyphs of the given GIDs and
+     constructs the subsets of Global/Local Subrs on which the glyphs depend: *)
   foldM (fun ((lcsacc, gsubrs, lsubrs_info) : (Intermediate.Cff.lexical_charstring * Intermediate.Cff.fdindex option * string) Alist.t * Lsi.t * local_subrs_info) (gid : glyph_id) ->
       get_glyph_name cff gid >>= fun name ->
       match lsubrs_info with
@@ -616,6 +621,13 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
                     return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
           end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
+  let charstrings_old = Alist.to_list charstring_acc_old in
+
+  (* Constructs the following:
+     - `renumber_map`: a mapping that maps each old biased Subrs index to a new non-biased Subrs index,
+     - `subrs_old`: the list of the Subrs on which the subset glyphs depend
+       (ordered by the new non-biased indices), and
+     - `num_subrs`: the number of the entries in `subrs_old`. *)
   let (num_subrs, renumber_map, subrs_old) =
     let acc =
       Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
@@ -644,7 +656,12 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     in
     (i_new, renumber_map, subr_old_acc |> Alist.to_list)
   in
-  let bias =
+
+  (* TODO: remove this; temporary *)
+  let bias_old = Decode.Cff.get_bias cff in
+
+  (* Calculates the bias for new Subrs indices: *)
+  let bias_new =
     if num_subrs < 1240 then
       107
     else if num_subrs < 33900 then
@@ -652,11 +669,10 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     else
       32768
   in
-  subrs_old |> mapM (renumber_subroutine ~fdindex_opt:None ~bias renumber_map) >>= fun gsubrs ->
+  subrs_old |> mapM (renumber_subroutine ~msg:"1" ~bias_old ~fdindex_opt:None ~bias_new renumber_map) >>= fun gsubrs ->
     (* Assume here that no global subroutines are dependent on local subroutines. *)
-  let charstrings_old = Alist.to_list charstring_acc_old in
   charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
-    renumber_subroutine ~fdindex_opt ~bias renumber_map lcs >>= fun charstring ->
+    renumber_subroutine ~msg:"2" ~bias_old ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

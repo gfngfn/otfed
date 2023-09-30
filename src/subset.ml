@@ -496,23 +496,24 @@ module Old = struct
     Format.fprintf ppf "%a ---> %d@ " pp old gid_new
 
 
-  let compare (cat1, i1) (cat2, i2) =
-    match (cat1, cat2) with
-    | (Global, Global)   -> Int.compare i1 i2
-    | (Global, Local(_)) -> -1
-    | (Local(_), Global) -> 1
+  let compare ((cat1, i1) : t) ((cat2, i2) : t) =
+    let comp_cat =
+      match (cat1, cat2) with
+      | (Global, Global)   -> 0
+      | (Global, Local(_)) -> -1
+      | (Local(_), Global) -> 1
 
-    | (Local(fdindex_opt1), Local(fdindex_opt2)) ->
-        begin
-          match (fdindex_opt1, fdindex_opt2) with
-          | (None, None)    -> Int.compare i1 i2
-          | (None, Some(_)) -> -1
-          | (Some(_), None) -> 1
+      | (Local(fdindex_opt1), Local(fdindex_opt2)) ->
+          begin
+            match (fdindex_opt1, fdindex_opt2) with
+            | (None, None)                     -> 0
+            | (None, Some(_))                  -> -1
+            | (Some(_), None)                  -> 1
+            | (Some(fdindex1), Some(fdindex2)) -> Int.compare fdindex1 fdindex2
+          end
+    in
+    if comp_cat = 0 then Int.compare i1 i2 else comp_cat
 
-          | (Some(fdindex1), Some(fdindex2)) ->
-              let c = Int.compare fdindex1 fdindex2 in
-              if c = 0 then Int.compare i1 i2 else c
-        end
 end
 
 
@@ -534,7 +535,7 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (r
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
-    | _ :: OpCallGSubr :: _ ->
+    | OpCallGSubr :: _ ->
         err @@ Error.NonexplicitSubroutineNumber
 
     | ArgumentInteger(i_old_biased) :: OpCallSubr :: tokens ->
@@ -558,7 +559,7 @@ let renumber_subroutine ~msg ~(bias_new : int) ~(category_old : Old.category) (r
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens
 
-    | _ :: OpCallSubr :: _ ->
+    | OpCallSubr :: _ ->
         err @@ Error.NonexplicitSubroutineNumber
 
     | token :: tokens ->
@@ -599,45 +600,38 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
   (* Traverses the CharStrings of the glyphs of the given GIDs and
      constructs the subsets of Global/Local Subrs on which the glyphs depend: *)
   foldM (fun (lcsacc, gsubrs, lsubrs_info) (gid : glyph_id) ->
-      get_glyph_name cff gid >>= fun name ->
-      match lsubrs_info with
-      | SingleLsubrs(lsubrs) ->
-          begin
-            inj_dec @@ Decode.Cff.fdindex cff gid >>= function
-            | Some(_fdindex) ->
-                assert false
+    get_glyph_name cff gid >>= fun name ->
+    inj_dec @@ Decode.Cff.fdindex cff gid >>= fun fdindex_opt ->
+    match (lsubrs_info, fdindex_opt) with
+    | (SingleLsubrs(lsubrs), None) ->
+        begin
+          inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
+          | None ->
+              err @@ Error.GlyphNotFound(gid)
 
-            | None ->
-                begin
-                  inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
-                  | None ->
-                      err @@ Error.GlyphNotFound(gid)
+          | Some(gsubrs, lsubrs, lcs) ->
+              return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
+        end
 
-                  | Some(gsubrs, lsubrs, lcs) ->
-                      return (Alist.extend lcsacc (lcs, None, name), gsubrs, SingleLsubrs(lsubrs))
-                end
-          end
+    | (FDLsubrs(lsubrs_map), Some(fdindex)) ->
+        let lsubrs =
+          match lsubrs_map |> LsiMap.find_opt fdindex with
+          | None         -> Lsi.empty
+          | Some(lsubrs) -> lsubrs
+        in
+        begin
+          inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
+          | None ->
+              err @@ Error.GlyphNotFound(gid)
 
-      | FDLsubrs(lsubrs_map) ->
-          begin
-            inj_dec @@ Decode.Cff.fdindex cff gid >>= function
-            | None ->
-                assert false
+          | Some(gsubrs, lsubrs, lcs) ->
+              let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
+              return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
+        end
 
-            | Some(fdindex) ->
-                let lsubrs =
-                  match lsubrs_map |> LsiMap.find_opt fdindex with
-                  | None         -> Lsi.empty
-                  | Some(lsubrs) -> lsubrs
-                in
-                inj_dec @@ Decode.Cff.lexical_charstring cff ~gsubrs ~lsubrs gid >>= function
-                | None ->
-                    err @@ Error.GlyphNotFound(gid)
+    | _ ->
+        assert false
 
-                | Some(gsubrs, lsubrs, lcs) ->
-                    let lsubrs_map = lsubrs_map |> LsiMap.add fdindex lsubrs in
-                    return (Alist.extend lcsacc (lcs, Some(fdindex), name), gsubrs, FDLsubrs(lsubrs_map))
-          end
     ) gids (Alist.empty, Lsi.empty, lsubrs_info) >>= fun (charstring_acc_old, gsubrs_old, lsubrs_info_old) ->
   let charstrings_old = Alist.to_list charstring_acc_old in
 

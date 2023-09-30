@@ -54,4 +54,4 @@ val lexical_charstring : cff_source -> gsubrs:LexicalSubroutineIndex.t -> lsubrs
 val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
 
 (* TODO: remove this; temporary *)
-val get_bias : cff_source -> int
+val get_bias : cff_source -> Intermediate.Cff.fdindex option -> int

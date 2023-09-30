@@ -1512,10 +1512,18 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
 
 
 (* TODO: remove this; temporary *)
-let get_bias (cff : cff_source) : int =
-  match cff.cff_specific.charstring_info.private_info with
-  | Intermediate.Cff.SinglePrivate{ local_subr_index; _ } ->
+let get_bias (cff : cff_source) (fdindex_opt : fdindex option) : int =
+  let private_info = cff.cff_specific.charstring_info.private_info in
+  match (private_info, fdindex_opt) with
+  | (SinglePrivate{ local_subr_index; _ }, None) ->
       convert_subroutine_number local_subr_index 0
 
-  | _ ->
+  | (FontDicts(fdarray, _fdselect), Some(fdindex)) ->
+      let single_private = fdarray.(fdindex) in
+      convert_subroutine_number single_private.local_subr_index 0
+
+  | (SinglePrivate(_), Some(_)) ->
       -100000
+
+  | (FontDicts(_, _), None) ->
+      -200000

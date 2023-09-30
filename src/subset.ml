@@ -647,7 +647,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
   let (num_subrs, renumber_map, subrs_old) =
     let acc =
       Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-        let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+        let subr_old_acc = Alist.extend subr_old_acc (None, lcs_old) in
         let renumber_map = renumber_map |> RenumberMap.add (Old.Global(i_biased_old)) i_new in
         (i_new + 1, renumber_map, subr_old_acc)
       ) gsubrs_old (0, RenumberMap.empty, Alist.empty)
@@ -656,7 +656,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
       match lsubrs_info_old with
       | SingleLsubrs(lsubrs) ->
           Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-            let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+            let subr_old_acc = Alist.extend subr_old_acc (None, lcs_old) in
             let renumber_map = renumber_map |> RenumberMap.add (Old.Local(None, i_biased_old)) i_new in
             (i_new + 1, renumber_map, subr_old_acc)
           ) lsubrs acc
@@ -664,7 +664,7 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
       | FDLsubrs(lsubrs_map) ->
           LsiMap.fold (fun fdindex lsubrs acc ->
             Lsi.fold (fun i_biased_old lcs_old (i_new, renumber_map, subr_old_acc) ->
-              let subr_old_acc = Alist.extend subr_old_acc lcs_old in
+              let subr_old_acc = Alist.extend subr_old_acc (Some(fdindex), lcs_old) in
               let renumber_map = renumber_map |> RenumberMap.add (Old.Local(Some(fdindex), i_biased_old)) i_new in
               (i_new + 1, renumber_map, subr_old_acc)
             ) lsubrs acc
@@ -672,9 +672,6 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     in
     (i_new, renumber_map, subr_old_acc |> Alist.to_list)
   in
-
-  (* TODO: remove this; temporary *)
-  let bias_old = Decode.Cff.get_bias cff in
 
   (* Calculates the bias for new Subrs indices: *)
   let bias_new =
@@ -685,14 +682,22 @@ let make_cff ~(num_glyphs : int) (cff : Decode.cff_source) (gids : glyph_id list
     else
       32768
   in
-  subrs_old |> List.mapi (fun i_new subrs -> (i_new, subrs)) |> mapM (fun (i_new, subrs) ->
+  subrs_old |> List.mapi (fun i_new x -> (i_new, x)) |> mapM (fun (i_new, (fdindex_opt, subrs)) ->
+
     (* TODO: remove this; temporary *)
+    let bias_old = Decode.Cff.get_bias cff fdindex_opt in
     let msg = Printf.sprintf "A/%d" i_new in
-    renumber_subroutine ~msg ~bias_old ~fdindex_opt:None ~bias_new renumber_map subrs
+
+    renumber_subroutine ~msg ~bias_old ~fdindex_opt ~bias_new renumber_map subrs
   ) >>= fun gsubrs ->
     (* Assume here that no global subroutines are dependent on local subroutines. *)
   charstrings_old |> mapM (fun (lcs, fdindex_opt, name) ->
-    renumber_subroutine ~msg:"B" ~bias_old ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
+
+    (* TODO: remove this; temporary *)
+    let bias_old = Decode.Cff.get_bias cff fdindex_opt in
+    let msg = "B" in
+
+    renumber_subroutine ~msg ~bias_old ~fdindex_opt ~bias_new renumber_map lcs >>= fun charstring ->
     return (name, charstring)
   ) >>= fun names_and_charstrings ->
   inj_enc @@ Encode.Cff.make { top_dict with number_of_glyphs = num_glyphs } ~gsubrs ~names_and_charstrings

@@ -535,7 +535,7 @@ let renumber_subroutine ~(fdindex_opt : int option) ~(bias : int) (renumber_map 
     | ArgumentInteger(i_old) :: OpCallSubr :: tokens ->
         let i_new_biased =
           match renumber_map |> RenumberMap.find_opt (Old.Local(fdindex_opt, i_old)) with
-          | None        -> assert false
+          | None        -> failwith (Format.asprintf "fdindex_opt: %a, i_old: %d" (Format.pp_print_option Format.pp_print_int) fdindex_opt i_old)
           | Some(i_new) -> i_new - bias
         in
         aux (Alist.append token_new_acc [ArgumentInteger(i_new_biased); OpCallGSubr]) tokens

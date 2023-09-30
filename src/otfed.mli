@@ -1443,6 +1443,12 @@ module Decode : sig
 
     (** Converts a CharString into a cubic Bézier path. *)
     val path_of_charstring : Intermediate.Cff.charstring -> (Value.cubic_path list) ok
+
+    (** Gets the bias for Global Subrs (for experimental use). *)
+    val get_global_bias : cff_source -> int
+
+    (** Gets the bias for Local Subrs (for experimental use). *)
+    val get_local_bias : cff_source -> Intermediate.Cff.fdindex option -> int option
   end
 end
 
@@ -1586,6 +1592,7 @@ module Subset : sig
       | DecodeError                 of Decode.Error.t
       | EncodeError                 of Encode.Error.t
       | NonexplicitSubroutineNumber
+      | CallSubrInGlobalSubr        of { old_biased : int }
     [@@deriving show]
   end
 

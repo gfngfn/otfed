@@ -634,10 +634,9 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
       return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
 
   | 255 ->
-      d_twoscompl2 >>= fun ret1 ->
-      d_twoscompl2 >>= fun ret2 ->
-      let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
-      return_argument (5, ArgumentReal(ret))
+      d_twoscompl4 >>= fun n ->
+      let r = float_of_int n /. (float_of_int (1 lsl 16)) in
+      return_argument (5, ArgumentReal(r))
 
   | n ->
       err @@ Error.UnknownCharstringToken(n)
@@ -1133,8 +1132,8 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
             | None ->
                 err Error.NoSubroutineIndexArgument
 
-            | Some(i) ->
-                d_lexical_subroutine ~depth ~local:true cconst lcstate i
+            | Some(i_biased) ->
+                d_lexical_subroutine ~depth ~local:true cconst lcstate i_biased
           end
 
       | OpCallGSubr ->
@@ -1143,8 +1142,8 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
             | None ->
                 err Error.NoSubroutineIndexArgument
 
-            | Some(i) ->
-                d_lexical_subroutine ~depth ~local:false cconst lcstate i
+            | Some(i_biased) ->
+                d_lexical_subroutine ~depth ~local:false cconst lcstate i_biased
           end
 
       | ArgumentInteger(n) ->
@@ -1165,7 +1164,7 @@ let rec d_lexical_charstring ~(depth : int) (cconst : charstring_constant) (lcst
   aux lcstate Alist.empty
 
 
-and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i : int) =
+and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_constant) (lcstate : lexical_charstring_state) (i_biased : int) =
   let open DecodeOperation in
 
   if depth > max_depth_limit then
@@ -1175,8 +1174,7 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
     let remaining = lcstate.lexical_lexing.remaining in
 
     let subrs = if local then cconst.lsubr_index else cconst.gsubr_index in
-
-    transform_result @@ access_subroutine subrs i >>= fun (offset, length, _biased_number) ->
+    transform_result @@ access_subroutine subrs i_biased >>= fun (offset, length, _biased_number) ->
     let lcstate = { lcstate with lexical_lexing = { lcstate.lexical_lexing with remaining = length } } in
     pick offset (d_lexical_charstring ~depth:(depth + 1) cconst lcstate) >>= fun (lcstate, acc) ->
     let lcs = Alist.to_list acc in
@@ -1185,12 +1183,12 @@ and d_lexical_subroutine ~(depth : int) ~(local : bool) (cconst : charstring_con
     let lcstate =
       if local then
         { lcstate with
-          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_lsubrs = lcstate.lexical_lsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
         }
       else
         { lcstate with
-          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i lcs;
+          lexical_gsubrs = lcstate.lexical_gsubrs |> LexicalSubroutineIndex.add i_biased lcs;
           lexical_lexing = { lcstate.lexical_lexing with remaining = remaining };
         }
     in
@@ -1509,3 +1507,23 @@ let path_of_charstring (ops : Intermediate.Cff.charstring) : (cubic_path list) o
     | (_, Middle(middle)) ->
         let path = (middle.start, Alist.to_list middle.elems) in
         return @@ Alist.to_list (Alist.extend middle.paths path)
+
+
+(* For experimental use. *)
+let get_global_bias (cff : cff_source) : int =
+  convert_subroutine_number cff.cff_specific.charstring_info.gsubr_index 0
+
+
+(* For experimental use. *)
+let get_local_bias (cff : cff_source) (fdindex_opt : fdindex option) : int option =
+  let private_info = cff.cff_specific.charstring_info.private_info in
+  match (private_info, fdindex_opt) with
+  | (SinglePrivate{ local_subr_index; _ }, None) ->
+      Some(convert_subroutine_number local_subr_index 0)
+
+  | (FontDicts(fdarray, _fdselect), Some(fdindex)) ->
+      let single_private = fdarray.(fdindex) in
+      Some(convert_subroutine_number single_private.local_subr_index 0)
+
+  | (SinglePrivate(_), Some(_)) | (FontDicts(_, _), None) ->
+      None

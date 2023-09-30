@@ -634,10 +634,9 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
       return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
 
   | 255 ->
-      d_twoscompl2 >>= fun ret1 ->
-      d_twoscompl2 >>= fun ret2 ->
-      let ret = float_of_int ret1 +. (float_of_int ret2) /. (float_of_int (1 lsl 16)) in
-      return_argument (5, ArgumentReal(ret))
+      d_twoscompl4 >>= fun n ->
+      let r = float_of_int n /. (float_of_int (1 lsl 16)) in
+      return_argument (5, ArgumentReal(r))
 
   | n ->
       err @@ Error.UnknownCharstringToken(n)

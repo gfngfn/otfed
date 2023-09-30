@@ -237,11 +237,22 @@ let e_dict (dict : dict) =
   e_list e_dict_entry entries
 
 
+let e_charstring_integer =
+  e_integer_value
+
+
+let e_charstring_real (r : float) : unit encoder =
+  let open EncodeOperation in
+  let n = int_of_float (r *. (float_of_int (1 lsl 16))) in
+  e_uint8 255 >>= fun () ->
+  e_twoscompl4 n
+
+
 let e_charstring_token (ctoken : charstring_token) : unit encoder =
   let open EncodeOperation in
   match ctoken with
-  | ArgumentInteger(n) -> e_integer_value n
-  | ArgumentReal(r)    -> e_real_value r
+  | ArgumentInteger(n) -> e_charstring_integer n
+  | ArgumentReal(r)    -> e_charstring_real r
 
   | OpHStem   -> e_short_key 1
   | OpVStem   -> e_short_key 3

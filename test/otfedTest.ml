@@ -39,6 +39,9 @@ let d_int16_and_e_int16_tests () =
   let cases =
     [
       (make_string_even [0xffec], -20);
+      (make_string_even [0x0000], 0);
+      (make_string_even [0x0001], 1);
+      (make_string_even [0xffff], -1);
     ]
   in
   cases |> List.iter (fun (input, expected) ->

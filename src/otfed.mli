@@ -1592,7 +1592,9 @@ module Subset : sig
       | DecodeError                 of Decode.Error.t
       | EncodeError                 of Encode.Error.t
       | NonexplicitSubroutineNumber
+          (** Returned when [callgsubr] or [callsubr] does not follow immediately after a subroutine number. *)
       | CallSubrInGlobalSubr        of { old_biased : int }
+          (** Returned when a Global Subr depends on non-FDArray Local Subrs. *)
     [@@deriving show]
   end
 

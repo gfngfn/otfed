@@ -62,9 +62,10 @@ let get_integer dict key =
 let get_real_with_default dictmap key default =
   let open ResultMonad in
   match DictMap.find_opt key dictmap with
-  | Some(Real(r) :: []) -> return r
-  | Some(_)             -> err Error.NotARealInDict
-  | None                -> return default
+  | Some(Integer(i) :: []) -> return @@ float_of_int i
+  | Some(Real(r) :: [])    -> return r
+  | Some(_)                -> err Error.NotARealInDict
+  | None                   -> return default
 
 
 let get_integer_pair_opt dictmap key =

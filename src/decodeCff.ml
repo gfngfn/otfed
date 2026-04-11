@@ -518,6 +518,12 @@ let d_stem_argument (num_stems : int) : (int * Intermediate.Cff.stem_argument) d
   return (arglen, arg)
 
 
+let d_charstring_real : float decoder =
+  let open DecodeOperation in
+  d_twoscompl4 >>= fun n ->
+  return (float_of_int n /. (float_of_int (1 lsl 16)))
+
+
 let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_token) decoder =
   let open DecodeOperation in
   let open Intermediate.Cff in
@@ -635,8 +641,7 @@ let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_s
       return_argument (2, ArgumentInteger(- (b0 - 251) * 256 - b1 - 108))
 
   | 255 ->
-      d_twoscompl4 >>= fun n ->
-      let r = float_of_int n /. (float_of_int (1 lsl 16)) in
+      d_charstring_real >>= fun r ->
       return_argument (5, ArgumentReal(r))
 
   | n ->

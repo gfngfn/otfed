@@ -31,6 +31,7 @@ module EncodeVmtx = Otfed__EncodeVmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
+module EncodeCff = Otfed__EncodeCff
 module DecodeMath = Otfed__DecodeMath
 module DecodeKern = Otfed__DecodeKern
 module DecodeError = Otfed__DecodeError
@@ -57,6 +58,22 @@ let d_int16_and_e_int16_tests () =
   cases |> List.iter (fun (expected, input) ->
     let res = EncodeOperation.e_int16 input |> run_encoder in
     Alcotest.(check encoding) "e_int16" (Ok(expected)) res
+  )
+
+
+let d_charstring_real_and_e_charstring_real_tests () =
+  let cases =
+    [
+      (make_string_even [0x0fe2; 0x6f80], -29.564453125); (* TODO: fix the encoded bytes *)
+    ]
+  in
+  cases |> List.iter (fun (expected, input) ->
+    let res = EncodeCff.e_charstring_real input |> run_encoder in
+    Alcotest.(check encoding) "e_charstring_real" (Ok(expected)) res
+  );
+  cases |> List.iter (fun (input, expected) ->
+    let res = DecodeCff.d_charstring_real |> run_decoder input in
+    Alcotest.(check (decoding (float 1e-7))) "d_charstring_real" (Ok(expected)) res
   )
 
 
@@ -628,6 +645,9 @@ let () =
     ]);
     ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;
+    ]);
+    ("DecodeCff, EncodeCff", [
+      test_case "d_charstring_real, e_charstring_real" `Quick d_charstring_real_and_e_charstring_real_tests;
     ]);
     ("DecodeMath", [
       test_case "math_decoder" `Quick math_decoder_tests;

@@ -520,9 +520,19 @@ let d_stem_argument (num_stems : int) : (int * Intermediate.Cff.stem_argument) d
 
 let d_charstring_real : float decoder =
   let open DecodeOperation in
-  d_twoscompl4 >>= fun n ->
-  return (float_of_int n /. (float_of_int (1 lsl 16)))
 
+  d_uint8 >>= fun n1 ->
+  d_uint8 >>= fun n2 ->
+  d_uint8 >>= fun n3 ->
+  d_uint8 >>= fun n4 ->
+  d_skip (-4) >>= fun () ->
+
+  d_twoscompl4 >>= fun n ->
+  let r = float_of_int n /. (float_of_int (1 lsl 16)) in
+
+  print_endline (Printf.sprintf "REAL: (%02x)(%02x)(%02x)(%02x) --> %d --> %f" n1 n2 n3 n4 n r);
+
+  return r
 
 let d_charstring_token (lstate : charstring_lexing_state) : (charstring_lexing_state * Intermediate.Cff.charstring_token) decoder =
   let open DecodeOperation in

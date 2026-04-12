@@ -18,6 +18,8 @@ type charstring_constant = {
 
 type charstring_state
 
+val d_charstring_real : float decoder
+
 val d_charstring : charstring_constant -> charstring_state -> (charstring_state * Intermediate.Cff.charstring_operation Alist.t) decoder
 
 val charstring : cff_source -> Value.glyph_id -> ((int option * Intermediate.Cff.charstring) option) ok

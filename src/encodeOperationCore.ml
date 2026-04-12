@@ -172,7 +172,7 @@ fun buf ->
   if WideInt.is_in_int32 n then
     let u =
       let open WideInt in
-      if is_neg n then n +% (!%% 0x10000000L) else n
+      if is_neg n then n +% (!%% 0x100000000L) else n
     in
     encode_uint32_unsafe buf u
   else

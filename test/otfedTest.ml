@@ -31,6 +31,7 @@ module EncodeVmtx = Otfed__EncodeVmtx
 module DecodeTtf = Otfed__DecodeTtf
 module EncodeTtf = Otfed__EncodeTtf
 module DecodeCff = Otfed__DecodeCff
+module EncodeCff = Otfed__EncodeCff
 module DecodeMath = Otfed__DecodeMath
 module DecodeKern = Otfed__DecodeKern
 module DecodeError = Otfed__DecodeError
@@ -57,6 +58,40 @@ let d_int16_and_e_int16_tests () =
   cases |> List.iter (fun (expected, input) ->
     let res = EncodeOperation.e_int16 input |> run_encoder in
     Alcotest.(check encoding) "e_int16" (Ok(expected)) res
+  )
+
+
+(** Tests for `DecodeOperation.d_int32_int` and `EncodeOperation.e_int32` *)
+let d_int32_and_e_int32_tests () =
+  let cases =
+    [
+      (make_string_even [0xffe2; 0x6f80], -1937536);
+    ]
+  in
+  cases |> List.iter (fun (input, expected) ->
+    let res = DecodeOperation.d_int32_int |> run_decoder input in
+    Alcotest.(check (decoding int)) "d_int32" (Ok(expected)) res
+  );
+  cases |> List.iter (fun (expected, input) ->
+    let res = EncodeOperation.e_int32 (!% input) |> run_encoder in
+    Alcotest.(check encoding) "e_int32" (Ok(expected)) res
+  )
+
+
+(** Tests for `DecodeCff.d_charstring_real` and `EncodeCff.e_charstring_real` *)
+let d_charstring_real_and_e_charstring_real_tests () =
+  let cases =
+    [
+      (make_string_even [0xffe2; 0x6f80], -29.564453125);
+    ]
+  in
+  cases |> List.iter (fun (input, expected) ->
+    let res = DecodeCff.d_charstring_real |> run_decoder input in
+    Alcotest.(check (decoding (float 1e-7))) "d_charstring_real" (Ok(expected)) res
+  );
+  cases |> List.iter (fun (expected, input) ->
+    let res = EncodeCff.e_charstring_real input |> run_encoder in
+    Alcotest.(check encoding) "e_charstring_real" (Ok(expected)) res
   )
 
 
@@ -549,6 +584,7 @@ let () =
   run "Otfed" [
     ("DecodeOperation, EncodeOperation", [
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
+      test_case "d_int32, e_int32" `Quick d_int32_and_e_int32_tests;
     ]);
     ("DecodeHead", [
       test_case "d_head" `Quick d_head_tests;
@@ -628,6 +664,9 @@ let () =
     ]);
     ("DecodeCff", [
       test_case "d_charstring" `Quick d_charstring_tests;
+    ]);
+    ("DecodeCff, EncodeCff", [
+      test_case "d_charstring_real, e_charstring_real" `Quick d_charstring_real_and_e_charstring_real_tests;
     ]);
     ("DecodeMath", [
       test_case "math_decoder" `Quick math_decoder_tests;

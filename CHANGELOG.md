@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-04-12
+### Fixed
+- Fix how to encode `int32` and thereby how to encode Fixed values in CharStrings ([PR\#65](https://github.com/gfngfn/otfed/pull/65); inspired by `@ghaaj`'s [Issue\#64](https://github.com/gfngfn/otfed/issues/64)).
+
 ## [0.3.2] - 2024-11-07
 ### Fixed
 - Fix how to decode `CIDFontVersion` ([PR\#62](https://github.com/gfngfn/otfed/pull/62); inspired by `@ghaaj`'s [Issue\#61](https://github.com/gfngfn/otfed/issues/61)).
@@ -46,7 +50,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of Otfed
 
 
-  [Unreleased]: https://github.com/gfngfn/otfed/compare/0.3.2...HEAD
+  [Unreleased]: https://github.com/gfngfn/otfed/compare/0.3.3...HEAD
+  [0.3.3]: https://github.com/gfngfn/otfed/compare/0.3.1...0.3.3
   [0.3.2]: https://github.com/gfngfn/otfed/compare/0.3.1...0.3.2
   [0.3.1]: https://github.com/gfngfn/otfed/compare/0.3.0...0.3.1
   [0.3.0]: https://github.com/gfngfn/otfed/compare/0.2.0...0.3.0

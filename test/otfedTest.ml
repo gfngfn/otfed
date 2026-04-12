@@ -61,7 +61,7 @@ let d_int16_and_e_int16_tests () =
   )
 
 
-(** Tests for `DecodeOperation.d_int16` and `EncodeOperation.e_int16` *)
+(** Tests for `DecodeOperation.d_int32_int` and `EncodeOperation.e_int32` *)
 let d_int32_and_e_int32_tests () =
   let cases =
     [
@@ -78,6 +78,7 @@ let d_int32_and_e_int32_tests () =
   )
 
 
+(** Tests for `DecodeCff.d_charstring_real` and `EncodeCff.e_charstring_real` *)
 let d_charstring_real_and_e_charstring_real_tests () =
   let cases =
     [

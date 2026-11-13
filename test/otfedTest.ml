@@ -353,6 +353,24 @@ let d_cmap_variation_subtable_tests () =
     "d_cmap_variation_subtable (Format 14)" expected got
 
 
+(** Tests for the order of `cmap` subtables *)
+let compare_cmap_subtables_tests () =
+  let subtable platform_id encoding_id =
+    Value.Cmap.{ subtable_ids = { platform_id; encoding_id };
+                 mapping = CmapMapping.empty }
+  in
+  let ids (subtable : Value.Cmap.subtable) =
+    (subtable.subtable_ids.platform_id, subtable.subtable_ids.encoding_id)
+  in
+  let got =
+    [ subtable 3 10; subtable 3 1; subtable 0 4 ]
+    |> List.sort Value.Cmap.compare_subtables
+    |> List.map ids
+  in
+  Alcotest.(check (list (pair int int))) "ascending order"
+    [(0, 4); (3, 1); (3, 10)] got
+
+
 (** Tests for `EncodeCmap.e_cmap_mapping` *)
 let e_cmap_mapping_tests () =
   let input = TestCaseCmap2.unmarshaled in
@@ -628,6 +646,7 @@ let () =
       test_case "cmap_mapping" `Quick cmap_mapping_tests;
     ]);
     ("EncodeCmap", [
+      test_case "compare_cmap_subtables" `Quick compare_cmap_subtables_tests;
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;
     ]);
     ("DecodeName", [

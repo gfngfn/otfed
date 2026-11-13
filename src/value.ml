@@ -423,9 +423,9 @@ module Cmap = struct
 
   (* TODO: take language IDs into account for some platforms *)
   let compare_subtables (subtable1 : subtable) (subtable2 : subtable) =
-    let p = subtable2.subtable_ids.platform_id - subtable1.subtable_ids.platform_id in
+    let p = subtable1.subtable_ids.platform_id - subtable2.subtable_ids.platform_id in
     if p = 0 then
-      subtable2.subtable_ids.encoding_id - subtable1.subtable_ids.encoding_id
+      subtable1.subtable_ids.encoding_id - subtable2.subtable_ids.encoding_id
     else
       p
 

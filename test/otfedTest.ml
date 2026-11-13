@@ -78,6 +78,19 @@ let d_int32_and_e_int32_tests () =
   )
 
 
+(** Tests for `EncodeOperation.pad_to_long_aligned` *)
+let pad_to_long_aligned_tests () =
+  List.init 9 Fun.id |> List.iter (fun len ->
+    let enc =
+      let open EncodeOperation in
+      e_bytes (String.make len 'a') >>= fun () ->
+      pad_to_long_aligned
+    in
+    let res = enc |> run_encoder |> Result.map (fun s -> String.length s mod 4) in
+    Alcotest.(check (result int (of_pp EncodeError.pp))) "length modulo 4" (Ok(0)) res
+  )
+
+
 (** Tests for `DecodeCff.d_charstring_real` and `EncodeCff.e_charstring_real` *)
 let d_charstring_real_and_e_charstring_real_tests () =
   let cases =
@@ -585,6 +598,7 @@ let () =
     ("DecodeOperation, EncodeOperation", [
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
       test_case "d_int32, e_int32" `Quick d_int32_and_e_int32_tests;
+      test_case "pad_to_long_aligned" `Quick pad_to_long_aligned_tests;
     ]);
     ("DecodeHead", [
       test_case "d_head" `Quick d_head_tests;

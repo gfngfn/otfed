@@ -84,4 +84,4 @@ let pad_to_long_aligned : unit encoder =
   current >>= fun length ->
   match length mod 4 with
   | 0 -> return ()
-  | n -> e_bytes (String.make n (Char.chr 0))
+  | n -> e_bytes (String.make (4 - n) (Char.chr 0))

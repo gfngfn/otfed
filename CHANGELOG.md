@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 
 ## [Unreleased]
+### Fixed
+- Fix `EncodeOperation.pad_to_long_aligned`, which padded with `n` bytes instead of `4 - n`, so that tables could begin at offsets that are not multiples of 4.
 
 ## [0.3.3] - 2026-04-12
 ### Fixed

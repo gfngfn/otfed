@@ -2,6 +2,7 @@
  (name otfedTest)
  (libraries
    otfed
+   uutf
    base
    stdio
    alcotest))

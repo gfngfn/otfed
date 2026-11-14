@@ -78,6 +78,19 @@ let d_int32_and_e_int32_tests () =
   )
 
 
+(** Tests for `EncodeOperation.pad_to_long_aligned` *)
+let pad_to_long_aligned_tests () =
+  List.init 9 Fun.id |> List.iter (fun len ->
+    let enc =
+      let open EncodeOperation in
+      e_bytes (String.make len 'a') >>= fun () ->
+      pad_to_long_aligned
+    in
+    let res = enc |> run_encoder |> Result.map (fun s -> String.length s mod 4) in
+    Alcotest.(check (result int (of_pp EncodeError.pp))) "length modulo 4" (Ok(0)) res
+  )
+
+
 (** Tests for `DecodeCff.d_charstring_real` and `EncodeCff.e_charstring_real` *)
 let d_charstring_real_and_e_charstring_real_tests () =
   let cases =
@@ -353,6 +366,24 @@ let d_cmap_variation_subtable_tests () =
     "d_cmap_variation_subtable (Format 14)" expected got
 
 
+(** Tests for the order of `cmap` subtables *)
+let compare_cmap_subtables_tests () =
+  let subtable platform_id encoding_id =
+    Value.Cmap.{ subtable_ids = { platform_id; encoding_id };
+                 mapping = CmapMapping.empty }
+  in
+  let ids (subtable : Value.Cmap.subtable) =
+    (subtable.subtable_ids.platform_id, subtable.subtable_ids.encoding_id)
+  in
+  let got =
+    [ subtable 3 10; subtable 3 1; subtable 0 4 ]
+    |> List.sort Value.Cmap.compare_subtables
+    |> List.map ids
+  in
+  Alcotest.(check (list (pair int int))) "ascending order"
+    [(0, 4); (3, 1); (3, 10)] got
+
+
 (** Tests for `EncodeCmap.e_cmap_mapping` *)
 let e_cmap_mapping_tests () =
   let input = TestCaseCmap2.unmarshaled in
@@ -585,6 +616,7 @@ let () =
     ("DecodeOperation, EncodeOperation", [
       test_case "d_int16, e_int16" `Quick d_int16_and_e_int16_tests;
       test_case "d_int32, e_int32" `Quick d_int32_and_e_int32_tests;
+      test_case "pad_to_long_aligned" `Quick pad_to_long_aligned_tests;
     ]);
     ("DecodeHead", [
       test_case "d_head" `Quick d_head_tests;
@@ -628,6 +660,7 @@ let () =
       test_case "cmap_mapping" `Quick cmap_mapping_tests;
     ]);
     ("EncodeCmap", [
+      test_case "compare_cmap_subtables" `Quick compare_cmap_subtables_tests;
       test_case "e_cmap_mapping" `Quick e_cmap_mapping_tests;
     ]);
     ("DecodeName", [

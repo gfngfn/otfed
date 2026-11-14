@@ -6,9 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 
 ## [Unreleased]
+
+## [0.3.4] - 2026-11-15
 ### Fixed
-- Fix the order of the encoding records in `cmap` tables.
-- Fix `EncodeOperation.pad_to_long_aligned`, which padded with `n` bytes instead of `4 - n`, so that tables could begin at offsets that are not multiples of 4.
+- Fix the order of the encoding records in `cmap` tables ([PR\#70](https://github.com/gfngfn/otfed/pull/70) by `@yoshihiro503`).
+- Fix `EncodeOperation.pad_to_long_aligned`, which padded with `n` bytes instead of `4 - n`, so that tables could begin at offsets that are not multiples of 4 ([PR\#69](https://github.com/gfngfn/otfed/pull/69) by `@yoshihiro503`).
+- Fix tests so that they explicitly depend on `uutf` ([PR\#68](https://github.com/gfngfn/otfed/pull/68) by `@vbgl`).
 
 ## [0.3.3] - 2026-04-12
 ### Fixed
@@ -53,8 +56,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Initial version of Otfed
 
 
-  [Unreleased]: https://github.com/gfngfn/otfed/compare/0.3.3...HEAD
-  [0.3.3]: https://github.com/gfngfn/otfed/compare/0.3.1...0.3.3
+  [Unreleased]: https://github.com/gfngfn/otfed/compare/0.3.4...HEAD
+  [0.3.4]: https://github.com/gfngfn/otfed/compare/0.3.3...0.3.4
+  [0.3.3]: https://github.com/gfngfn/otfed/compare/0.3.2...0.3.3
   [0.3.2]: https://github.com/gfngfn/otfed/compare/0.3.1...0.3.2
   [0.3.1]: https://github.com/gfngfn/otfed/compare/0.3.0...0.3.1
   [0.3.0]: https://github.com/gfngfn/otfed/compare/0.2.0...0.3.0
